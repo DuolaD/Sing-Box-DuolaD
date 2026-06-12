@@ -1648,18 +1648,14 @@ clash_sb_share() {
   sbactive
   echo
   yellow "1：刷新并查看各协议分享链接、二维码、聚合节点"
-  yellow "2：刷新并查看Mihomo、Sing-box客户端SFA/SFI/SFW三合一配置、Gitlab私有订阅链接"
-  yellow "3：推送最新节点配置信息(选项1+选项2)到Telegram通知"
+  yellow "2：刷新并查看Mihomo、Sing-box客户端SFA/SFI/SFW三合一配置"
   yellow "0：返回上层"
-  readp "请选择【0-3】：" menu
+  readp "请选择【0-2】：" menu
   if [ "$menu" = "1" ]; then
     sbshare
   elif [ "$menu" = "2" ]; then
     green "请稍等……"
     sbshare > /dev/null 2>&1
-    white "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-    red "Gitlab订阅链接如下："
-    gitlabsubgo
     white "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
     red "🚀Mihomo配置文件显示如下："
     red "文件目录 $SBFOLDER/clmi.yaml ，复制自建以yaml文件格式为准" && sleep 2
@@ -1677,8 +1673,6 @@ clash_sb_share() {
     echo
     white "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
     echo
-  elif [ "$menu" = "3" ]; then
-    tgnotice
   else
     sb
   fi
@@ -1849,155 +1843,19 @@ EOF
   fi
 }
 
-# --- Telegram Notification Settings ---
-tgsbshow() {
-  echo
-  yellow "1：重置/设置Telegram机器人的Token、用户ID"
-  yellow "0：返回上层"
-  readp "请选择【0-1】：" menu
-  if [ "$menu" = "1" ]; then
-    rm -rf "$SBFOLDER/sbtg.sh"
-    readp "输入Telegram机器人Token: " token
-    telegram_token=$token
-    readp "输入Telegram机器人用户ID: " userid
-    telegram_id=$userid
-    
-    # We write a clean bash file sbtg.sh that calculates lines dynamically
-    cat > "$SBFOLDER/sbtg.sh" <<'EOF'
-#!/bin/bash
-export LANG=en_US.UTF-8
-sbnh=$(/etc/s-box/sing-box version 2>/dev/null | awk '/version/{print $NF}' 2>/dev/null | cut -d '.' -f 1,2)
-
-# Divide Clash YAML config
-total_lines=$(wc -l < /etc/s-box/clmi.yaml)
-half=$((total_lines / 2))
-head -n $half /etc/s-box/clmi.yaml > /etc/s-box/clash_meta_client1.txt
-tail -n +$((half + 1)) /etc/s-box/clmi.yaml > /etc/s-box/clash_meta_client2.txt
-
-# Divide Sing-box JSON config
-total_lines=$(wc -l < /etc/s-box/sbox.json)
-quarter=$((total_lines / 4))
-head -n $quarter /etc/s-box/sbox.json > /etc/s-box/sing_box_client1.txt
-tail -n +$((quarter + 1)) /etc/s-box/sbox.json | head -n $quarter > /etc/s-box/sing_box_client2.txt
-tail -n +$((2 * quarter + 1)) /etc/s-box/sbox.json | head -n $quarter > /etc/s-box/sing_box_client3.txt
-tail -n +$((3 * quarter + 1)) /etc/s-box/sbox.json > /etc/s-box/sing_box_client4.txt
-
-m1=$(cat /etc/s-box/vl_reality.txt 2>/dev/null)
-m2=$(cat /etc/s-box/vm_ws.txt 2>/dev/null)
-m3=$(cat /etc/s-box/vm_ws_argols.txt 2>/dev/null)
-m3_5=$(cat /etc/s-box/vm_ws_argogd.txt 2>/dev/null)
-m4=$(cat /etc/s-box/vm_ws_tls.txt 2>/dev/null)
-m5=$(cat /etc/s-box/hy2.txt 2>/dev/null)
-m6=$(cat /etc/s-box/tuic5.txt 2>/dev/null)
-m7=$(cat /etc/s-box/sing_box_client1.txt 2>/dev/null)
-m7_5=$(cat /etc/s-box/sing_box_client2.txt 2>/dev/null)
-m7_5_5=$(cat /etc/s-box/sing_box_client3.txt 2>/dev/null)
-m7_5_5_5=$(cat /etc/s-box/sing_box_client4.txt 2>/dev/null)
-m8=$(cat /etc/s-box/clash_meta_client1.txt 2>/dev/null)
-m8_5=$(cat /etc/s-box/clash_meta_client2.txt 2>/dev/null)
-m9=$(cat /etc/s-box/sing_box_gitlab.txt 2>/dev/null)
-m10=$(cat /etc/s-box/clash_meta_gitlab.txt 2>/dev/null)
-m11=$(cat /etc/s-box/jhsub.txt 2>/dev/null)
-m12=$(cat /etc/s-box/an.txt 2>/dev/null)
-
-MODE=HTML
-URL="https://api.telegram.org/botBOT_TOKEN/sendMessage"
-C_ID="CHAT_ID"
-
-res=$(timeout 20s curl -s -X POST $URL -d chat_id=$C_ID -d parse_mode=${MODE} --data-urlencode "text=🚀【 Vless-reality-vision 分享链接 】：支持v2rayng、nekobox 
-$m1")
-if [[ -f /etc/s-box/vm_ws.txt ]]; then
-  res=$(timeout 20s curl -s -X POST $URL -d chat_id=$C_ID -d parse_mode=${MODE} --data-urlencode "text=🚀【 Vmess-ws 分享链接 】：支持v2rayng、nekobox 
-$m2")
-fi
-if [[ -f /etc/s-box/vm_ws_argols.txt ]]; then
-  res=$(timeout 20s curl -s -X POST $URL -d chat_id=$C_ID -d parse_mode=${MODE} --data-urlencode "text=🚀【 Vmess-ws(tls)+Argo临时域名分享链接 】：支持v2rayng、nekobox 
-$m3")
-fi
-if [[ -f /etc/s-box/vm_ws_argogd.txt ]]; then
-  res=$(timeout 20s curl -s -X POST $URL -d chat_id=$C_ID -d parse_mode=${MODE} --data-urlencode "text=🚀【 Vmess-ws(tls)+Argo固定域名分享链接 】：支持v2rayng、nekobox 
-$m3_5")
-fi
-if [[ -f /etc/s-box/vm_ws_tls.txt ]]; then
-  res=$(timeout 20s curl -s -X POST $URL -d chat_id=$C_ID -d parse_mode=${MODE} --data-urlencode "text=🚀【 Vmess-ws-tls 分享链接 】：支持v2rayng、nekobox 
-$m4")
-fi
-res=$(timeout 20s curl -s -X POST $URL -d chat_id=$C_ID -d parse_mode=${MODE} --data-urlencode "text=🚀【 Hysteria-2 分享链接 】：支持v2rayng、nekobox 
-$m5")
-res=$(timeout 20s curl -s -X POST $URL -d chat_id=$C_ID -d parse_mode=${MODE} --data-urlencode "text=🚀【 Tuic-v5 分享链接 】：支持nekobox 
-$m6")
-if [[ "$sbnh" != "1.10" ]]; then
-  res=$(timeout 20s curl -s -X POST $URL -d chat_id=$C_ID -d parse_mode=${MODE} --data-urlencode "text=🚀【 Anytls 分享链接 】：仅最新内核可用 
-$m12")
-fi
-if [[ -f /etc/s-box/sing_box_gitlab.txt ]]; then
-  res=$(timeout 20s curl -s -X POST $URL -d chat_id=$C_ID -d parse_mode=${MODE} --data-urlencode "text=🚀【 Sing-box 订阅链接 】：支持SFA、SFW、SFI 
-$m9")
-else
-  res=$(timeout 20s curl -s -X POST $URL -d chat_id=$C_ID -d parse_mode=${MODE} --data-urlencode "text=🚀【 Sing-box 配置文件(4段) 】：支持SFA、SFW、SFI 
-$m7")
-  res=$(timeout 20s curl -s -X POST $URL -d chat_id=$C_ID -d parse_mode=${MODE} --data-urlencode "text=$m7_5")
-  res=$(timeout 20s curl -s -X POST $URL -d chat_id=$C_ID -d parse_mode=${MODE} --data-urlencode "text=$m7_5_5")
-  res=$(timeout 20s curl -s -X POST $URL -d chat_id=$C_ID -d parse_mode=${MODE} --data-urlencode "text=$m7_5_5_5")
-fi
-
-if [[ -f /etc/s-box/clash_meta_gitlab.txt ]]; then
-  res=$(timeout 20s curl -s -X POST $URL -d chat_id=$C_ID -d parse_mode=${MODE} --data-urlencode "text=🚀【 Mihomo 订阅链接 】：支持Mihomo相关客户端 
-$m10")
-else
-  res=$(timeout 20s curl -s -X POST $URL -d chat_id=$C_ID -d parse_mode=${MODE} --data-urlencode "text=🚀【 Mihomo 配置文件(2段) 】：支持Mihomo相关客户端 
-$m8")
-  res=$(timeout 20s curl -s -X POST $URL -d chat_id=$C_ID -d parse_mode=${MODE} --data-urlencode "text=$m8_5")
-fi
-res=$(timeout 20s curl -s -X POST $URL -d chat_id=$C_ID -d parse_mode=${MODE} --data-urlencode "text=🚀【 聚合节点 】：支持nekobox 
-$m11")
-
-if [ $? == 124 ];then
-  echo "TG_api请求超时,请检查网络是否重启完成并是否能够访问TG"
-fi
-resSuccess=$(echo "$res" | jq -r ".ok")
-if [[ $resSuccess = "true" ]]; then
-  echo "TG推送成功"
-else
-  echo "TG推送失败，请检查TG机器人Token and ID"
-fi
-EOF
-    sed -i "s/BOT_TOKEN/$telegram_token/g" "$SBFOLDER/sbtg.sh"
-    sed -i "s/CHAT_ID/$telegram_id/g" "$SBFOLDER/sbtg.sh"
-    green "设置完成！请确保TG机器人已处于激活状态！"
-    tgnotice
-  else
-    changeserv
-  fi
-}
-
-tgnotice() {
-  if [[ -f "$SBFOLDER/sbtg.sh" ]]; then
-    green "请稍等5秒，TG机器人准备推送……"
-    sbshare > /dev/null 2>&1
-    bash "$SBFOLDER/sbtg.sh"
-  else
-    yellow "未设置TG通知功能"
-  fi
-  exit
-}
-
 # --- Settings & Customizations Menu ---
 changeserv() {
   sbactive
   echo
   green "Sing-box配置变更选择如下:"
-  readp "1：更换Reality域名伪装地址、切换自签证书与Acme域名证书、开关TLS\n2：更换全协议UUID(密码)、Vmess-Path路径\n3：设置Argo临时隧道、固定隧道\n4：切换IPV4或IPV6的代理优先级 (仅 1.10.7 内核可用)\n5：设置Telegram推送节点通知\n6：更换Warp-wireguard出站账户\n7：设置Gitlab订阅分享链接\n8：设置本地IP订阅分享链接\n9：设置所有Vmess节点的CDN优选地址\n0：返回上层\n请选择【0-9】：" menu
+  readp "1：更换Reality域名伪装地址、切换自签证书与Acme域名证书、开关TLS\n2：更换全协议UUID(密码)、Vmess-Path路径\n3：设置Argo临时隧道、固定隧道\n4：切换IPV4或IPV6的代理优先级 (仅 1.10.7 内核可用)\n5：更换Warp-wireguard出站账户\n6：设置所有Vmess节点的CDN优选地址\n0：返回上层\n请选择【0-6】：" menu
   case "$menu" in
     1) changeym ;;
     2) changeuuid ;;
     3) cfargo_ym ;;
     4) changeip ;;
-    5) tgsbshow ;;
-    6) changewg ;;
-    7) gitlabsub ;;
-    8) ipsub ;;
-    9) vmesscfadd ;;
+    5) changewg ;;
+    6) vmesscfadd ;;
     *) sb ;;
   esac
 }
@@ -2834,89 +2692,7 @@ restartsb() {
   fi
 }
 
-# --- Local IP Subscription via busybox-extras httpd ---
-ipsub() {
-  subtokenipsub() {
-    echo
-    readp "输入订阅链接路径密码（回车表示使用当前UUID）：" menu
-    if [ -z "$menu" ]; then
-      subtoken=$(strip_json_comments "$SBFOLDER/sb.json" | jq -r '.inbounds[0].users[0].uuid')
-    else
-      subtoken="$menu"
-    fi
-    rm -rf /root/websbox/"$(cat "$SBFOLDER/subtoken.log" 2>/dev/null)"
-    echo "$subtoken" > "$SBFOLDER/subtoken.log"
-    green "订阅链接路径密码：$(cat "$SBFOLDER/subtoken.log" 2>/dev/null)"
-  }
-  
-  subportipsub() {
-    echo
-    readp "输入未被占用且可用的订阅链接端口（回车表示随机端口）：" menu
-    if [ -z "$menu" ]; then
-      subport=$(shuf -i 10000-65535 -n 1)
-    else
-      subport="$menu"
-    fi
-    echo "$subport" > "$SBFOLDER/subport.log"
-    green "订阅链接端口：$(cat "$SBFOLDER/subport.log" 2>/dev/null)"
-  }
-  
-  echo
-  yellow "1：重置安装本地IP订阅链接"
-  yellow "2：更换订阅链接路径密码"
-  yellow "3：更换订阅链接端口"
-  yellow "4：卸载本地IP订阅链接"
-  yellow "0：返回上层"
-  readp "请选择【0-4】：" menu
-  if [ "$menu" = "1" ]; then
-    subtokenipsub && subportipsub
-  elif [ "$menu" = "2" ]; then
-    subtokenipsub
-  elif [ "$menu" = "3" ]; then
-    subportipsub
-  elif [ "$menu" = "4" ]; then
-    kill -15 $(pgrep -f 'websbox' 2>/dev/null) >/dev/null 2>&1
-    crontab -l 2>/dev/null > /tmp/crontab.tmp
-    sed -i '/websbox/d' /tmp/crontab.tmp
-    crontab /tmp/crontab.tmp >/dev/null 2>&1
-    rm /tmp/crontab.tmp
-    rm -rf /root/websbox
-    rm -rf /etc/local.d/alpinesub.start
-    green "本地IP订阅链接已卸载完成" && sleep 3 && exit
-  else
-    changeserv
-  fi
-  
-  echo
-  green "请稍后…………"
-  kill -15 $(pgrep -f 'websbox' 2>/dev/null) >/dev/null 2>&1
-  local token_path=$(cat "$SBFOLDER/subtoken.log" 2>/dev/null)
-  local port_num=$(cat "$SBFOLDER/subport.log" 2>/dev/null)
-  mkdir -p "/root/websbox/$token_path"
-  ln -sf "$SBFOLDER/clmi.yaml" "/root/websbox/$token_path/clmi.yaml"
-  ln -sf "$SBFOLDER/sbox.json" "/root/websbox/$token_path/sbox.json"
-  ln -sf "$SBFOLDER/jhsub.txt" "/root/websbox/$token_path/jhsub.txt"
-  
-  if command -v apk >/dev/null 2>&1; then
-    busybox-extras httpd -f -p "$port_num" -h /root/websbox > /dev/null 2>&1 &
-    cat > /etc/local.d/alpinesub.start <<EOF
-#!/bin/bash
-sleep 10
-busybox-extras httpd -f -p $port_num -h /root/websbox > /dev/null 2>&1 &
-EOF
-    chmod +x /etc/local.d/alpinesub.start
-    rc-update add local default >/dev/null 2>&1
-  else
-    busybox httpd -f -p "$port_num" -h /root/websbox > /dev/null 2>&1 &
-    crontab -l 2>/dev/null > /tmp/crontab.tmp
-    sed -i '/websbox/d' /tmp/crontab.tmp
-    echo "@reboot sleep 10 && /bin/bash -c \"busybox httpd -f -p $port_num -h /root/websbox > /dev/null 2>&1 &\"" >> /tmp/crontab.tmp
-    crontab /tmp/crontab.tmp >/dev/null 2>&1
-    rm /tmp/crontab.tmp
-  fi
-  sbshare > /dev/null 2>&1
-  sleep 1 && green "本地IP订阅链接已更新完成" && sleep 3 && sb
-}
+
 
 # --- CDN configuration ---
 vmesscfadd() {
@@ -2956,114 +2732,6 @@ vmesscfadd() {
   else
     changeserv
   fi
-}
-
-# --- Gitlab Subscriptions Push Helpers ---
-gitlabsub() {
-  echo
-  green "请确保Gitlab官网上已建立项目，已开启推送功能，已获取访问令牌"
-  yellow "1：重置/设置Gitlab订阅链接"
-  yellow "0：返回上层"
-  readp "请选择【0-1】：" menu
-  if [ "$menu" = "1" ]; then
-    cd "$SBFOLDER"
-    readp "输入登录邮箱: " email
-    readp "输入访问令牌: " token
-    readp "输入用户名: " userid
-    readp "输入项目名: " project
-    echo
-    green "多台VPS共用一个令牌及项目名，可创建多个分支订阅链接"
-    green "回车跳过表示不新建，仅使用主分支main订阅链接(首台VPS建议回车跳过)"
-    readp "新建分支名称: " gitlabml
-    echo
-    if [[ -z "$gitlabml" ]]; then
-      gitlab_ml=''
-      git_sk=main
-      rm -rf "$SBFOLDER/gitlab_ml_ml"
-    else
-      gitlab_ml=":${gitlabml}"
-      git_sk="${gitlabml}"
-      echo "${gitlab_ml}" > "$SBFOLDER/gitlab_ml_ml"
-    fi
-    echo "$token" > "$SBFOLDER/gitlabtoken.txt"
-    rm -rf "$SBFOLDER/.git"
-    git init >/dev/null 2>&1
-    git add sbox.json clmi.yaml jhsub.txt >/dev/null 2>&1
-    git config --global user.email "${email}" >/dev/null 2>&1
-    git config --global user.name "${userid}" >/dev/null 2>&1
-    git commit -m "commit_add_$(date +"%F %T")" >/dev/null 2>&1
-    branches=$(git branch)
-    if [[ $branches == *master* ]]; then
-      git branch -m master main >/dev/null 2>&1
-    fi
-    git remote add origin "https://${token}@gitlab.com/${userid}/${project}.git" >/dev/null 2>&1
-    if [[ $(ls -a | grep '^\.git$') ]]; then
-      cat > "$SBFOLDER/gitpush.sh" <<EOF
-#!/usr/bin/expect
-spawn bash -c "git push -f origin main${gitlab_ml}"
-expect "Password for 'https://\$(cat $SBFOLDER/gitlabtoken.txt 2>/dev/null)@gitlab.com':"
-send "\$(cat $SBFOLDER/gitlabtoken.txt 2>/dev/null)\r"
-interact
-EOF
-      chmod +x gitpush.sh
-      ./gitpush.sh "git push -f origin main${gitlab_ml}" cat "$SBFOLDER/gitlabtoken.txt" >/dev/null 2>&1
-      echo "https://gitlab.com/api/v4/projects/${userid}%2F${project}/repository/files/sbox.json/raw?ref=${git_sk}&private_token=${token}" > "$SBFOLDER/sing_box_gitlab.txt"
-      echo "https://gitlab.com/api/v4/projects/${userid}%2F${project}/repository/files/clmi.yaml/raw?ref=${git_sk}&private_token=${token}" > "$SBFOLDER/clash_meta_gitlab.txt"
-      echo "https://gitlab.com/api/v4/projects/${userid}%2F${project}/repository/files/jhsub.txt/raw?ref=${git_sk}&private_token=${token}" > "$SBFOLDER/jh_sub_gitlab.txt"
-      clsbshow
-    else
-      yellow "设置Gitlab订阅链接失败，请反馈"
-    fi
-    cd
-  else
-    changeserv
-  fi
-}
-
-gitlabsubgo() {
-  cd "$SBFOLDER"
-  if [[ $(ls -a | grep '^\.git$') ]]; then
-    if [ -f "$SBFOLDER/gitlab_ml_ml" ]; then
-      gitlab_ml=$(cat "$SBFOLDER/gitlab_ml_ml")
-    fi
-    git rm --cached sbox.json clmi.yaml jhsub.txt >/dev/null 2>&1
-    git commit -m "commit_rm_$(date +"%F %T")" >/dev/null 2>&1
-    git add sbox.json clmi.yaml jhsub.txt >/dev/null 2>&1
-    git commit -m "commit_add_$(date +"%F %T")" >/dev/null 2>&1
-    chmod +x gitpush.sh
-    ./gitpush.sh "git push -f origin main${gitlab_ml}" cat "$SBFOLDER/gitlabtoken.txt" >/dev/null 2>&1
-    clsbshow
-  else
-    yellow "未设置Gitlab订阅链接"
-  fi
-  cd
-}
-
-clsbshow() {
-  green "当前Sing-box节点已更新并推送"
-  green "Sing-box订阅链接如下："
-  blue "$(cat "$SBFOLDER/sing_box_gitlab.txt" 2>/dev/null)"
-  echo
-  green "Sing-box订阅链接二维码如下："
-  qrencode -o - -t ANSIUTF8 "$(cat "$SBFOLDER/sing_box_gitlab.txt" 2>/dev/null)"
-  echo
-  echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-  echo
-  green "当前Mihomo节点配置已更新并推送"
-  green "Mihomo订阅链接如下："
-  blue "$(cat "$SBFOLDER/clash_meta_gitlab.txt" 2>/dev/null)"
-  echo
-  green "Mihomo订阅链接二维码如下："
-  qrencode -o - -t ANSIUTF8 "$(cat "$SBFOLDER/clash_meta_gitlab.txt" 2>/dev/null)"
-  echo
-  echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-  echo
-  green "当前聚合节点配置已更新并推送"
-  green "订阅链接如下："
-  blue "$(cat "$SBFOLDER/jh_sub_gitlab.txt" 2>/dev/null)"
-  echo
-  yellow "可以在网页上输入订阅链接查看配置内容，如果无配置内容，请自检Gitlab相关设置并重置"
-  echo
 }
 
 # --- Core Updates / Switching ---
@@ -3400,17 +3068,7 @@ showprotocol() {
     echo -e "🚀【    Anytls     】${yellow}端口:$an_port  证书形式:$an_zs${plain}"
   fi
 
-  if [ -s "$SBFOLDER/subport.log" ]; then
-    showsubport=$(cat "$SBFOLDER/subport.log")
-    if ps -ef 2>/dev/null | grep -q "$showsubport" | grep -v grep >/dev/null; then
-      showsubtoken=$(cat "$SBFOLDER/subtoken.log" 2>/dev/null)
-      subip=$(cat "$SBFOLDER/server_ip.log" 2>/dev/null)
-      suburl="$subip:$showsubport/$showsubtoken"
-      echo "Clash/Mihomo本地IP订阅地址：http://$suburl/clmi.yaml"
-      echo "Sing-box本地IP订阅地址：http://$suburl/sbox.json"
-      echo "聚合协议本地IP订阅地址：http://$suburl/jhsub.txt"
-    fi
-  fi
+
 
   if [ "$argoym" = "已开启" ]; then
     if ps -ef 2>/dev/null | grep -q "[l]ocalhost:$vm_port"; then
@@ -3542,14 +3200,14 @@ sb() {
   green " 1. 一键安装 Sing-box" 
   green " 2. 删除卸载 Sing-box"
   white "----------------------------------------------------------------------------------"
-  green " 3. 变更配置 【双证书TLS/UUID路径/Argo/IP优先/TG通知/Warp/订阅/CDN优选】" 
+  green " 3. 变更配置 【双证书TLS/UUID路径/Argo/IP优先/Warp/CDN优选】" 
   green " 4. 更改主端口/添加多端口跳跃复用" 
   green " 5. 三通道域名分流"
   green " 6. 关闭/重启 Sing-box"   
   green " 7. 更新 Sing-box 脚本"
   green " 8. 更新/切换/指定 Sing-box 内核版本"
   white "----------------------------------------------------------------------------------"
-  green " 9. 刷新并查看节点 【Mihomo/SFA+SFI+SFW三合一配置/订阅链接/推送TG通知】"
+  green " 9. 刷新并查看节点 【Mihomo/SFA+SFI+SFW三合一配置/分享链接】"
   green "10. 查看 Sing-box 运行日志"
   green "11. 一键原版BBR+FQ加速"
   green "12. 管理 Acme 申请域名证书"
