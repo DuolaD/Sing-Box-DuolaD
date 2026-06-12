@@ -2926,7 +2926,6 @@ vmesscfadd() {
   blue "www.visa.com.sg"
   blue "www.wto.org"
   blue "www.web.com"
-  blue "cdn.cloudflare.com"
   echo
   yellow "1：自定义Vmess-ws(tls)主协议节点的CDN优选地址"
   yellow "2：针对选项1，重置客户端host/sni域名(IP解析到CF上的域名)"
