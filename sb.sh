@@ -3244,6 +3244,92 @@ showprotocol() {
   an_sniname=$(echo "$clean_json" | jq -r '.inbounds[4].tls.key_path')
   [[ "$an_sniname" = "$SBFOLDER/private.key" || "$an_sniname" = "/etc/s-box/private.key" ]] && an_zs="自签证书" || an_zs="域名证书"
 
+  # Check if warp-cli is connected
+  warp_cli_connected=0
+  if command -v warp-cli >/dev/null 2>&1 && warp-cli status 2>/dev/null | grep -qi "connected"; then
+    warp_cli_connected=1
+  fi
+
+  # Check if sbwpph is running
+  sbwpph_running=0
+  if [[ -n $(ps -e | grep sbwpph) ]]; then
+    sbwpph_running=1
+  fi
+
+  if [[ $sbwpph_running -eq 1 || $warp_cli_connected -eq 1 ]]; then
+    if [[ $warp_cli_connected -eq 1 ]]; then
+      client_type="WARP-cli"
+      s5port=$(warp-cli settings 2>/dev/null | grep -i "proxy port" | awk '{print $NF}')
+      if [[ ! "$s5port" =~ ^[0-9]+$ ]]; then
+        s5port=$(cat "$SBFOLDER/sbwpph.log" 2>/dev/null | awk '{print $3}' | awk -F":" '{print $NF}')
+      fi
+      s5port=${s5port:-40000}
+      s5proto=$(warp-cli settings 2>/dev/null | grep -i "tunnel protocol" | awk '{print $NF}')
+      s5proto=${s5proto:-"MASQUE"}
+    else
+      s5port=$(cat "$SBFOLDER/sbwpph.log" 2>/dev/null | awk '{print $3}' | awk -F":" '{print $NF}')
+      s5port=${s5port:-40000}
+      s5proto="WireGuard"
+      s5gj=$(cat "$SBFOLDER/sbwpph.log" 2>/dev/null | awk '{print $6}')
+      if grep -q "country" "$SBFOLDER/sbwpph.log" 2>/dev/null; then
+        case "$s5gj" in
+          AT) showgj="奥地利" ;;
+          AU) showgj="澳大利亚" ;;
+          BE) showgj="比利时" ;;
+          BG) showgj="保加利亚" ;;
+          CA) showgj="加拿大" ;;
+          CH) showgj="瑞士" ;;
+          CZ) showgj="捷克" ;;
+          DE) showgj="德国" ;;
+          DK) showgj="丹麦" ;;
+          EE) showgj="爱沙尼亚" ;;
+          ES) showgj="西班牙" ;;
+          FI) showgj="芬兰" ;;
+          FR) showgj="法国" ;;
+          GB) showgj="英国" ;;
+          HR) showgj="克罗地亚" ;;
+          HU) showgj="匈牙利" ;;
+          IE) showgj="爱尔兰" ;;
+          IN) showgj="印度" ;;
+          IT) showgj="意大利" ;;
+          JP) showgj="日本" ;;
+          LT) showgj="立陶宛" ;;
+          LV) showgj="拉脱维亚" ;;
+          NL) showgj="荷兰" ;;
+          NO) showgj="挪威" ;;
+          PL) showgj="波兰" ;;
+          PT) showgj="葡萄牙" ;;
+          RO) showgj="罗马尼亚" ;;
+          RS) showgj="塞尔维亚" ;;
+          SE) showgj="瑞典" ;;
+          SG) showgj="新加坡" ;;
+          SK) showgj="斯洛伐克" ;;
+          US) showgj="美国" ;;
+          *) showgj="$s5gj" ;;
+        esac
+        client_type="Psiphon (国家:$showgj)"
+      else
+        client_type="WireProxy"
+      fi
+    fi
+
+    # Query proxy IP
+    proxy_ipv4=$(curl -s4m3 -x socks5h://127.0.0.1:$s5port icanhazip.com 2>/dev/null || curl -s4m3 --socks5 127.0.0.1:$s5port icanhazip.com 2>/dev/null)
+    proxy_ipv6=$(curl -s6m3 -x socks5h://127.0.0.1:$s5port icanhazip.com 2>/dev/null || curl -s6m3 --socks5 127.0.0.1:$s5port icanhazip.com 2>/dev/null)
+    [[ -z "$proxy_ipv4" ]] && show_v4="无" || show_v4="$proxy_ipv4"
+    [[ -z "$proxy_ipv6" ]] && show_v6="无" || show_v6="$proxy_ipv6"
+
+    echo -e "WARP-plus-Socks5状态：${green}已启动${plain}"
+    echo -e "客户端：${yellow}${client_type}${plain}        协议：${yellow}${s5proto}${plain}        代理端口：${yellow}${s5port}${plain}"
+    echo -e "当前代理IP："
+    echo -e "  IPV4：${yellow}${show_v4}${plain}"
+    echo -e "  IPV6：${yellow}${show_v6}${plain}"
+  else
+    echo -e "WARP-plus-Socks5状态：${yellow}未启动${plain}"
+  fi
+
+  echo "------------------------------------------------------------------------------------"
+
   echo -e "Sing-box节点关键信息、已分流域名情况如下："
   echo -e "🚀【 Vless-reality 】${yellow}端口:$vl_port  Reality域名证书伪装地址：$(echo "$clean_json" | jq -r '.inbounds[0].tls.server_name')${plain}"
   if [[ "$tls" = "false" ]]; then
@@ -3257,8 +3343,6 @@ showprotocol() {
     echo -e "🚀【    Anytls     】${yellow}端口:$an_port  证书形式:$an_zs${plain}"
   fi
 
-
-
   if [ "$argoym" = "已开启" ]; then
     if ps -ef 2>/dev/null | grep -q "[l]ocalhost:$vm_port"; then
       echo -e "Argo临时域名：${yellow}$(cat "$SBFOLDER/argo.log" 2>/dev/null | grep -a trycloudflare.com | awk 'NR==2{print}' | awk -F// '{print $2}' | awk '{print $1}')${plain}"
@@ -3266,51 +3350,6 @@ showprotocol() {
     if ps -ef 2>/dev/null | grep -q '[c]loudflared.*run'; then
       echo -e "Argo固定域名：${yellow}$(cat "$SBFOLDER/sbargoym.log" 2>/dev/null)${plain}"
     fi
-  fi
-
-  echo "------------------------------------------------------------------------------------"
-
-  if [[ -n $(ps -e | grep sbwpph) ]] || (command -v warp-cli >/dev/null 2>&1 && warp-cli status 2>/dev/null | grep -qi "connected"); then
-    s5port=$(cat "$SBFOLDER/sbwpph.log" 2>/dev/null | awk '{print $3}' | awk -F":" '{print $NF}')
-    s5gj=$(cat "$SBFOLDER/sbwpph.log" 2>/dev/null | awk '{print $6}')
-    case "$s5gj" in
-      AT) showgj="奥地利" ;;
-      AU) showgj="澳大利亚" ;;
-      BE) showgj="比利时" ;;
-      BG) showgj="保加利亚" ;;
-      CA) showgj="加拿大" ;;
-      CH) showgj="瑞士" ;;
-      CZ) showgj="捷克" ;;
-      DE) showgj="德国" ;;
-      DK) showgj="丹麦" ;;
-      EE) showgj="爱沙尼亚" ;;
-      ES) showgj="西班牙" ;;
-      FI) showgj="芬兰" ;;
-      FR) showgj="法国" ;;
-      GB) showgj="英国" ;;
-      HR) showgj="克罗地亚" ;;
-      HU) showgj="匈牙利" ;;
-      IE) showgj="爱尔兰" ;;
-      IN) showgj="印度" ;;
-      IT) showgj="意大利" ;;
-      JP) showgj="日本" ;;
-      LT) showgj="立陶宛" ;;
-      LV) showgj="拉脱维亚" ;;
-      NL) showgj="荷兰" ;;
-      NO) showgj="挪威" ;;
-      PL) showgj="波兰" ;;
-      PT) showgj="葡萄牙" ;;
-      RO) showgj="罗马尼亚" ;;
-      RS) showgj="塞尔维亚" ;;
-      SE) showgj="瑞典" ;;
-      SG) showgj="新加坡" ;;
-      SK) showgj="斯洛伐克" ;;
-      US) showgj="美国" ;;
-    esac
-    grep -q "country" "$SBFOLDER/sbwpph.log" 2>/dev/null && s5ms="多地区Psiphon代理模式 (端口:$s5port  国家:$showgj)" || s5ms="本地Warp代理模式 (端口:$s5port)"
-    echo -e "WARP-plus-Socks5状态：$yellow已启动 $s5ms$plain"
-  else
-    echo -e "WARP-plus-Socks5状态：$yellow未启动$plain"
   fi
 
   echo "------------------------------------------------------------------------------------"
