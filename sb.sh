@@ -2887,6 +2887,9 @@ inssbwpph() {
     crontab /tmp/crontab.tmp >/dev/null 2>&1
     rm /tmp/crontab.tmp
     rm -rf /etc/local.d/alpinews5.start
+    if command -v warp-cli >/dev/null 2>&1; then
+      warp-cli disconnect >/dev/null 2>&1
+    fi
   }
   
   aplws5() {
@@ -2914,17 +2917,132 @@ EOF
   yellow "0：返回上层"
   readp "请选择【0-3】：" menu
   if [ "$menu" = "1" ]; then
-    ins
-    nohup "$SBFOLDER/sbwpph" -b 127.0.0.1:$port -$sw46 --endpoint 162.159.192.1:2408 >/dev/null 2>&1 &
-    green "申请IP中……请稍等……" && sleep 20
-    resv1=$(curl -sm3 --socks5 localhost:$port icanhazip.com)
-    resv2=$(curl -sm3 -x socks5h://localhost:$port icanhazip.com)
-    if [[ -z $resv1 && -z $resv2 ]]; then
-      red "WARP-plus-Socks5的IP获取失败" && unins && exit
+    is_supported=0
+    if [[ "$release" == "Debian" || "$release" == "Ubuntu" || "$release" == "Centos" ]]; then
+      is_supported=1
+    fi
+
+    warp_choice=""
+    if [[ $is_supported -eq 1 ]]; then
+      echo
+      blue "请选择本地 WARP 代理方案："
+      green "1. WARP-cli (官方客户端，推荐)"
+      yellow "   优点：性能极其优异，支持最新的 MASQUE 协议"
+      yellow "   缺点：硬件资源（CPU/内存）占用比 WireProxy 略高"
+      green "2. WireProxy (第三方轻量客户端)"
+      yellow "   优点：硬件资源占用极低，适合低配/小内存 VPS"
+      yellow "   缺点：性能较 warp-cli 稍逊，不支持 MASQUE 协议"
+      echo
+      readp "请选择【1-2】（默认 1）：" warp_choice
+      warp_choice=${warp_choice:-1}
     else
-      echo "$SBFOLDER/sbwpph -b 127.0.0.1:$port -$sw46 --endpoint 162.159.192.1:2408 >/dev/null 2>&1" > "$SBFOLDER/sbwpph.log"
-      aplws5
-      green "WARP-plus-Socks5的IP获取成功，可进行Socks5代理分流"
+      echo
+      yellow "检测到当前系统为 $release，WARP-cli 官方暂不支持此系统。"
+      yellow "系统将自动选择轻量化的 WireProxy 方案。"
+      warp_choice=2
+      sleep 2
+    fi
+
+    if [[ "$warp_choice" == "1" ]]; then
+      echo
+      blue "选择 WARP-cli 连接协议："
+      green "1. MASQUE (推荐，抗封锁与传输性能更优)"
+      green "2. WireGuard"
+      echo
+      readp "请选择【1-2】（默认 1）：" proto_choice
+      proto_choice=${proto_choice:-1}
+
+      if ! command -v warp-cli >/dev/null 2>&1; then
+        echo
+        green "开始安装 WARP-cli 官方客户端..."
+        if [[ "$release" == "Debian" || "$release" == "Ubuntu" ]]; then
+          sudo apt update
+          sudo apt install gnupg lsb-release -y
+          curl -fsSL https://pkg.cloudflareclient.com/pubkey.gpg | sudo gpg --yes --dearmor --output /usr/share/keyrings/cloudflare-warp-archive-keyring.gpg
+          echo "deb [signed-by=/usr/share/keyrings/cloudflare-warp-archive-keyring.gpg] https://pkg.cloudflareclient.com/ $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/cloudflare-client.list
+          sudo apt update
+          sudo apt install cloudflare-warp -y
+        elif [[ "$release" == "Centos" ]]; then
+          sudo rpm --import https://pkg.cloudflareclient.com/pubkey.gpg
+          curl -fsSL https://pkg.cloudflareclient.com/cloudflare-warp.repo | sudo tee /etc/yum.repos.d/cloudflare-warp.repo
+          sudo yum clean all
+          sudo yum install cloudflare-warp -y
+        fi
+        sudo systemctl daemon-reload
+        sudo systemctl enable --now warp-svc >/dev/null 2>&1
+        sleep 3
+      else
+        green "检测到已安装 WARP-cli，跳过安装，直接进行配置..."
+      fi
+
+      unins
+
+      v4v6
+      if [[ -n $v4 ]]; then
+        sw46=4
+      else
+        red "IPV4不存在，确保安装过WARP-IPV4模式"
+        sw46=6
+      fi
+
+      echo
+      readp "设置WARP-plus-Socks5端口（回车跳过端口默认40000）：" port
+      if [[ -z $port ]]; then
+        port=40000
+      fi
+      until [[ -z $(ss -tunlp | grep -w udp | awk '{print $5}' | sed 's/.*://g' | grep -w "$port") && -z $(ss -tunlp | grep -w tcp | awk '{print $5}' | sed 's/.*://g' | grep -w "$port") ]] 
+      do
+        [[ -n $(ss -tunlp | grep -w udp | awk '{print $5}' | sed 's/.*://g' | grep -w "$port") || -n $(ss -tunlp | grep -w tcp | awk '{print $5}' | sed 's/.*://g' | grep -w "$port") ]] && yellow "\n端口被占用，请重新输入端口" && readp "自定义端口:" port
+      done
+
+      green "正在初始化 WARP-cli 客户端注册..."
+      yes | warp-cli registration new >/dev/null 2>&1
+
+      warp-cli mode proxy >/dev/null 2>&1
+      warp-cli proxy port $port >/dev/null 2>&1
+
+      if [[ "$proto_choice" == "1" ]]; then
+        warp-cli tunnel protocol set MASQUE >/dev/null 2>&1
+      else
+        warp-cli tunnel protocol set WireGuard >/dev/null 2>&1
+      fi
+
+      green "正在连接 WARP 网络..."
+      warp-cli connect >/dev/null 2>&1
+      green "申请IP中……请稍等……" && sleep 15
+
+      resv1=$(curl -sm5 --socks5 127.0.0.1:$port icanhazip.com)
+      resv2=$(curl -sm5 -x socks5h://127.0.0.1:$port icanhazip.com)
+
+      if [[ -z $resv1 && -z $resv2 ]]; then
+        red "WARP-cli 本地代理的 IP 获取失败，请检查网络或 warp-svc 服务状态。"
+        warp-cli disconnect >/dev/null 2>&1
+        exit
+      else
+        echo "warp-cli -b 127.0.0.1:$port" > "$SBFOLDER/sbwpph.log"
+        s5port=$(strip_json_comments "$SBFOLDER/sb.json" | jq -r '.outbounds[] | select(.type == "socks") | .server_port')
+        [[ "$sbnh" == "1.10" ]] && num=10 || num=11
+        jq --argjson p "$port" '(.outbounds[] | select(.type == "socks")).server_port = $p' "$SBFOLDER/sb10.json" > /tmp/sb10.json && mv /tmp/sb10.json "$SBFOLDER/sb10.json"
+        jq --argjson p "$port" '(.outbounds[] | select(.type == "socks")).server_port = $p' "$SBFOLDER/sb11.json" > /tmp/sb11.json && mv /tmp/sb11.json "$SBFOLDER/sb11.json"
+        cp "$SBFOLDER/sb${num}.json" "$SBFOLDER/sb.json"
+        restartsb
+        green "WARP-cli 本地代理已成功创建，代理 IP: ${resv1:-$resv2}"
+        green "Socks5 监听地址: 127.0.0.1:$port"
+        green "重新启动脚本后可使用选项 5 设置分流。"
+      fi
+    else
+      ins
+      nohup "$SBFOLDER/sbwpph" -b 127.0.0.1:$port -$sw46 --endpoint 162.159.192.1:2408 >/dev/null 2>&1 &
+      green "申请IP中……请稍等……" && sleep 20
+      resv1=$(curl -sm3 --socks5 localhost:$port icanhazip.com)
+      resv2=$(curl -sm3 -x socks5h://localhost:$port icanhazip.com)
+      if [[ -z $resv1 && -z $resv2 ]]; then
+        red "WARP-plus-Socks5的IP获取失败" && unins && exit
+      else
+        echo "$SBFOLDER/sbwpph -b 127.0.0.1:$port -$sw46 --endpoint 162.159.192.1:2408 >/dev/null 2>&1" > "$SBFOLDER/sbwpph.log"
+        aplws5
+        green "WARP-plus-Socks5的IP获取成功，可进行Socks5代理分流"
+      fi
     fi
   elif [ "$menu" = "2" ]; then
     ins
@@ -2977,6 +3095,9 @@ unins() {
   local vm_listen_port=$(echo "$clean_json" | jq -r '.inbounds[1].listen_port' 2>/dev/null)
   [ -n "$vm_listen_port" ] && ps -ef | grep "[l]ocalhost:$vm_listen_port" | awk '{print $2}' | xargs kill 2>/dev/null
   ps -ef | grep '[s]bwpph' | awk '{print $2}' | xargs kill 2>/dev/null
+  if command -v warp-cli >/dev/null 2>&1; then
+    warp-cli disconnect >/dev/null 2>&1
+  fi
   kill -15 $(pgrep -f 'websbox' 2>/dev/null) >/dev/null 2>&1
   
   rm -rf "$SBFOLDER" sbyg_update "$SCRIPT_SHORTCUT" /root/geoip.db /root/geosite.db /root/warpapi /root/warpip /root/websbox
@@ -3149,7 +3270,7 @@ showprotocol() {
 
   echo "------------------------------------------------------------------------------------"
 
-  if [[ -n $(ps -e | grep sbwpph) ]]; then
+  if [[ -n $(ps -e | grep sbwpph) ]] || (command -v warp-cli >/dev/null 2>&1 && warp-cli status 2>/dev/null | grep -qi "connected"); then
     s5port=$(cat "$SBFOLDER/sbwpph.log" 2>/dev/null | awk '{print $3}' | awk -F":" '{print $NF}')
     s5gj=$(cat "$SBFOLDER/sbwpph.log" 2>/dev/null | awk '{print $6}')
     case "$s5gj" in
