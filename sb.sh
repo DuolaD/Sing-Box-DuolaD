@@ -2456,7 +2456,7 @@ update_routing_rule() {
 }
 
 sbymfl() {
-  sbport=$(cat "$SBFOLDER/sbwpph.log" 2>/dev/null | awk '{print $3}' | awk -F":" '{print $NF}') 
+  sbport=$(cat "$SBFOLDER/warp-plus.log" "$SBFOLDER/sbwpph.log" 2>/dev/null | head -n 1 | awk '{print $3}' | awk -F":" '{print $NF}') 
   sbport=${sbport:-'40000'}
   resv1=$(curl -sm3 --socks5 localhost:$sbport icanhazip.com)
   resv2=$(curl -sm3 -x socks5h://localhost:$sbport icanhazip.com)
@@ -2812,6 +2812,7 @@ uncronsb() {
   crontab -l 2>/dev/null > /tmp/crontab.tmp
   sed -i '/sing-box/d' /tmp/crontab.tmp
   sed -i '/sbwpph/d' /tmp/crontab.tmp
+  sed -i '/warp-plus/d' /tmp/crontab.tmp
   sed -i '/url http/d' /tmp/crontab.tmp
   sed -i '/websbox/d' /tmp/crontab.tmp
   crontab /tmp/crontab.tmp >/dev/null 2>&1
@@ -2834,18 +2835,104 @@ upsbyg() {
 }
 
 # --- Local WARP plus Socks5 Proxy Manager ---
-inssbwpph() {
+inswarpplus() {
   sbactive
   ins() {
-    if [ ! -e "$SBFOLDER/sbwpph" ]; then
-      case $(uname -m) in
-        aarch64) cpu=arm64;;
-        x86_64) cpu=amd64;;
-      esac
-      curl -L -o "$SBFOLDER/sbwpph" -# --retry 2 --insecure "https://raw.githubusercontent.com/yonggekkk/sing-box-yg/main/sbwpph_$cpu"
-      chmod +x "$SBFOLDER/sbwpph"
+    if [ -f "$SBFOLDER/sbwpph" ]; then
+      rm -f "$SBFOLDER/sbwpph"
     fi
-    ps -ef | grep '[s]bwpph' | awk '{print $2}' | xargs kill 2>/dev/null
+
+    case $(uname -m) in
+      aarch64) cpu=arm64;;
+      x86_64) cpu=amd64;;
+      *) red "不支持的架构：$(uname -m)" && exit;;
+    esac
+
+    # 获取 voidr3aper-anon/Vwarp 的最新 Release 版本号
+    vwarp_latest=$(curl -sL --max-time 10 "https://api.github.com/repos/voidr3aper-anon/Vwarp/releases/latest" | grep -oP '"tag_name":\s*"\K[^"]+')
+    if [[ -z "$vwarp_latest" || ! "$vwarp_latest" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+      vwarp_latest="v2.2.2"
+    fi
+
+    local_vwarp=""
+    if [ -f "$SBFOLDER/warp-plus" ]; then
+      if [ -f "$SBFOLDER/vwarp.version" ]; then
+        local_vwarp=$(cat "$SBFOLDER/vwarp.version" 2>/dev/null)
+      fi
+      if [[ -z "$local_vwarp" ]]; then
+        local_vwarp=$("$SBFOLDER/warp-plus" version 2>&1 | grep -oP '\d+\.\d+\.\d+' | head -n 1)
+        if [[ -n "$local_vwarp" ]]; then
+          local_vwarp="v$local_vwarp"
+        else
+          local_vwarp="v2.2.2"
+        fi
+        echo "$local_vwarp" > "$SBFOLDER/vwarp.version"
+      fi
+    fi
+
+    # 是否需要下载或更新
+    need_download=0
+    if [ ! -f "$SBFOLDER/warp-plus" ]; then
+      need_download=1
+    elif [[ "$local_vwarp" != "$vwarp_latest" ]]; then
+      green "检测到本地 vwarp 版本 ($local_vwarp) 与最新版本 ($vwarp_latest) 不一致，将自动更新..."
+      need_download=1
+    fi
+
+    if [ "$need_download" -eq 1 ]; then
+      if ! command -v unzip >/dev/null 2>&1; then
+        green "正在安装 unzip 工具..."
+        if command -v apt-get >/dev/null 2>&1; then
+          sudo apt-get update -y && sudo apt-get install -y unzip
+        elif command -v yum >/dev/null 2>&1; then
+          sudo yum install -y unzip
+        elif command -v dnf >/dev/null 2>&1; then
+          sudo dnf install -y unzip
+        elif command -v apk >/dev/null 2>&1; then
+          apk add unzip
+        fi
+      fi
+
+      download_and_extract() {
+        local ver="$1"
+        green "正在从官方获取 vwarp ${ver}..."
+        curl -L -o "$SBFOLDER/warp-plus.zip" -# --retry 2 "https://github.com/voidr3aper-anon/Vwarp/releases/download/${ver}/vwarp_linux-${cpu}.zip"
+        
+        if [[ ! -s "$SBFOLDER/warp-plus.zip" ]]; then
+          return 1
+        fi
+        
+        rm -rf "$SBFOLDER/warp_plus_temp"
+        unzip -o "$SBFOLDER/warp-plus.zip" -d "$SBFOLDER/warp_plus_temp" >/dev/null 2>&1
+        if [[ -f "$SBFOLDER/warp_plus_temp/vwarp" ]]; then
+          mv -f "$SBFOLDER/warp_plus_temp/vwarp" "$SBFOLDER/warp-plus"
+          chmod +x "$SBFOLDER/warp-plus"
+          rm -rf "$SBFOLDER/warp-plus.zip" "$SBFOLDER/warp_plus_temp"
+          # 测试是否可以正常运行
+          if "$SBFOLDER/warp-plus" version >/dev/null 2>&1; then
+            return 0
+          fi
+        fi
+        return 1
+      }
+
+      if ! download_and_extract "$vwarp_latest"; then
+        if [[ "$vwarp_latest" != "v2.2.2" ]]; then
+          yellow "最新版本 $vwarp_latest 下载或运行失败，正在尝试下载并回落到版本 v2.2.2..."
+          if ! download_and_extract "v2.2.2"; then
+            red "回落版本 v2.2.2 下载或安装也失败，请检查网络连接！"
+            exit 1
+          fi
+          echo "v2.2.2" > "$SBFOLDER/vwarp.version"
+        else
+          red "获取 vwarp v2.2.2 失败，请检查网络连接！"
+          exit 1
+        fi
+      else
+        echo "$vwarp_latest" > "$SBFOLDER/vwarp.version"
+      fi
+    fi
+    ps -ef | grep -E '[s]bwpph|[w]arp-plus' | awk '{print $2}' | xargs kill 2>/dev/null
     v4v6
     if [[ -n $v4 ]]; then
       sw46=4
@@ -2889,10 +2976,11 @@ inssbwpph() {
       rm -f /etc/systemd/system/usque.service
       systemctl daemon-reload >/dev/null 2>&1
     fi
-    ps -ef | grep '[s]bwpph' | awk '{print $2}' | xargs kill 2>/dev/null
-    rm -rf "$SBFOLDER/sbwpph.log"
+    ps -ef | grep -E '[s]bwpph|[w]arp-plus' | awk '{print $2}' | xargs kill 2>/dev/null
+    rm -rf "$SBFOLDER/sbwpph.log" "$SBFOLDER/warp-plus.log"
     crontab -l 2>/dev/null > /tmp/crontab.tmp
     sed -i '/sbwpph/d' /tmp/crontab.tmp
+    sed -i '/warp-plus/d' /tmp/crontab.tmp
     crontab /tmp/crontab.tmp >/dev/null 2>&1
     rm /tmp/crontab.tmp
     rm -rf /etc/local.d/alpinews5.start
@@ -2906,14 +2994,15 @@ inssbwpph() {
       cat > /etc/local.d/alpinews5.start <<'EOF'
 #!/bin/bash
 sleep 10
-nohup $(cat /etc/s-box/sbwpph.log 2>/dev/null)
+nohup $(cat /etc/s-box/warp-plus.log /etc/s-box/sbwpph.log 2>/dev/null | head -n 1)
 EOF
       chmod +x /etc/local.d/alpinews5.start
       rc-update add local default >/dev/null 2>&1
     else
       crontab -l 2>/dev/null > /tmp/crontab.tmp
       sed -i '/sbwpph/d' /tmp/crontab.tmp
-      echo '@reboot sleep 10 && /bin/bash -c "nohup $(cat /etc/s-box/sbwpph.log 2>/dev/null) &"' >> /tmp/crontab.tmp
+      sed -i '/warp-plus/d' /tmp/crontab.tmp
+      echo '@reboot sleep 10 && /bin/bash -c "nohup $(cat /etc/s-box/warp-plus.log /etc/s-box/sbwpph.log 2>/dev/null | head -n 1) &"' >> /tmp/crontab.tmp
       crontab /tmp/crontab.tmp >/dev/null 2>&1
       rm /tmp/crontab.tmp
     fi
@@ -3050,7 +3139,7 @@ EOF
         fi
         exit
       else
-        echo "usque -b 127.0.0.1:$port" > "$SBFOLDER/sbwpph.log"
+        echo "usque -b 127.0.0.1:$port" > "$SBFOLDER/warp-plus.log"
         s5port=$(strip_json_comments "$SBFOLDER/sb.json" | jq -r '.outbounds[] | select(.type == "socks") | .server_port')
         [[ "$sbnh" == "1.10" ]] && num=10 || num=11
         jq --argjson p "$port" '(.outbounds[] | select(.type == "socks")).server_port = $p' "$SBFOLDER/sb10.json" > /tmp/sb10.json && mv /tmp/sb10.json "$SBFOLDER/sb10.json"
@@ -3139,7 +3228,7 @@ EOF
         warp-cli disconnect >/dev/null 2>&1
         exit
       else
-        echo "warp-cli -b 127.0.0.1:$port" > "$SBFOLDER/sbwpph.log"
+        echo "warp-cli -b 127.0.0.1:$port" > "$SBFOLDER/warp-plus.log"
         s5port=$(strip_json_comments "$SBFOLDER/sb.json" | jq -r '.outbounds[] | select(.type == "socks") | .server_port')
         [[ "$sbnh" == "1.10" ]] && num=10 || num=11
         jq --argjson p "$port" '(.outbounds[] | select(.type == "socks")).server_port = $p' "$SBFOLDER/sb10.json" > /tmp/sb10.json && mv /tmp/sb10.json "$SBFOLDER/sb10.json"
@@ -3164,14 +3253,14 @@ EOF
 瑞典（SE）      新加坡 (SG)       斯洛伐克（SK）  美国（US）
 '
     readp "可选择国家地区（输入末尾两个大写字母，如美国，则输入US）：" guojia
-    nohup "$SBFOLDER/sbwpph" -b 127.0.0.1:$port --cfon --country $guojia -$sw46 --endpoint 162.159.192.1:2408 >/dev/null 2>&1 &
+    nohup "$SBFOLDER/warp-plus" -b 127.0.0.1:$port --cfon --country $guojia -$sw46 --endpoint 162.159.192.1:2408 >/dev/null 2>&1 &
     green "申请IP中……请稍等……" && sleep 20
     resv1=$(curl -sm3 --socks5 localhost:$port icanhazip.com)
     resv2=$(curl -sm3 -x socks5h://localhost:$port icanhazip.com)
     if [[ -z $resv1 && -z $resv2 ]]; then
       red "WARP-plus-Socks5的IP获取失败，尝试换个国家地区吧" && unins && exit
     else
-      echo "$SBFOLDER/sbwpph -b 127.0.0.1:$port --cfon --country $guojia -$sw46 --endpoint 162.159.192.1:2408 >/dev/null 2>&1" > "$SBFOLDER/sbwpph.log"
+      echo "$SBFOLDER/warp-plus -b 127.0.0.1:$port --cfon --country $guojia -$sw46 --endpoint 162.159.192.1:2408 >/dev/null 2>&1" > "$SBFOLDER/warp-plus.log"
       aplws5
       green "WARP-plus-Socks5的IP获取成功，可进行Socks5代理分流"
     fi
@@ -3359,10 +3448,10 @@ showprotocol() {
     warp_cli_connected=1
   fi
 
-  # Check if sbwpph is running
-  sbwpph_running=0
-  if [[ -n $(ps -e | grep sbwpph) ]]; then
-    sbwpph_running=1
+  # Check if warp-plus is running
+  warpplus_running=0
+  if [[ -n $(ps -e | grep -E 'warp-plus|sbwpph') ]]; then
+    warpplus_running=1
   fi
 
   # Check if usque is running
@@ -3371,27 +3460,27 @@ showprotocol() {
     usque_running=1
   fi
 
-  if [[ $sbwpph_running -eq 1 || $warp_cli_connected -eq 1 || $usque_running -eq 1 ]]; then
+  if [[ $warpplus_running -eq 1 || $warp_cli_connected -eq 1 || $usque_running -eq 1 ]]; then
     if [[ $usque_running -eq 1 ]]; then
       client_type="Usque"
-      s5port=$(cat "$SBFOLDER/sbwpph.log" 2>/dev/null | awk '{print $3}' | awk -F":" '{print $NF}')
+      s5port=$(cat "$SBFOLDER/warp-plus.log" "$SBFOLDER/sbwpph.log" 2>/dev/null | head -n 1 | awk '{print $3}' | awk -F":" '{print $NF}')
       s5port=${s5port:-40000}
       s5proto="MASQUE"
     elif [[ $warp_cli_connected -eq 1 ]]; then
       client_type="WARP-cli"
       s5port=$(warp-cli settings 2>/dev/null | grep -i "proxy port" | awk '{print $NF}')
       if [[ ! "$s5port" =~ ^[0-9]+$ ]]; then
-        s5port=$(cat "$SBFOLDER/sbwpph.log" 2>/dev/null | awk '{print $3}' | awk -F":" '{print $NF}')
+        s5port=$(cat "$SBFOLDER/warp-plus.log" "$SBFOLDER/sbwpph.log" 2>/dev/null | head -n 1 | awk '{print $3}' | awk -F":" '{print $NF}')
       fi
       s5port=${s5port:-40000}
       s5proto=$(warp-cli settings 2>/dev/null | grep -i "tunnel protocol" | awk '{print $NF}')
       s5proto=${s5proto:-"MASQUE"}
     else
-      s5port=$(cat "$SBFOLDER/sbwpph.log" 2>/dev/null | awk '{print $3}' | awk -F":" '{print $NF}')
+      s5port=$(cat "$SBFOLDER/warp-plus.log" "$SBFOLDER/sbwpph.log" 2>/dev/null | head -n 1 | awk '{print $3}' | awk -F":" '{print $NF}')
       s5port=${s5port:-40000}
       s5proto="WireGuard"
-      s5gj=$(cat "$SBFOLDER/sbwpph.log" 2>/dev/null | awk '{print $6}')
-      if grep -q "country" "$SBFOLDER/sbwpph.log" 2>/dev/null; then
+      s5gj=$(cat "$SBFOLDER/warp-plus.log" "$SBFOLDER/sbwpph.log" 2>/dev/null | head -n 1 | awk '{print $6}')
+      if grep -q "country" "$SBFOLDER/warp-plus.log" "$SBFOLDER/sbwpph.log" 2>/dev/null; then
         case "$s5gj" in
           AT) showgj="奥地利" ;;
           AU) showgj="澳大利亚" ;;
@@ -3455,7 +3544,14 @@ showprotocol() {
     [[ -z "$proxy_ipv4" ]] && show_v4="无" || show_v4="$proxy_ipv4"
     [[ -z "$proxy_ipv6" ]] && show_v6="无" || show_v6="$proxy_ipv6"
 
-    echo -e "WARP-plus-Socks5状态：${green}已启动${plain}"
+    local_vwarp=""
+    if [[ "$client_type" == *"Psiphon"* || "$client_type" == "WireProxy" ]]; then
+      if [ -f "$SBFOLDER/vwarp.version" ]; then
+        local_vwarp=" ($(cat "$SBFOLDER/vwarp.version" 2>/dev/null))"
+      fi
+    fi
+
+    echo -e "WARP-plus-Socks5状态：${green}已启动${plain}${local_vwarp}"
     echo -e "客户端：${yellow}${client_type}${plain}        协议：${yellow}${s5proto}${plain}        代理端口：${yellow}${s5port}${plain}"
     echo -e "当前代理IP："
     echo -e "  IPV4：${yellow}${show_v4}${plain}"
@@ -3548,6 +3644,14 @@ instsllsingbox() {
 sb() {
   clear
   detect_system
+  local_vwarp=""
+  if [ -f "$SBFOLDER/warp-plus" ]; then
+    if [ -f "$SBFOLDER/vwarp.version" ]; then
+      local_vwarp="【已安装$(cat "$SBFOLDER/vwarp.version" 2>/dev/null)】"
+    else
+      local_vwarp="【已安装】"
+    fi
+  fi
   white "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" 
   echo -e "${bblue}   _____ _             _                  ${plain}"
   echo -e "${bblue}  / ____(_)           | |                 ${plain}"
@@ -3576,7 +3680,7 @@ sb() {
   green "11. 更改 BBR 设置"
   green "12. 管理 Acme 申请域名证书"
   green "13. 管理 Cloudflare WARP"
-  green "14. 添加 WARP-plus-Socks5 代理模式 【本地Warp/多地区Psiphon-VPN】"
+  green "14. 添加 WARP-plus-Socks5 代理模式 【本地Warp/多地区Psiphon-VPN】 $local_vwarp"
   green "15. 更换IP刷新本地IP、调整IPV4/IPV6配置输出"
   white "----------------------------------------------------------------------------------"
   green "16. Sing-box 脚本使用说明书"
@@ -3705,7 +3809,7 @@ sb() {
     11 ) bbr ;;
     12 ) acme ;;
     13 ) cfwarp ;;
-    14 ) inssbwpph ;;
+    14 ) inswarpplus ;;
     15 ) wgcfgo && sbshare ;;
     16 ) sbsm ;;
      * ) exit ;;
