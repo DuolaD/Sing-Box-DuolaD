@@ -3644,14 +3644,6 @@ instsllsingbox() {
 sb() {
   clear
   detect_system
-  local_vwarp=""
-  if [ -f "$SBFOLDER/warp-plus" ]; then
-    if [ -f "$SBFOLDER/vwarp.version" ]; then
-      local_vwarp="【已安装$(cat "$SBFOLDER/vwarp.version" 2>/dev/null)】"
-    else
-      local_vwarp="【已安装】"
-    fi
-  fi
   white "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" 
   echo -e "${bblue}   _____ _             _                  ${plain}"
   echo -e "${bblue}  / ____(_)           | |                 ${plain}"
@@ -3680,7 +3672,7 @@ sb() {
   green "11. 更改 BBR 设置"
   green "12. 管理 Acme 申请域名证书"
   green "13. 管理 Cloudflare WARP"
-  green "14. 添加 WARP-plus-Socks5 代理模式 【本地Warp/多地区Psiphon-VPN】 $local_vwarp"
+  green "14. 添加 WARP-plus-Socks5 代理模式 【本地Warp/多地区Psiphon-VPN】"
   green "15. 更换IP刷新本地IP、调整IPV4/IPV6配置输出"
   white "----------------------------------------------------------------------------------"
   green "16. Sing-box 脚本使用说明书"
