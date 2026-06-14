@@ -2880,6 +2880,15 @@ inssbwpph() {
   }
   
   unins() {
+    if command -v apk >/dev/null 2>&1; then
+      rc-service usque stop >/dev/null 2>&1
+      rc-update del usque default >/dev/null 2>&1
+      rm -f /etc/init.d/usque
+    else
+      systemctl disable --now usque >/dev/null 2>&1
+      rm -f /etc/systemd/system/usque.service
+      systemctl daemon-reload >/dev/null 2>&1
+    fi
     ps -ef | grep '[s]bwpph' | awk '{print $2}' | xargs kill 2>/dev/null
     rm -rf "$SBFOLDER/sbwpph.log"
     crontab -l 2>/dev/null > /tmp/crontab.tmp
@@ -2917,33 +2926,144 @@ EOF
   yellow "0：返回上层"
   readp "请选择【0-3】：" menu
   if [ "$menu" = "1" ]; then
-    is_supported=0
-    if [[ "$release" == "Debian" || "$release" == "Ubuntu" || "$release" == "Centos" ]]; then
-      is_supported=1
-    fi
-
     warp_choice=""
-    if [[ $is_supported -eq 1 ]]; then
-      echo
-      blue "请选择本地 WARP 代理方案："
-      green "1. WARP-cli (官方客户端，推荐)"
-      yellow "   优点：性能极其优异，支持最新的 MASQUE 协议"
-      yellow "   缺点：硬件资源（CPU/内存）占用比 WireProxy 略高"
-      green "2. WireProxy (第三方轻量客户端)"
-      yellow "   优点：硬件资源占用极低，适合低配/小内存 VPS"
-      yellow "   缺点：性能较 warp-cli 稍逊，不支持 MASQUE 协议"
-      echo
-      readp "请选择【1-2】（默认 1）：" warp_choice
-      warp_choice=${warp_choice:-1}
-    else
-      echo
-      yellow "检测到当前系统为 $release，WARP-cli 官方暂不支持此系统。"
-      yellow "系统将自动选择轻量化的 WireProxy 方案。"
-      warp_choice=2
-      sleep 2
+    echo
+    blue "请选择本地 WARP 代理方案："
+    green "1. Usque (开源轻量客户端，默认，支持 MASQUE 协议)"
+    yellow "   优点：极度轻量，内存/CPU占用极低，支持 MASQUE，全系统通用"
+    green "2. WARP-cli (官方客户端)"
+    yellow "   优点：官方维护，支持 MASQUE/WireGuard"
+    yellow "   缺点：仅支持 Debian/Ubuntu/CentOS，硬件资源占用略高"
+    echo
+    readp "请选择【1-2】（默认 1）：" warp_choice
+    warp_choice=${warp_choice:-1}
+
+    if [[ "$warp_choice" == "2" ]]; then
+      if [[ "$release" != "Debian" && "$release" != "Ubuntu" && "$release" != "Centos" ]]; then
+        red "当前操作系统为 $release，WARP-cli 官方暂不支持此系统，自动切换为 Usque 方案。"
+        warp_choice=1
+        sleep 2
+      fi
     fi
 
     if [[ "$warp_choice" == "1" ]]; then
+      if ! command -v unzip >/dev/null 2>&1; then
+        green "正在安装 unzip 工具..."
+        if command -v apt-get >/dev/null 2>&1; then
+          sudo apt-get update -y && sudo apt-get install -y unzip
+        elif command -v yum >/dev/null 2>&1; then
+          sudo yum install -y unzip
+        elif command -v dnf >/dev/null 2>&1; then
+          sudo dnf install -y unzip
+        elif command -v apk >/dev/null 2>&1; then
+          apk add unzip
+        fi
+      fi
+
+      if [ ! -e "/usr/local/bin/usque" ]; then
+        green "正在下载 Usque 二进制文件..."
+        case $(uname -m) in
+          aarch64) cpu=arm64;;
+          x86_64) cpu=amd64;;
+          *) red "不支持的架构：$(uname -m)" && exit;;
+        esac
+        
+        usque_latest=$(curl -sL "https://api.github.com/repos/Diniboy1123/usque/releases/latest" | grep -oP '"tag_name":\s*"v\K[^"]+' | tr -d 'v')
+        usque_latest=${usque_latest:-'3.0.1'}
+        
+        curl -L -o "$SBFOLDER/usque.zip" -# --retry 2 "https://github.com/Diniboy1123/usque/releases/download/v${usque_latest}/usque_${usque_latest}_linux_${cpu}.zip"
+        unzip -o "$SBFOLDER/usque.zip" -d "$SBFOLDER/" usque
+        mv -f "$SBFOLDER/usque" "/usr/local/bin/usque"
+        chmod +x "/usr/local/bin/usque"
+        rm -f "$SBFOLDER/usque.zip"
+      fi
+
+      unins
+
+      v4v6
+      if [[ -n $v4 ]]; then
+        sw46=4
+      else
+        red "IPV4不存在，确保安装过WARP-IPV4模式"
+        sw46=6
+      fi
+
+      echo
+      readp "设置WARP-plus-Socks5端口（回车跳过端口默认40000）：" port
+      if [[ -z $port ]]; then
+        port=40000
+      fi
+      until [[ -z $(ss -tunlp | grep -w udp | awk '{print $5}' | sed 's/.*://g' | grep -w "$port") && -z $(ss -tunlp | grep -w tcp | awk '{print $5}' | sed 's/.*://g' | grep -w "$port") ]] 
+      do
+        [[ -n $(ss -tunlp | grep -w udp | awk '{print $5}' | sed 's/.*://g' | grep -w "$port") || -n $(ss -tunlp | grep -w tcp | awk '{print $5}' | sed 's/.*://g' | grep -w "$port") ]] && yellow "\n端口被占用，请重新输入端口" && readp "自定义端口:" port
+      done
+
+      if [ ! -f "$SBFOLDER/usque.json" ]; then
+        green "正在初始化 Usque 客户端注册..."
+        echo "y" | /usr/local/bin/usque register -c "$SBFOLDER/usque.json" >/dev/null 2>&1
+      fi
+
+      if command -v apk >/dev/null 2>&1; then
+        # Alpine OpenRC Script
+        cat > /etc/init.d/usque <<EOF
+#!/sbin/openrc-run
+description="Usque WARP MASQUE Proxy"
+command="/usr/local/bin/usque"
+command_args="socks -c $SBFOLDER/usque.json -b 127.0.0.1 -p $port"
+command_background=true
+pidfile="/var/run/usque.pid"
+EOF
+        chmod +x /etc/init.d/usque
+        rc-update add usque default >/dev/null 2>&1
+        rc-service usque start >/dev/null 2>&1
+      else
+        # Systemd Service
+        cat > /etc/systemd/system/usque.service <<EOF
+[Unit]
+Description=Usque WARP MASQUE Proxy
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/usque socks -c $SBFOLDER/usque.json -b 127.0.0.1 -p $port
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+EOF
+        systemctl daemon-reload >/dev/null 2>&1
+        systemctl enable --now usque >/dev/null 2>&1
+      fi
+
+      green "启动 Usque 本地代理中，请稍候..."
+      sleep 10
+
+      resv1=$(curl -sm5 --socks5 127.0.0.1:$port ifconfig.me)
+      resv2=$(curl -sm5 -x socks5h://127.0.0.1:$port ifconfig.me)
+
+      if [[ -z $resv1 && -z $resv2 ]]; then
+        red "Usque 本地代理的 IP 获取失败，请检查网络或 usque 服务状态。"
+        if command -v apk >/dev/null 2>&1; then
+          rc-service usque stop >/dev/null 2>&1
+          rc-update del usque default >/dev/null 2>&1
+        else
+          systemctl disable --now usque >/dev/null 2>&1
+        fi
+        exit
+      else
+        echo "usque -b 127.0.0.1:$port" > "$SBFOLDER/sbwpph.log"
+        s5port=$(strip_json_comments "$SBFOLDER/sb.json" | jq -r '.outbounds[] | select(.type == "socks") | .server_port')
+        [[ "$sbnh" == "1.10" ]] && num=10 || num=11
+        jq --argjson p "$port" '(.outbounds[] | select(.type == "socks")).server_port = $p' "$SBFOLDER/sb10.json" > /tmp/sb10.json && mv /tmp/sb10.json "$SBFOLDER/sb10.json"
+        jq --argjson p "$port" '(.outbounds[] | select(.type == "socks")).server_port = $p' "$SBFOLDER/sb11.json" > /tmp/sb11.json && mv /tmp/sb11.json "$SBFOLDER/sb11.json"
+        cp "$SBFOLDER/sb${num}.json" "$SBFOLDER/sb.json"
+        restartsb
+        green "Usque 本地代理已成功创建，代理 IP: ${resv1:-$resv2}"
+        green "Socks5 监听地址: 127.0.0.1:$port"
+        green "重新启动脚本后可使用选项 5 设置分流。"
+      fi
+
+    else
+      # WARP-cli scheme
       echo
       blue "选择 WARP-cli 连接协议："
       green "1. MASQUE (推荐，抗封锁与传输性能更优)"
@@ -3007,12 +3127,12 @@ EOF
         warp-cli tunnel protocol set WireGuard >/dev/null 2>&1
       fi
 
-      green "正在连接 WARP 网络..."
+      green "正在连接 WARP network..."
       warp-cli connect >/dev/null 2>&1
       green "申请IP中……请稍等……" && sleep 15
 
-      resv1=$(curl -sm5 --socks5 127.0.0.1:$port icanhazip.com)
-      resv2=$(curl -sm5 -x socks5h://127.0.0.1:$port icanhazip.com)
+      resv1=$(curl -sm5 --socks5 127.0.0.1:$port ifconfig.me)
+      resv2=$(curl -sm5 -x socks5h://127.0.0.1:$port ifconfig.me)
 
       if [[ -z $resv1 && -z $resv2 ]]; then
         red "WARP-cli 本地代理的 IP 获取失败，请检查网络或 warp-svc 服务状态。"
@@ -3029,19 +3149,6 @@ EOF
         green "WARP-cli 本地代理已成功创建，代理 IP: ${resv1:-$resv2}"
         green "Socks5 监听地址: 127.0.0.1:$port"
         green "重新启动脚本后可使用选项 5 设置分流。"
-      fi
-    else
-      ins
-      nohup "$SBFOLDER/sbwpph" -b 127.0.0.1:$port -$sw46 --endpoint 162.159.192.1:2408 >/dev/null 2>&1 &
-      green "申请IP中……请稍等……" && sleep 20
-      resv1=$(curl -sm3 --socks5 localhost:$port icanhazip.com)
-      resv2=$(curl -sm3 -x socks5h://localhost:$port icanhazip.com)
-      if [[ -z $resv1 && -z $resv2 ]]; then
-        red "WARP-plus-Socks5的IP获取失败" && unins && exit
-      else
-        echo "$SBFOLDER/sbwpph -b 127.0.0.1:$port -$sw46 --endpoint 162.159.192.1:2408 >/dev/null 2>&1" > "$SBFOLDER/sbwpph.log"
-        aplws5
-        green "WARP-plus-Socks5的IP获取成功，可进行Socks5代理分流"
       fi
     fi
   elif [ "$menu" = "2" ]; then
@@ -3078,18 +3185,20 @@ EOF
 # --- Uninstall logic ---
 unins() {
   if command -v apk >/dev/null 2>&1; then
-    for svc in sing-box argo; do
+    for svc in sing-box argo usque; do
       rc-service "$svc" stop >/dev/null 2>&1
       rc-update del "$svc" default >/dev/null 2>&1
     done
-    rm -rf /etc/init.d/{sing-box,argo}
+    rm -rf /etc/init.d/{sing-box,argo,usque}
   else
-    for svc in sing-box argo; do
+    for svc in sing-box argo usque; do
       systemctl stop "$svc" >/dev/null 2>&1
       systemctl disable "$svc" >/dev/null 2>&1
     done
-    rm -rf /etc/systemd/system/{sing-box.service,argo.service}
+    rm -rf /etc/systemd/system/{sing-box.service,argo.service,usque.service}
+    systemctl daemon-reload >/dev/null 2>&1
   fi
+  rm -f /usr/local/bin/usque
   
   local clean_json=$(strip_json_comments "$SBFOLDER/sb.json" 2>/dev/null)
   local vm_listen_port=$(echo "$clean_json" | jq -r '.inbounds[1].listen_port' 2>/dev/null)
@@ -3256,8 +3365,19 @@ showprotocol() {
     sbwpph_running=1
   fi
 
-  if [[ $sbwpph_running -eq 1 || $warp_cli_connected -eq 1 ]]; then
-    if [[ $warp_cli_connected -eq 1 ]]; then
+  # Check if usque is running
+  usque_running=0
+  if [[ -n $(ps -e | grep -w usque) ]]; then
+    usque_running=1
+  fi
+
+  if [[ $sbwpph_running -eq 1 || $warp_cli_connected -eq 1 || $usque_running -eq 1 ]]; then
+    if [[ $usque_running -eq 1 ]]; then
+      client_type="Usque"
+      s5port=$(cat "$SBFOLDER/sbwpph.log" 2>/dev/null | awk '{print $3}' | awk -F":" '{print $NF}')
+      s5port=${s5port:-40000}
+      s5proto="MASQUE"
+    elif [[ $warp_cli_connected -eq 1 ]]; then
       client_type="WARP-cli"
       s5port=$(warp-cli settings 2>/dev/null | grep -i "proxy port" | awk '{print $NF}')
       if [[ ! "$s5port" =~ ^[0-9]+$ ]]; then
@@ -3314,8 +3434,24 @@ showprotocol() {
     fi
 
     # Query proxy IP
-    proxy_ipv4=$(curl -s4m3 -x socks5h://127.0.0.1:$s5port icanhazip.com 2>/dev/null || curl -s4m3 --socks5 127.0.0.1:$s5port icanhazip.com 2>/dev/null)
-    proxy_ipv6=$(curl -s6m3 -x socks5h://127.0.0.1:$s5port icanhazip.com 2>/dev/null || curl -s6m3 --socks5 127.0.0.1:$s5port icanhazip.com 2>/dev/null)
+    proxy_ipv4=""
+    for host in "api.ipify.org" "v4.ident.me" "ipv4.seeip.org"; do
+      res=$(curl -s4m3 -x socks5h://127.0.0.1:$s5port "$host" 2>/dev/null || curl -s4m3 --socks5 127.0.0.1:$s5port "$host" 2>/dev/null)
+      if [[ -n "$res" && ! "$res" =~ : ]]; then
+        proxy_ipv4="$res"
+        break
+      fi
+    done
+
+    proxy_ipv6=""
+    for host in "api6.ipify.org" "v6.ident.me" "ipv6.seeip.org"; do
+      res=$(curl -s4m3 -x socks5h://127.0.0.1:$s5port "$host" 2>/dev/null || curl -sm3 --socks5 127.0.0.1:$s5port "$host" 2>/dev/null)
+      if [[ -n "$res" && "$res" =~ : ]]; then
+        proxy_ipv6="$res"
+        break
+      fi
+    done
+
     [[ -z "$proxy_ipv4" ]] && show_v4="无" || show_v4="$proxy_ipv4"
     [[ -z "$proxy_ipv6" ]] && show_v6="无" || show_v6="$proxy_ipv6"
 
