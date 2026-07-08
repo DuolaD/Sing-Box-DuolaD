@@ -1354,13 +1354,6 @@ sb_client() {
           "transport": { "type": "ws", "path": $path, "headers": { "Host": $host } },
           "tls": { "enabled": true, "server_name": $host, "insecure": false, "utls": { "enabled": true, "fingerprint": "chrome" } }
         }]')
-      # Argo Fixed non-TLS
-      outs=$(echo "$outs" | jq --arg server "$vmadd_argo" --arg tag "vmess-argo固定-$hostname" --arg host "$argogd" --arg path "$ws_path" --arg uuid "$uuid" \
-        '. + [{
-          "type": "vmess", "tag": $tag, "server": $server, "server_port": 8880, "uuid": $uuid, "security": "auto", "packet_encoding": "packetaddr",
-          "transport": { "type": "ws", "path": $path, "headers": { "Host": $host } },
-          "tls": { "enabled": false, "server_name": $host, "insecure": false, "utls": { "enabled": true, "fingerprint": "chrome" } }
-        }]')
     fi
     
     if ps -ef 2>/dev/null | grep -q "[l]ocalhost:$vm_port"; then
@@ -1371,13 +1364,6 @@ sb_client() {
           "type": "vmess", "tag": $tag, "server": $server, "server_port": 443, "uuid": $uuid, "security": "auto", "packet_encoding": "packetaddr",
           "transport": { "type": "ws", "path": $path, "headers": { "Host": $host } },
           "tls": { "enabled": true, "server_name": $host, "insecure": false, "utls": { "enabled": true, "fingerprint": "chrome" } }
-        }]')
-      # Argo Temp non-TLS
-      outs=$(echo "$outs" | jq --arg server "$vmadd_argo" --arg tag "vmess-argo临时-$hostname" --arg host "$argo" --arg path "$ws_path" --arg uuid "$uuid" \
-        '. + [{
-          "type": "vmess", "tag": $tag, "server": $server, "server_port": 8880, "uuid": $uuid, "security": "auto", "packet_encoding": "packetaddr",
-          "transport": { "type": "ws", "path": $path, "headers": { "Host": $host } },
-          "tls": { "enabled": false, "server_name": $host, "insecure": false, "utls": { "enabled": true, "fingerprint": "chrome" } }
         }]')
     fi
   fi
@@ -1543,23 +1529,6 @@ EOF
     headers:
       Host: $argogd\n\n"
     clash_tags+=("vmess-tls-argo固定-$hostname")
-
-    clash_proxies+="- name: vmess-argo固定-$hostname
-  type: vmess
-  server: $vmadd_argo
-  port: 8880
-  uuid: $uuid
-  alterId: 0
-  cipher: auto
-  udp: true
-  tls: false
-  network: ws
-  servername: $argogd
-  ws-opts:
-    path: \"$ws_path\"
-    headers:
-      Host: $argogd\n\n"
-    clash_tags+=("vmess-argo固定-$hostname")
   fi
 
   # Argo Temp
@@ -1580,23 +1549,6 @@ EOF
     headers:
       Host: $argo\n\n"
     clash_tags+=("vmess-tls-argo临时-$hostname")
-
-    clash_proxies+="- name: vmess-argo临时-$hostname
-  type: vmess
-  server: $vmadd_argo
-  port: 8880
-  uuid: $uuid
-  alterId: 0
-  cipher: auto
-  udp: true
-  tls: false
-  network: ws
-  servername: $argo
-  ws-opts:
-    path: \"$ws_path\"
-    headers:
-      Host: $argo\n\n"
-    clash_tags+=("vmess-argo临时-$hostname")
   fi
 
   # Build group lists
