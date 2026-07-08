@@ -153,7 +153,7 @@ warpcheck() {
   wgcfv4=$(curl -s4m5 https://www.cloudflare.com/cdn-cgi/trace -k | grep warp | cut -d= -f2)
 }
 
-v6() {
+detect_network_settings() {
   v4orv6() {
     if [ -z "$(curl -s4m5 icanhazip.com -k)" ]; then
       echo
@@ -164,11 +164,7 @@ v6() {
     else
       ipv=prefer_ipv4
     fi
-    if [ -n "$(curl -s6m5 icanhazip.com -k)" ]; then
-      endip="2606:4700:d0::a29f:c001"
-    else
-      endip="162.159.192.1"
-    fi
+    endip="engage.cloudflareclient.com"
   }
   warpcheck
   if [[ ! $wgcfv4 =~ on|plus && ! $wgcfv6 =~ on|plus ]]; then
@@ -625,33 +621,27 @@ inssbjsonser() {
       },
       {
         "outbound": "warp-IPv4-out",
-        "domain_suffix": ["yg_kkk"],
-        "geosite": ["yg_kkk"]
+        "domain_suffix": ["yg_kkk"]
       },
       {
         "outbound": "warp-IPv6-out",
-        "domain_suffix": ["yg_kkk"],
-        "geosite": ["yg_kkk"]
+        "domain_suffix": ["yg_kkk"]
       },
       {
         "outbound": "socks-IPv4-out",
-        "domain_suffix": ["yg_kkk"],
-        "geosite": ["yg_kkk"]
+        "domain_suffix": ["yg_kkk"]
       },
       {
         "outbound": "socks-IPv6-out",
-        "domain_suffix": ["yg_kkk"],
-        "geosite": ["yg_kkk"]
+        "domain_suffix": ["yg_kkk"]
       },
       {
         "outbound": "vps-outbound-v4",
-        "domain_suffix": ["yg_kkk"],
-        "geosite": ["yg_kkk"]
+        "domain_suffix": ["yg_kkk"]
       },
       {
         "outbound": "vps-outbound-v6",
-        "domain_suffix": ["yg_kkk"],
-        "geosite": ["yg_kkk"]
+        "domain_suffix": ["yg_kkk"]
       },
       {
         "outbound": "direct",
@@ -2724,6 +2714,7 @@ lapre() {
     precore=$(echo "$page" | grep -oE '/tag/v[0-9.]+-[^"]+' | head -n1 | cut -d'v' -f2)
   fi
   inscore=$("$SBFOLDER/sing-box" version 2>/dev/null | awk '/version/{print $NF}')
+  sbnh=$(echo "$inscore" | cut -d '.' -f 1,2)
 }
 
 upsbcroe() {
@@ -3992,6 +3983,7 @@ instsllsingbox() {
   v6="2606:4700:110:860e:738f:b37:f15:d38d"
   res="[33,217,129]"
   
+  detect_network_settings
   inssbjsonser
   sbservice
   curl -sL "https://raw.githubusercontent.com/yonggekkk/sing-box-yg/main/version" | awk -F "更新内容" '{print $1}' | head -n 1 > "$SBFOLDER/v"
