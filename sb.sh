@@ -1004,10 +1004,12 @@ result_vl_vm_hy_tu() {
   fi
   
   ym=$(cat /root/ygkkkca/ca.log 2>/dev/null)
-  hy2_sniname=$(echo "$clean_json" | jq -r '.inbounds[2].tls.key_path')
-  if [[ "$hy2_sniname" = "$SBFOLDER/private.key" || "$hy2_sniname" = "/etc/s-box/private.key" ]]; then
+  if [[ -f "$SBFOLDER/cert.pem" ]]; then
     SHA256=$(openssl x509 -in "$SBFOLDER/cert.pem" -outform DER | sha256sum | awk '{print $1}')
     echo "$SHA256" > "$SBFOLDER/SHA256.txt"
+  fi
+  hy2_sniname=$(echo "$clean_json" | jq -r '.inbounds[2].tls.key_path')
+  if [[ "$hy2_sniname" = "$SBFOLDER/private.key" || "$hy2_sniname" = "/etc/s-box/private.key" ]]; then
     SHA256=$(cat "$SBFOLDER/SHA256.txt" 2>/dev/null)
     hy2_name="www.bing.com"
     sb_hy2_ip=$server_ip
@@ -1156,7 +1158,11 @@ reshy2() {
 restu5() {
   echo
   white "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-  tuic5_link="tuic://$uuid:$uuid@$sb_tu5_ip:$tu5_port?congestion_control=bbr&udp_relay_mode=native&alpn=h3&sni=$tu5_name&insecure=$ins&allowInsecure=$ins&allow_insecure=$ins#tu5-$hostname"
+  local tuic_params="congestion_control=bbr&udp_relay_mode=native&alpn=h3&sni=$tu5_name&insecure=0&allowInsecure=0&allow_insecure=0"
+  if [[ "$ins" -eq 1 ]]; then
+    tuic_params+="&pinSHA256=$SHA256&pinnedPeerCertSha256=$SHA256"
+  fi
+  tuic5_link="tuic://$uuid:$uuid@$sb_tu5_ip:$tu5_port?$tuic_params#tu5-$hostname"
   echo "$tuic5_link" > "$SBFOLDER/tuic5.txt"
   red "🚀【 Tuic-v5 】节点信息如下：" && sleep 2
   echo
@@ -1172,7 +1178,11 @@ restu5() {
 resan() {
   echo
   white "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-  an_link="anytls://$uuid@$sb_an_ip:$an_port?&sni=$an_name&allowInsecure=$ins_an&insecure=$ins_an#anytls-$hostname"
+  local an_params="sni=$an_name&allowInsecure=0&insecure=0"
+  if [[ "$ins_an" -eq 1 ]]; then
+    an_params+="&pinSHA256=$SHA256&pinnedPeerCertSha256=$SHA256"
+  fi
+  an_link="anytls://$uuid@$sb_an_ip:$an_port?$an_params#anytls-$hostname"
   echo "$an_link" > "$SBFOLDER/an.txt"
   red "🚀【 Anytls】节点信息如下：" && sleep 2
   echo
@@ -1189,6 +1199,11 @@ resan() {
 sb_client() {
   # This builds the complete client configurations for SFA/SFI/SFW and Clash Meta (Mihomo)
   # dynamically utilizing jq, reducing 1000+ lines of duplicate templates.
+
+  local cert_content=""
+  if [[ -f "$SBFOLDER/cert.pem" ]]; then
+    cert_content=$(cat "$SBFOLDER/cert.pem")
+  fi
 
   # 1. BASE TEMPLATE FOR CLIENT (SING-BOX)
   local base_client_template='{
@@ -1282,23 +1297,23 @@ sb_client() {
     ports_array="[$sbhy2pt]"
   fi
   
-  outs=$(echo "$outs" | jq --arg server "$cl_hy2_ip" --arg port "$hy2_port" --argjson extra_ports "$ports_array" --arg uuid "$uuid" --arg name "$hy2_name" --argjson ins "$hy2_ins" --arg host "$hostname" \
+  outs=$(echo "$outs" | jq --arg server "$cl_hy2_ip" --arg port "$hy2_port" --argjson extra_ports "$ports_array" --arg uuid "$uuid" --arg name "$hy2_name" --argjson ins "$hy2_ins" --arg host "$hostname" --arg cert "$cert_content" \
     '. + [{
       "type": "hysteria2",
       "tag": "hy2-\($host)",
       "server": $server,
       "server_port": ($port | tonumber),
       "password": $uuid,
-      "tls": {
+      "tls": ({
         "enabled": true,
         "server_name": $name,
-        "insecure": $ins,
+        "insecure": false,
         "alpn": ["h3"]
-      }
+      } + (if $ins and ($cert | length) > 0 then { "certificate": [$cert] } else {} end))
     } + (if ($extra_ports | length) > 0 then { "server_ports": $extra_ports } else {} end)]')
 
   # Tuic 5
-  outs=$(echo "$outs" | jq --arg server "$cl_tu5_ip" --arg port "$tu5_port" --arg uuid "$uuid" --arg name "$tu5_name" --argjson ins "$tu5_ins" --arg host "$hostname" \
+  outs=$(echo "$outs" | jq --arg server "$cl_tu5_ip" --arg port "$tu5_port" --arg uuid "$uuid" --arg name "$tu5_name" --argjson ins "$tu5_ins" --arg host "$hostname" --arg cert "$cert_content" \
     '. + [{
       "type": "tuic",
       "tag": "tuic5-\($host)",
@@ -1311,17 +1326,17 @@ sb_client() {
       "udp_over_stream": false,
       "zero_rtt_handshake": false,
       "heartbeat": "10s",
-      "tls": {
+      "tls": ({
         "enabled": true,
         "server_name": $name,
-        "insecure": $ins,
+        "insecure": false,
         "alpn": ["h3"]
-      }
+      } + (if $ins and ($cert | length) > 0 then { "certificate": [$cert] } else {} end))
     }]')
 
   # Anytls (Only for version > 1.10)
   if [[ "$sbnh" != "1.10" ]]; then
-    outs=$(echo "$outs" | jq --arg server "$sb_an_ip" --arg port "$an_port" --arg uuid "$uuid" --arg name "$an_name" --argjson ins "$an_ins" --arg host "$hostname" \
+    outs=$(echo "$outs" | jq --arg server "$sb_an_ip" --arg port "$an_port" --arg uuid "$uuid" --arg name "$an_name" --argjson ins "$an_ins" --arg host "$hostname" --arg cert "$cert_content" \
       '. + [{
         "type": "anytls",
         "tag": "anytls-\($host)",
@@ -1331,11 +1346,11 @@ sb_client() {
         "idle_session_check_interval": "30s",
         "idle_session_timeout": "30s",
         "min_idle_session": 5,
-        "tls": {
+        "tls": ({
           "enabled": true,
-          "insecure": $ins,
+          "insecure": false,
           "server_name": $name
-        }
+        } + (if $ins and ($cert | length) > 0 then { "certificate": [$cert] } else {} end))
       }]')
   fi
 
@@ -1475,7 +1490,12 @@ EOF
   alpn:
     - h3
   sni: $hy2_name
-  skip-cert-verify: $hy2_ins
+  skip-cert-verify: false"
+  if $hy2_ins && [[ -n "$SHA256" ]]; then
+    clash_proxies+="
+  fingerprint: $SHA256"
+  fi
+  clash_proxies+="
   fast-open: true\n\n"
   clash_tags+=("hysteria2-$hostname")
 
@@ -1492,7 +1512,13 @@ EOF
   udp-relay-mode: native
   congestion-controller: bbr
   sni: $tu5_name
-  skip-cert-verify: $tu5_ins\n\n"
+  skip-cert-verify: false"
+  if $tu5_ins && [[ -n "$cert_content" ]]; then
+    clash_proxies+="
+  ca-str: |
+$(echo "$cert_content" | sed 's/^/    /')"
+  fi
+  clash_proxies+="\n\n"
   clash_tags+=("tuic5-$hostname")
 
   # Anytls
