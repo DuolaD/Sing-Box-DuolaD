@@ -31,7 +31,7 @@ stty erase $'\b' 2>/dev/null || stty erase '^H' 2>/dev/null
 # --- Global Configuration Paths & Constants ---
 SBFOLDER="/etc/s-box"
 SBFILES="$SBFOLDER/sb10.json $SBFOLDER/sb11.json $SBFOLDER/sb.json"
-SCRIPT_URL="https://raw.githubusercontent.com/yonggekkk/sing-box-yg/main/sb.sh"
+SCRIPT_URL="https://raw.githubusercontent.com/DuolaD/sing-box/main/sb.sh"
 SCRIPT_SHORTCUT="/usr/bin/sb"
 
 # --- Detect Operating System ---
@@ -3321,7 +3321,7 @@ upsbyg() {
     red "未正常安装Sing-box" && exit
   fi
   lnsb
-  curl -sL "https://raw.githubusercontent.com/yonggekkk/sing-box-yg/main/version" | awk -F "更新内容" '{print $1}' | head -n 1 > "$SBFOLDER/v"
+  curl -sL "https://raw.githubusercontent.com/DuolaD/sing-box/main/version" | awk -F "更新内容" '{print $1}' | head -n 1 > "$SBFOLDER/v"
   green "Sing-box安装脚本升级成功" && sleep 5 && sb
 }
 
@@ -4508,7 +4508,7 @@ instsllsingbox() {
   detect_network_settings
   inssbjsonser
   sbservice
-  curl -sL "https://raw.githubusercontent.com/yonggekkk/sing-box-yg/main/version" | awk -F "更新内容" '{print $1}' | head -n 1 > "$SBFOLDER/v"
+  curl -sL "https://raw.githubusercontent.com/DuolaD/sing-box/main/version" | awk -F "更新内容" '{print $1}' | head -n 1 > "$SBFOLDER/v"
   lnsb
   cronsb
   
@@ -4560,16 +4560,16 @@ sb() {
   
   if [ -f "$SBFOLDER/v" ]; then
     insV=$(cat "$SBFOLDER/v" 2>/dev/null)
-    latestV=$(curl -sL https://raw.githubusercontent.com/yonggekkk/sing-box-yg/main/version | awk -F "更新内容" '{print $1}' | head -n 1)
+    latestV=$(curl -sL https://raw.githubusercontent.com/DuolaD/sing-box/main/version | awk -F "更新内容" '{print $1}' | head -n 1)
     if [ "$insV" = "$latestV" ]; then
       echo -e "当前 Sing-box 脚本最新版：${bblue}${insV}${plain} (已安装)"
     else
       echo -e "当前 Sing-box 脚本版本号：${bblue}${insV}${plain}"
       echo -e "检测到最新 Sing-box 脚本版本号：${yellow}${latestV}${plain} (可选择7进行更新)"
-      echo -e "${yellow}$(curl -sL https://raw.githubusercontent.com/yonggekkk/sing-box-yg/main/version)${plain}"
+      echo -e "${yellow}$(curl -sL https://raw.githubusercontent.com/DuolaD/sing-box/main/version)${plain}"
     fi
   else
-    latestV=$(curl -sL https://raw.githubusercontent.com/yonggekkk/sing-box-yg/main/version | awk -F "更新内容" '{print $1}' | head -n 1)
+    latestV=$(curl -sL https://raw.githubusercontent.com/DuolaD/sing-box/main/version | awk -F "更新内容" '{print $1}' | head -n 1)
     echo -e "当前 Sing-box 脚本版本号：${bblue}${latestV}${plain}"
     yellow "未安装 Sing-box 脚本！请先选择 1 安装"
   fi
