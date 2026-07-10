@@ -884,16 +884,22 @@ ipuuid() {
   if [[ -n $($status_cmd 2>/dev/null | grep -w "$status_pattern") && -f "$SBFOLDER/sb.json" ]]; then
     v4v6
     if [[ -n $v4 && -n $v6 ]]; then
+      echo "$v4" > "$SBFOLDER/v4.log"
+      echo "$v6" > "$SBFOLDER/v6.log"
       green "调整IPv4/IPV6配置输出"
       yellow "1：刷新本地IP，使用IPV4配置输出 (回车默认) "
       yellow "2：刷新本地IP，使用IPV6配置输出"
-      readp "请选择【1-2】：" menu
+      yellow "3：刷新本地IP，使用双栈配置输出"
+      readp "请选择【1-3】：" menu
       if [ -z "$menu" ] || [ "$menu" = "1" ]; then
         server_ip="$v4"
         server_ipcl="$v4"
-      else
+      elif [ "$menu" = "2" ]; then
         server_ip="[$v6]"
         server_ipcl="$v6"
+      else
+        server_ip="dual"
+        server_ipcl="dual"
       fi
     else
       yellow "VPS并不是双栈VPS，不支持IP配置输出的切换"
@@ -1052,15 +1058,39 @@ result_vl_vm_hy_tu() {
 resvless() {
   echo
   white "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-  vl_link="vless://$uuid@$server_ip:$vl_port?encryption=none&flow=xtls-rprx-vision&security=reality&sni=$vl_name&fp=chrome&pbk=$public_key&sid=$short_id&type=tcp&headerType=none#vl-reality-$hostname"
-  echo "$vl_link" > "$SBFOLDER/vl_reality.txt"
-  red "🚀【 vless-reality-vision 】节点信息如下：" && sleep 2
-  echo
-  echo "分享链接【v2ran(切换singbox内核)、nekobox、小火箭shadowrocket】"
-  echo -e "${yellow}$vl_link${plain}"
-  echo
-  echo "二维码【v2ran(切换singbox内核)、nekobox、小火箭shadowrocket】"
-  qrencode -o - -t ANSIUTF8 "$(cat "$SBFOLDER/vl_reality.txt")"
+  server_ip=$(cat "$SBFOLDER/server_ip.log" 2>/dev/null)
+  if [[ "$server_ip" = "dual" ]]; then
+    local v4_addr=$(cat "$SBFOLDER/v4.log" 2>/dev/null)
+    local v6_addr=$(cat "$SBFOLDER/v6.log" 2>/dev/null)
+    vl_link_v4="vless://$uuid@$v4_addr:$vl_port?encryption=none&flow=xtls-rprx-vision&security=reality&sni=$vl_name&fp=chrome&pbk=$public_key&sid=$short_id&type=tcp&headerType=none#vl-reality-$hostname-IPV4"
+    vl_link_v6="vless://$uuid@[$v6_addr]:$vl_port?encryption=none&flow=xtls-rprx-vision&security=reality&sni=$vl_name&fp=chrome&pbk=$public_key&sid=$short_id&type=tcp&headerType=none#vl-reality-$hostname-IPV6"
+    echo -e "$vl_link_v4\n$vl_link_v6" > "$SBFOLDER/vl_reality.txt"
+    red "🚀【 vless-reality-vision-IPV4 】节点信息如下：" && sleep 1
+    echo
+    echo "分享链接【v2ran(切换singbox内核)、nekobox、小火箭shadowrocket】"
+    echo -e "${yellow}$vl_link_v4${plain}"
+    echo
+    echo "二维码【v2ran(切换singbox内核)、nekobox、小火箭shadowrocket】"
+    qrencode -o - -t ANSIUTF8 "$vl_link_v4"
+    echo
+    red "🚀【 vless-reality-vision-IPV6 】节点信息如下：" && sleep 1
+    echo
+    echo "分享链接【v2ran(切换singbox内核)、nekobox、小火箭shadowrocket】"
+    echo -e "${yellow}$vl_link_v6${plain}"
+    echo
+    echo "二维码【v2ran(切换singbox内核)、nekobox、小火箭shadowrocket】"
+    qrencode -o - -t ANSIUTF8 "$vl_link_v6"
+  else
+    vl_link="vless://$uuid@$server_ip:$vl_port?encryption=none&flow=xtls-rprx-vision&security=reality&sni=$vl_name&fp=chrome&pbk=$public_key&sid=$short_id&type=tcp&headerType=none#vl-reality-$hostname"
+    echo "$vl_link" > "$SBFOLDER/vl_reality.txt"
+    red "🚀【 vless-reality-vision 】节点信息如下：" && sleep 2
+    echo
+    echo "分享链接【v2ran(切换singbox内核)、nekobox、小火箭shadowrocket】"
+    echo -e "${yellow}$vl_link${plain}"
+    echo
+    echo "二维码【v2ran(切换singbox内核)、nekobox、小火箭shadowrocket】"
+    qrencode -o - -t ANSIUTF8 "$(cat "$SBFOLDER/vl_reality.txt")"
+  fi
   white "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
   echo
 }
@@ -1103,27 +1133,75 @@ resvmess() {
     
     echo
     white "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-    red "🚀【 vmess-ws 】节点信息如下 (建议选择3-8-1，设置为CDN优选节点)：" && sleep 2
-    echo
-    echo "分享链接【v2rayn、v2rayng、nekobox、小火箭shadowrocket】"
-    local vm_ws_link="vmess://$(echo '{"add":"'$vmadd_are_local'","aid":"0","host":"'$vm_name'","id":"'$uuid'","net":"ws","path":"'$ws_path'","port":"'$vm_port'","ps":"'vm-ws-$hostname'","tls":"","type":"none","v":"2"}' | base64 -w 0)"
-    echo -e "${yellow}$vm_ws_link${plain}"
-    echo
-    echo "二维码【v2rayn、v2rayng、nekobox、小火箭shadowrocket】"
-    echo "$vm_ws_link" > "$SBFOLDER/vm_ws.txt"
-    qrencode -o - -t ANSIUTF8 "$(cat "$SBFOLDER/vm_ws.txt")"
+    server_ip=$(cat "$SBFOLDER/server_ip.log" 2>/dev/null)
+    if [[ "$server_ip" = "dual" ]]; then
+      local v4_addr=$(cat "$SBFOLDER/v4.log" 2>/dev/null)
+      local v6_addr=$(cat "$SBFOLDER/v6.log" 2>/dev/null)
+      local vm_ws_link_v4="vmess://$(echo '{"add":"'$v4_addr'","aid":"0","host":"'$vm_name'","id":"'$uuid'","net":"ws","path":"'$ws_path'","port":"'$vm_port'","ps":"'vm-ws-$hostname-IPV4'","tls":"","type":"none","v":"2"}' | base64 -w 0)"
+      local vm_ws_link_v6="vmess://$(echo '{"add":"['$v6_addr']","aid":"0","host":"'$vm_name'","id":"'$uuid'","net":"ws","path":"'$ws_path'","port":"'$vm_port'","ps":"'vm-ws-$hostname-IPV6'","tls":"","type":"none","v":"2"}' | base64 -w 0)"
+      echo -e "$vm_ws_link_v4\n$vm_ws_link_v6" > "$SBFOLDER/vm_ws.txt"
+      red "🚀【 vmess-ws-IPV4 】节点信息如下 (建议选择3-8-1，设置为CDN优选节点)：" && sleep 1
+      echo
+      echo "分享链接【v2rayn、v2rayng、nekobox、小火箭shadowrocket】"
+      echo -e "${yellow}$vm_ws_link_v4${plain}"
+      echo
+      echo "二维码【v2rayn、v2rayng、nekobox、小火箭shadowrocket】"
+      qrencode -o - -t ANSIUTF8 "$vm_ws_link_v4"
+      echo
+      red "🚀【 vmess-ws-IPV6 】节点信息如下 (建议选择3-8-1，设置为CDN优选节点)：" && sleep 1
+      echo
+      echo "分享链接【v2rayn、v2rayng、nekobox、小火箭shadowrocket】"
+      echo -e "${yellow}$vm_ws_link_v6${plain}"
+      echo
+      echo "二维码【v2rayn、v2rayng、nekobox、小火箭shadowrocket】"
+      qrencode -o - -t ANSIUTF8 "$vm_ws_link_v6"
+    else
+      red "🚀【 vmess-ws 】节点信息如下 (建议选择3-8-1，设置为CDN优选节点)：" && sleep 2
+      echo
+      echo "分享链接【v2rayn、v2rayng、nekobox、小火箭shadowrocket】"
+      local vm_ws_link="vmess://$(echo '{"add":"'$vmadd_are_local'","aid":"0","host":"'$vm_name'","id":"'$uuid'","net":"ws","path":"'$ws_path'","port":"'$vm_port'","ps":"'vm-ws-$hostname'","tls":"","type":"none","v":"2"}' | base64 -w 0)"
+      echo -e "${yellow}$vm_ws_link${plain}"
+      echo
+      echo "二维码【v2rayn、v2rayng、nekobox、小火箭shadowrocket】"
+      echo "$vm_ws_link" > "$SBFOLDER/vm_ws.txt"
+      qrencode -o - -t ANSIUTF8 "$(cat "$SBFOLDER/vm_ws.txt")"
+    fi
   else
     echo
     white "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-    red "🚀【 vmess-ws-tls 】节点信息如下 (建议选择3-8-1，设置为CDN优选节点)：" && sleep 2
-    echo
-    echo "分享链接【v2rayn、v2rayng、nekobox、小火箭shadowrocket】"
-    local vm_ws_tls_link="vmess://$(echo '{"add":"'$vmadd_are_local'","aid":"0","host":"'$vm_name'","id":"'$uuid'","net":"ws","path":"'$ws_path'","port":"'$vm_port'","ps":"'vm-ws-tls-$hostname'","tls":"tls","sni":"'$vm_name'","fp":"chrome","type":"none","v":"2"}' | base64 -w 0)"
-    echo -e "${yellow}$vm_ws_tls_link${plain}"
-    echo
-    echo "二维码【v2rayn、v2rayng、nekobox、小火箭shadowrocket】"
-    echo "$vm_ws_tls_link" > "$SBFOLDER/vm_ws_tls.txt"
-    qrencode -o - -t ANSIUTF8 "$(cat "$SBFOLDER/vm_ws_tls.txt")"
+    server_ip=$(cat "$SBFOLDER/server_ip.log" 2>/dev/null)
+    if [[ "$server_ip" = "dual" ]]; then
+      local v4_addr=$(cat "$SBFOLDER/v4.log" 2>/dev/null)
+      local v6_addr=$(cat "$SBFOLDER/v6.log" 2>/dev/null)
+      local vm_ws_tls_link_v4="vmess://$(echo '{"add":"'$v4_addr'","aid":"0","host":"'$vm_name'","id":"'$uuid'","net":"ws","path":"'$ws_path'","port":"'$vm_port'","ps":"'vm-ws-tls-$hostname-IPV4'","tls":"tls","sni":"'$vm_name'","fp":"chrome","type":"none","v":"2"}' | base64 -w 0)"
+      local vm_ws_tls_link_v6="vmess://$(echo '{"add":"['$v6_addr']","aid":"0","host":"'$vm_name'","id":"'$uuid'","net":"ws","path":"'$ws_path'","port":"'$vm_port'","ps":"'vm-ws-tls-$hostname-IPV6'","tls":"tls","sni":"'$vm_name'","fp":"chrome","type":"none","v":"2"}' | base64 -w 0)"
+      echo -e "$vm_ws_tls_link_v4\n$vm_ws_tls_link_v6" > "$SBFOLDER/vm_ws_tls.txt"
+      red "🚀【 vmess-ws-tls-IPV4 】节点信息如下 (建议选择3-8-1，设置为CDN优选节点)：" && sleep 1
+      echo
+      echo "分享链接【v2rayn、v2rayng、nekobox、小火箭shadowrocket】"
+      echo -e "${yellow}$vm_ws_tls_link_v4${plain}"
+      echo
+      echo "二维码【v2rayn、v2rayng、nekobox、小火箭shadowrocket】"
+      qrencode -o - -t ANSIUTF8 "$vm_ws_tls_link_v4"
+      echo
+      red "🚀【 vmess-ws-tls-IPV6 】节点信息如下 (建议选择3-8-1，设置为CDN优选节点)：" && sleep 1
+      echo
+      echo "分享链接【v2rayn、v2rayng、nekobox、小火箭shadowrocket】"
+      echo -e "${yellow}$vm_ws_tls_link_v6${plain}"
+      echo
+      echo "二维码【v2rayn..】"
+      qrencode -o - -t ANSIUTF8 "$vm_ws_tls_link_v6"
+    else
+      red "🚀【 vmess-ws-tls 】节点信息如下 (建议选择3-8-1，设置为CDN优选节点)：" && sleep 2
+      echo
+      echo "分享链接【v2rayn、v2rayng、nekobox、小火箭shadowrocket】"
+      local vm_ws_tls_link="vmess://$(echo '{"add":"'$vmadd_are_local'","aid":"0","host":"'$vm_name'","id":"'$uuid'","net":"ws","path":"'$ws_path'","port":"'$vm_port'","ps":"'vm-ws-tls-$hostname'","tls":"tls","sni":"'$vm_name'","fp":"chrome","type":"none","v":"2"}' | base64 -w 0)"
+      echo -e "${yellow}$vm_ws_tls_link${plain}"
+      echo
+      echo "二维码【v2rayn、v2rayng、nekobox、小火箭shadowrocket】"
+      echo "$vm_ws_tls_link" > "$SBFOLDER/vm_ws_tls.txt"
+      qrencode -o - -t ANSIUTF8 "$(cat "$SBFOLDER/vm_ws_tls.txt")"
+    fi
   fi
   white "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
   echo
@@ -1132,15 +1210,39 @@ resvmess() {
 reshy2() {
   echo
   white "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-  hy2_link="hysteria2://$uuid@$sb_hy2_ip:$hy2_port?security=tls&alpn=h3&insecure=0&allowInsecure=0$hyps&sni=$hy2_name&pinSHA256=$SHA256#hy2-$hostname"
-  echo "$hy2_link" > "$SBFOLDER/hy2.txt"
-  red "🚀【 Hysteria-2 】节点信息如下：" && sleep 2
-  echo
-  echo "分享链接【v2rayn、v2rayng、nekobox、小火箭shadowrocket】"
-  echo -e "${yellow}$hy2_link${plain}"
-  echo
-  echo "二维码【v2rayn、v2rayng、nekobox、小火箭shadowrocket】"
-  qrencode -o - -t ANSIUTF8 "$(cat "$SBFOLDER/hy2.txt")"
+  server_ip=$(cat "$SBFOLDER/server_ip.log" 2>/dev/null)
+  if [[ "$server_ip" = "dual" ]]; then
+    local v4_addr=$(cat "$SBFOLDER/v4.log" 2>/dev/null)
+    local v6_addr=$(cat "$SBFOLDER/v6.log" 2>/dev/null)
+    hy2_link_v4="hysteria2://$uuid@$v4_addr:$hy2_port?security=tls&alpn=h3&insecure=0&allowInsecure=0$hyps&sni=$hy2_name&pinSHA256=$SHA256#hy2-$hostname-IPV4"
+    hy2_link_v6="hysteria2://$uuid@[${v6_addr}]:$hy2_port?security=tls&alpn=h3&insecure=0&allowInsecure=0$hyps&sni=$hy2_name&pinSHA256=$SHA256#hy2-$hostname-IPV6"
+    echo -e "$hy2_link_v4\n$hy2_link_v6" > "$SBFOLDER/hy2.txt"
+    red "🚀【 Hysteria-2-IPV4 】节点信息如下：" && sleep 1
+    echo
+    echo "分享链接【v2rayn、v2rayng、nekobox、小火箭shadowrocket】"
+    echo -e "${yellow}$hy2_link_v4${plain}"
+    echo
+    echo "二维码【v2rayn、v2rayng、nekobox、小火箭shadowrocket】"
+    qrencode -o - -t ANSIUTF8 "$hy2_link_v4"
+    echo
+    red "🚀【 Hysteria-2-IPV6 】节点信息如下：" && sleep 1
+    echo
+    echo "分享链接【v2rayn、v2rayng、nekobox、小火箭shadowrocket】"
+    echo -e "${yellow}$hy2_link_v6${plain}"
+    echo
+    echo "二维码【v2rayn、v2rayng、nekobox、小火箭shadowrocket】"
+    qrencode -o - -t ANSIUTF8 "$hy2_link_v6"
+  else
+    hy2_link="hysteria2://$uuid@$sb_hy2_ip:$hy2_port?security=tls&alpn=h3&insecure=0&allowInsecure=0$hyps&sni=$hy2_name&pinSHA256=$SHA256#hy2-$hostname"
+    echo "$hy2_link" > "$SBFOLDER/hy2.txt"
+    red "🚀【 Hysteria-2 】节点信息如下：" && sleep 2
+    echo
+    echo "分享链接【v2rayn、v2rayng、nekobox、小火箭shadowrocket】"
+    echo -e "${yellow}$hy2_link${plain}"
+    echo
+    echo "二维码【v2rayn、v2rayng、nekobox、小火箭shadowrocket】"
+    qrencode -o - -t ANSIUTF8 "$(cat "$SBFOLDER/hy2.txt")"
+  fi
   white "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
   echo
 }
@@ -1152,15 +1254,39 @@ restu5() {
   if [[ "$ins" -eq 1 ]]; then
     tuic_params+="&pinSHA256=$SHA256&pinnedPeerCertSha256=$SHA256"
   fi
-  tuic5_link="tuic://$uuid:$uuid@$sb_tu5_ip:$tu5_port?$tuic_params#tu5-$hostname"
-  echo "$tuic5_link" > "$SBFOLDER/tuic5.txt"
-  red "🚀【 Tuic-v5 】节点信息如下：" && sleep 2
-  echo
-  echo "分享链接【v2rayn、nekobox、小火箭shadowrocket】"
-  echo -e "${yellow}$tuic5_link${plain}"
-  echo
-  echo "二维码【v2rayn、nekobox、小火箭shadowrocket】"
-  qrencode -o - -t ANSIUTF8 "$(cat "$SBFOLDER/tuic5.txt")"
+  server_ip=$(cat "$SBFOLDER/server_ip.log" 2>/dev/null)
+  if [[ "$server_ip" = "dual" ]]; then
+    local v4_addr=$(cat "$SBFOLDER/v4.log" 2>/dev/null)
+    local v6_addr=$(cat "$SBFOLDER/v6.log" 2>/dev/null)
+    tuic5_link_v4="tuic://$uuid:$uuid@$v4_addr:$tu5_port?$tuic_params#tu5-$hostname-IPV4"
+    tuic5_link_v6="tuic://$uuid:$uuid@[${v6_addr}]:$tu5_port?$tuic_params#tu5-$hostname-IPV6"
+    echo -e "$tuic5_link_v4\n$tuic5_link_v6" > "$SBFOLDER/tuic5.txt"
+    red "🚀【 Tuic-v5-IPV4 】节点信息如下：" && sleep 1
+    echo
+    echo "分享链接【v2rayn、nekobox、小火箭shadowrocket】"
+    echo -e "${yellow}$tuic5_link_v4${plain}"
+    echo
+    echo "二维码【v2rayn、nekobox、小火箭shadowrocket】"
+    qrencode -o - -t ANSIUTF8 "$tuic5_link_v4"
+    echo
+    red "🚀【 Tuic-v5-IPV6 】节点信息如下：" && sleep 1
+    echo
+    echo "分享链接【v2rayn、nekobox、小火箭shadowrocket】"
+    echo -e "${yellow}$tuic5_link_v6${plain}"
+    echo
+    echo "二维码【v2rayn、nekobox、小火箭shadowrocket】"
+    qrencode -o - -t ANSIUTF8 "$tuic5_link_v6"
+  else
+    tuic5_link="tuic://$uuid:$uuid@$sb_tu5_ip:$tu5_port?$tuic_params#tu5-$hostname"
+    echo "$tuic5_link" > "$SBFOLDER/tuic5.txt"
+    red "🚀【 Tuic-v5 】节点信息如下：" && sleep 2
+    echo
+    echo "分享链接【v2rayn、nekobox、小火箭shadowrocket】"
+    echo -e "${yellow}$tuic5_link${plain}"
+    echo
+    echo "二维码【v2rayn、nekobox、小火箭shadowrocket】"
+    qrencode -o - -t ANSIUTF8 "$(cat "$SBFOLDER/tuic5.txt")"
+  fi
   white "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
   echo
 }
@@ -1172,15 +1298,39 @@ resan() {
   if [[ "$ins_an" -eq 1 ]]; then
     an_params+="&pinSHA256=$SHA256&pinnedPeerCertSha256=$SHA256"
   fi
-  an_link="anytls://$uuid@$sb_an_ip:$an_port?$an_params#anytls-$hostname"
-  echo "$an_link" > "$SBFOLDER/an.txt"
-  red "🚀【 Anytls】节点信息如下：" && sleep 2
-  echo
-  echo "分享链接【v2rayn、小火箭shadowrocket】"
-  echo -e "${yellow}$an_link${plain}"
-  echo
-  echo "二维码【v2rayn、nekobox、小火箭shadowrocket】"
-  qrencode -o - -t ANSIUTF8 "$(cat "$SBFOLDER/an.txt")"
+  server_ip=$(cat "$SBFOLDER/server_ip.log" 2>/dev/null)
+  if [[ "$server_ip" = "dual" ]]; then
+    local v4_addr=$(cat "$SBFOLDER/v4.log" 2>/dev/null)
+    local v6_addr=$(cat "$SBFOLDER/v6.log" 2>/dev/null)
+    an_link_v4="anytls://$uuid@$v4_addr:$an_port?$an_params#anytls-$hostname-IPV4"
+    an_link_v6="anytls://$uuid@[${v6_addr}]:$an_port?$an_params#anytls-$hostname-IPV6"
+    echo -e "$an_link_v4\n$an_link_v6" > "$SBFOLDER/an.txt"
+    red "🚀【 Anytls-IPV4 】节点信息如下：" && sleep 1
+    echo
+    echo "分享链接【v2rayn、小火箭shadowrocket】"
+    echo -e "${yellow}$an_link_v4${plain}"
+    echo
+    echo "二维码【v2rayn、nekobox、小火箭shadowrocket】"
+    qrencode -o - -t ANSIUTF8 "$an_link_v4"
+    echo
+    red "🚀【 Anytls-IPV6 】节点信息如下：" && sleep 1
+    echo
+    echo "分享链接【v2rayn、小火箭shadowrocket】"
+    echo -e "${yellow}$an_link_v6${plain}"
+    echo
+    echo "二维码【v2rayn、nekobox、小火箭shadowrocket】"
+    qrencode -o - -t ANSIUTF8 "$an_link_v6"
+  else
+    an_link="anytls://$uuid@$sb_an_ip:$an_port?$an_params#anytls-$hostname"
+    echo "$an_link" > "$SBFOLDER/an.txt"
+    red "🚀【 Anytls】节点信息如下：" && sleep 2
+    echo
+    echo "分享链接【v2rayn、小火箭shadowrocket】"
+    echo -e "${yellow}$an_link${plain}"
+    echo
+    echo "二维码【v2rayn、nekobox、小火箭shadowrocket】"
+    qrencode -o - -t ANSIUTF8 "$(cat "$SBFOLDER/an.txt")"
+  fi
   white "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
   echo
 }
@@ -1244,42 +1394,121 @@ sb_client() {
 
   # Build outbounds list dynamically
   local outs='[]'
+  local v4_addr=$(cat "$SBFOLDER/v4.log" 2>/dev/null)
+  local v6_addr=$(cat "$SBFOLDER/v6.log" 2>/dev/null)
+  if [[ "$server_ipcl" = "dual" ]]; then
+    if [[ -z "$v4_addr" || -z "$v6_addr" ]]; then
+      v4v6
+      v4_addr="$v4"
+      v6_addr="$v6"
+    fi
+  fi
 
   # VLESS Reality
-  outs=$(echo "$outs" | jq --arg server "$server_ipcl" --arg port "$vl_port" --arg uuid "$uuid" --arg name "$vl_name" --arg pbk "$public_key" --arg sid "$short_id" --arg host "$hostname" \
-    '. + [{
-      "type": "vless",
-      "tag": "vless-\($host)",
-      "server": $server,
-      "server_port": ($port | tonumber),
-      "uuid": $uuid,
-      "flow": "xtls-rprx-vision",
-      "tls": {
-        "enabled": true,
-        "server_name": $name,
-        "utls": { "enabled": true, "fingerprint": "chrome" },
-        "reality": { "enabled": true, "public_key": $pbk, "short_id": $sid }
-      }
-    }]')
+  if [[ "$server_ipcl" = "dual" ]]; then
+    outs=$(echo "$outs" | jq --arg server "$v4_addr" --arg port "$vl_port" --arg uuid "$uuid" --arg name "$vl_name" --arg pbk "$public_key" --arg sid "$short_id" --arg host "$hostname-IPV4" \
+      '. + [{
+        "type": "vless",
+        "tag": "vless-\($host)",
+        "server": $server,
+        "server_port": ($port | tonumber),
+        "uuid": $uuid,
+        "flow": "xtls-rprx-vision",
+        "tls": {
+          "enabled": true,
+          "server_name": $name,
+          "utls": { "enabled": true, "fingerprint": "chrome" },
+          "reality": { "enabled": true, "public_key": $pbk, "short_id": $sid }
+        }
+      }]')
+    outs=$(echo "$outs" | jq --arg server "$v6_addr" --arg port "$vl_port" --arg uuid "$uuid" --arg name "$vl_name" --arg pbk "$public_key" --arg sid "$short_id" --arg host "$hostname-IPV6" \
+      '. + [{
+        "type": "vless",
+        "tag": "vless-\($host)",
+        "server": $server,
+        "server_port": ($port | tonumber),
+        "uuid": $uuid,
+        "flow": "xtls-rprx-vision",
+        "tls": {
+          "enabled": true,
+          "server_name": $name,
+          "utls": { "enabled": true, "fingerprint": "chrome" },
+          "reality": { "enabled": true, "public_key": $pbk, "short_id": $sid }
+        }
+      }]')
+  else
+    outs=$(echo "$outs" | jq --arg server "$server_ipcl" --arg port "$vl_port" --arg uuid "$uuid" --arg name "$vl_name" --arg pbk "$public_key" --arg sid "$short_id" --arg host "$hostname" \
+      '. + [{
+        "type": "vless",
+        "tag": "vless-\($host)",
+        "server": $server,
+        "server_port": ($port | tonumber),
+        "uuid": $uuid,
+        "flow": "xtls-rprx-vision",
+        "tls": {
+          "enabled": true,
+          "server_name": $name,
+          "utls": { "enabled": true, "fingerprint": "chrome" },
+          "reality": { "enabled": true, "public_key": $pbk, "short_id": $sid }
+        }
+      }]')
+  fi
 
   # VMess WS
-  outs=$(echo "$outs" | jq --arg server "$vmadd_local" --arg port "$vm_port" --arg uuid "$uuid" --arg name "$vm_name" --argjson tls "$tls" --arg path "$ws_path" --arg host "$hostname" \
-    '. + [{
-      "type": "vmess",
-      "tag": "vmess-\($host)",
-      "server": $server,
-      "server_port": ($port | tonumber),
-      "uuid": $uuid,
-      "security": "auto",
-      "packet_encoding": "packetaddr",
-      "transport": { "type": "ws", "path": $path, "headers": { "Host": $name } },
-      "tls": {
-        "enabled": $tls,
-        "server_name": $name,
-        "insecure": false,
-        "utls": { "enabled": true, "fingerprint": "chrome" }
-      }
-    }]')
+  if [[ "$server_ipcl" = "dual" ]]; then
+    outs=$(echo "$outs" | jq --arg server "$v4_addr" --arg port "$vm_port" --arg uuid "$uuid" --arg name "$vm_name" --argjson tls "$tls" --arg path "$ws_path" --arg host "$hostname-IPV4" \
+      '. + [{
+        "type": "vmess",
+        "tag": "vmess-\($host)",
+        "server": $server,
+        "server_port": ($port | tonumber),
+        "uuid": $uuid,
+        "security": "auto",
+        "packet_encoding": "packetaddr",
+        "transport": { "type": "ws", "path": $path, "headers": { "Host": $name } },
+        "tls": {
+          "enabled": $tls,
+          "server_name": $name,
+          "insecure": false,
+          "utls": { "enabled": true, "fingerprint": "chrome" }
+        }
+      }]')
+    outs=$(echo "$outs" | jq --arg server "$v6_addr" --arg port "$vm_port" --arg uuid "$uuid" --arg name "$vm_name" --argjson tls "$tls" --arg path "$ws_path" --arg host "$hostname-IPV6" \
+      '. + [{
+        "type": "vmess",
+        "tag": "vmess-\($host)",
+        "server": $server,
+        "server_port": ($port | tonumber),
+        "uuid": $uuid,
+        "security": "auto",
+        "packet_encoding": "packetaddr",
+        "transport": { "type": "ws", "path": $path, "headers": { "Host": $name } },
+        "tls": {
+          "enabled": $tls,
+          "server_name": $name,
+          "insecure": false,
+          "utls": { "enabled": true, "fingerprint": "chrome" }
+        }
+      }]')
+  else
+    outs=$(echo "$outs" | jq --arg server "$vmadd_local" --arg port "$vm_port" --arg uuid "$uuid" --arg name "$vm_name" --argjson tls "$tls" --arg path "$ws_path" --arg host "$hostname" \
+      '. + [{
+        "type": "vmess",
+        "tag": "vmess-\($host)",
+        "server": $server,
+        "server_port": ($port | tonumber),
+        "uuid": $uuid,
+        "security": "auto",
+        "packet_encoding": "packetaddr",
+        "transport": { "type": "ws", "path": $path, "headers": { "Host": $name } },
+        "tls": {
+          "enabled": $tls,
+          "server_name": $name,
+          "insecure": false,
+          "utls": { "enabled": true, "fingerprint": "chrome" }
+        }
+      }]')
+  fi
 
   # Hysteria 2
   local ports_array='[]'
@@ -1287,61 +1516,170 @@ sb_client() {
     ports_array="[$sbhy2pt]"
   fi
   
-  outs=$(echo "$outs" | jq --arg server "$cl_hy2_ip" --arg port "$hy2_port" --argjson extra_ports "$ports_array" --arg uuid "$uuid" --arg name "$hy2_name" --argjson ins "$hy2_ins" --arg host "$hostname" --arg cert "$cert_content" \
-    '. + [{
-      "type": "hysteria2",
-      "tag": "hy2-\($host)",
-      "server": $server,
-      "server_port": ($port | tonumber),
-      "password": $uuid,
-      "tls": ({
-        "enabled": true,
-        "server_name": $name,
-        "insecure": false,
-        "alpn": ["h3"]
-      } + (if $ins and ($cert | length) > 0 then { "certificate": [$cert] } else {} end))
-    } + (if ($extra_ports | length) > 0 then { "server_ports": $extra_ports } else {} end)]')
-
-  # Tuic 5
-  outs=$(echo "$outs" | jq --arg server "$cl_tu5_ip" --arg port "$tu5_port" --arg uuid "$uuid" --arg name "$tu5_name" --argjson ins "$tu5_ins" --arg host "$hostname" --arg cert "$cert_content" \
-    '. + [{
-      "type": "tuic",
-      "tag": "tuic5-\($host)",
-      "server": $server,
-      "server_port": ($port | tonumber),
-      "uuid": $uuid,
-      "password": $uuid,
-      "congestion_control": "bbr",
-      "udp_relay_mode": "native",
-      "udp_over_stream": false,
-      "zero_rtt_handshake": false,
-      "heartbeat": "10s",
-      "tls": ({
-        "enabled": true,
-        "server_name": $name,
-        "insecure": false,
-        "alpn": ["h3"]
-      } + (if $ins and ($cert | length) > 0 then { "certificate": [$cert] } else {} end))
-    }]')
-
-  # Anytls (Only for version > 1.10)
-  if [[ "$sbnh" != "1.10" ]]; then
-    outs=$(echo "$outs" | jq --arg server "$sb_an_ip" --arg port "$an_port" --arg uuid "$uuid" --arg name "$an_name" --argjson ins "$an_ins" --arg host "$hostname" --arg cert "$cert_content" \
+  if [[ "$server_ipcl" = "dual" ]]; then
+    outs=$(echo "$outs" | jq --arg server "$v4_addr" --arg port "$hy2_port" --argjson extra_ports "$ports_array" --arg uuid "$uuid" --arg name "$hy2_name" --argjson ins "$hy2_ins" --arg host "$hostname-IPV4" --arg cert "$cert_content" \
       '. + [{
-        "type": "anytls",
-        "tag": "anytls-\($host)",
+        "type": "hysteria2",
+        "tag": "hy2-\($host)",
         "server": $server,
         "server_port": ($port | tonumber),
         "password": $uuid,
-        "idle_session_check_interval": "30s",
-        "idle_session_timeout": "30s",
-        "min_idle_session": 5,
         "tls": ({
           "enabled": true,
+          "server_name": $name,
           "insecure": false,
-          "server_name": $name
+          "alpn": ["h3"]
+        } + (if $ins and ($cert | length) > 0 then { "certificate": [$cert] } else {} end))
+      } + (if ($extra_ports | length) > 0 then { "server_ports": $extra_ports } else {} end)]')
+    outs=$(echo "$outs" | jq --arg server "$v6_addr" --arg port "$hy2_port" --argjson extra_ports "$ports_array" --arg uuid "$uuid" --arg name "$hy2_name" --argjson ins "$hy2_ins" --arg host "$hostname-IPV6" --arg cert "$cert_content" \
+      '. + [{
+        "type": "hysteria2",
+        "tag": "hy2-\($host)",
+        "server": $server,
+        "server_port": ($port | tonumber),
+        "password": $uuid,
+        "tls": ({
+          "enabled": true,
+          "server_name": $name,
+          "insecure": false,
+          "alpn": ["h3"]
+        } + (if $ins and ($cert | length) > 0 then { "certificate": [$cert] } else {} end))
+      } + (if ($extra_ports | length) > 0 then { "server_ports": $extra_ports } else {} end)]')
+  else
+    outs=$(echo "$outs" | jq --arg server "$cl_hy2_ip" --arg port "$hy2_port" --argjson extra_ports "$ports_array" --arg uuid "$uuid" --arg name "$hy2_name" --argjson ins "$hy2_ins" --arg host "$hostname" --arg cert "$cert_content" \
+      '. + [{
+        "type": "hysteria2",
+        "tag": "hy2-\($host)",
+        "server": $server,
+        "server_port": ($port | tonumber),
+        "password": $uuid,
+        "tls": ({
+          "enabled": true,
+          "server_name": $name,
+          "insecure": false,
+          "alpn": ["h3"]
+        } + (if $ins and ($cert | length) > 0 then { "certificate": [$cert] } else {} end))
+      } + (if ($extra_ports | length) > 0 then { "server_ports": $extra_ports } else {} end)]')
+  fi
+
+  # Tuic 5
+  if [[ "$server_ipcl" = "dual" ]]; then
+    outs=$(echo "$outs" | jq --arg server "$v4_addr" --arg port "$tu5_port" --arg uuid "$uuid" --arg name "$tu5_name" --argjson ins "$tu5_ins" --arg host "$hostname-IPV4" --arg cert "$cert_content" \
+      '. + [{
+        "type": "tuic",
+        "tag": "tuic5-\($host)",
+        "server": $server,
+        "server_port": ($port | tonumber),
+        "uuid": $uuid,
+        "password": $uuid,
+        "congestion_control": "bbr",
+        "udp_relay_mode": "native",
+        "udp_over_stream": false,
+        "zero_rtt_handshake": false,
+        "heartbeat": "10s",
+        "tls": ({
+          "enabled": true,
+          "server_name": $name,
+          "insecure": false,
+          "alpn": ["h3"]
         } + (if $ins and ($cert | length) > 0 then { "certificate": [$cert] } else {} end))
       }]')
+    outs=$(echo "$outs" | jq --arg server "$v6_addr" --arg port "$tu5_port" --arg uuid "$uuid" --arg name "$tu5_name" --argjson ins "$tu5_ins" --arg host "$hostname-IPV6" --arg cert "$cert_content" \
+      '. + [{
+        "type": "tuic",
+        "tag": "tuic5-\($host)",
+        "server": $server,
+        "server_port": ($port | tonumber),
+        "uuid": $uuid,
+        "password": $uuid,
+        "congestion_control": "bbr",
+        "udp_relay_mode": "native",
+        "udp_over_stream": false,
+        "zero_rtt_handshake": false,
+        "heartbeat": "10s",
+        "tls": ({
+          "enabled": true,
+          "server_name": $name,
+          "insecure": false,
+          "alpn": ["h3"]
+        } + (if $ins and ($cert | length) > 0 then { "certificate": [$cert] } else {} end))
+      }]')
+  else
+    outs=$(echo "$outs" | jq --arg server "$cl_tu5_ip" --arg port "$tu5_port" --arg uuid "$uuid" --arg name "$tu5_name" --argjson ins "$tu5_ins" --arg host "$hostname" --arg cert "$cert_content" \
+      '. + [{
+        "type": "tuic",
+        "tag": "tuic5-\($host)",
+        "server": $server,
+        "server_port": ($port | tonumber),
+        "uuid": $uuid,
+        "password": $uuid,
+        "congestion_control": "bbr",
+        "udp_relay_mode": "native",
+        "udp_over_stream": false,
+        "zero_rtt_handshake": false,
+        "heartbeat": "10s",
+        "tls": ({
+          "enabled": true,
+          "server_name": $name,
+          "insecure": false,
+          "alpn": ["h3"]
+        } + (if $ins and ($cert | length) > 0 then { "certificate": [$cert] } else {} end))
+      }]')
+  fi
+
+  # Anytls (Only for version > 1.10)
+  if [[ "$sbnh" != "1.10" ]]; then
+    if [[ "$server_ipcl" = "dual" ]]; then
+      outs=$(echo "$outs" | jq --arg server "$v4_addr" --arg port "$an_port" --arg uuid "$uuid" --arg name "$an_name" --argjson ins "$an_ins" --arg host "$hostname-IPV4" --arg cert "$cert_content" \
+        '. + [{
+          "type": "anytls",
+          "tag": "anytls-\($host)",
+          "server": $server,
+          "server_port": ($port | tonumber),
+          "password": $uuid,
+          "idle_session_check_interval": "30s",
+          "idle_session_timeout": "30s",
+          "min_idle_session": 5,
+          "tls": ({
+            "enabled": true,
+            "insecure": false,
+            "server_name": $name
+          } + (if $ins and ($cert | length) > 0 then { "certificate": [$cert] } else {} end))
+        }]')
+      outs=$(echo "$outs" | jq --arg server "$v6_addr" --arg port "$an_port" --arg uuid "$uuid" --arg name "$an_name" --argjson ins "$an_ins" --arg host "$hostname-IPV6" --arg cert "$cert_content" \
+        '. + [{
+          "type": "anytls",
+          "tag": "anytls-\($host)",
+          "server": $server,
+          "server_port": ($port | tonumber),
+          "password": $uuid,
+          "idle_session_check_interval": "30s",
+          "idle_session_timeout": "30s",
+          "min_idle_session": 5,
+          "tls": ({
+            "enabled": true,
+            "insecure": false,
+            "server_name": $name
+          } + (if $ins and ($cert | length) > 0 then { "certificate": [$cert] } else {} end))
+        }]')
+    else
+      outs=$(echo "$outs" | jq --arg server "$sb_an_ip" --arg port "$an_port" --arg uuid "$uuid" --arg name "$an_name" --argjson ins "$an_ins" --arg host "$hostname" --arg cert "$cert_content" \
+        '. + [{
+          "type": "anytls",
+          "tag": "anytls-\($host)",
+          "server": $server,
+          "server_port": ($port | tonumber),
+          "password": $uuid,
+          "idle_session_check_interval": "30s",
+          "idle_session_timeout": "30s",
+          "min_idle_session": 5,
+          "tls": ({
+            "enabled": true,
+            "insecure": false,
+            "server_name": $name
+          } + (if $ins and ($cert | length) > 0 then { "certificate": [$cert] } else {} end))
+        }]')
+    fi
   fi
 
   # Cloudflare Argo Tunnels (Only if VMess TLS is false & Argo active)
@@ -1436,7 +1774,40 @@ EOF
   local clash_tags=()
 
   # VLESS Reality
-  clash_proxies+="- name: vless-reality-vision-$hostname
+  if [[ "$server_ipcl" = "dual" ]]; then
+    clash_proxies+="- name: vless-reality-vision-$hostname-IPV4
+  type: vless
+  server: $v4_addr
+  port: $vl_port
+  uuid: $uuid
+  network: tcp
+  udp: true
+  tls: true
+  flow: xtls-rprx-vision
+  servername: $vl_name
+  reality-opts:
+    public-key: $public_key
+    short-id: $short_id
+  client-fingerprint: chrome\n\n"
+    clash_tags+=("vless-reality-vision-$hostname-IPV4")
+
+    clash_proxies+="- name: vless-reality-vision-$hostname-IPV6
+  type: vless
+  server: $v6_addr
+  port: $vl_port
+  uuid: $uuid
+  network: tcp
+  udp: true
+  tls: true
+  flow: xtls-rprx-vision
+  servername: $vl_name
+  reality-opts:
+    public-key: $public_key
+    short-id: $short_id
+  client-fingerprint: chrome\n\n"
+    clash_tags+=("vless-reality-vision-$hostname-IPV6")
+  else
+    clash_proxies+="- name: vless-reality-vision-$hostname
   type: vless
   server: $server_ipcl
   port: $vl_port
@@ -1450,10 +1821,46 @@ EOF
     public-key: $public_key
     short-id: $short_id
   client-fingerprint: chrome\n\n"
-  clash_tags+=("vless-reality-vision-$hostname")
+    clash_tags+=("vless-reality-vision-$hostname")
+  fi
 
   # VMess WS
-  clash_proxies+="- name: vmess-ws-$hostname
+  if [[ "$server_ipcl" = "dual" ]]; then
+    clash_proxies+="- name: vmess-ws-$hostname-IPV4
+  type: vmess
+  server: $v4_addr
+  port: $vm_port
+  uuid: $uuid
+  alterId: 0
+  cipher: auto
+  udp: true
+  tls: $tls
+  network: ws
+  servername: $vm_name
+  ws-opts:
+    path: \"$ws_path\"
+    headers:
+      Host: $vm_name\n\n"
+    clash_tags+=("vmess-ws-$hostname-IPV4")
+
+    clash_proxies+="- name: vmess-ws-$hostname-IPV6
+  type: vmess
+  server: $v6_addr
+  port: $vm_port
+  uuid: $uuid
+  alterId: 0
+  cipher: auto
+  udp: true
+  tls: $tls
+  network: ws
+  servername: $vm_name
+  ws-opts:
+    path: \"$ws_path\"
+    headers:
+      Host: $vm_name\n\n"
+    clash_tags+=("vmess-ws-$hostname-IPV6")
+  else
+    clash_proxies+="- name: vmess-ws-$hostname
   type: vmess
   server: $vmadd_local
   port: $vm_port
@@ -1468,10 +1875,50 @@ EOF
     path: \"$ws_path\"
     headers:
       Host: $vm_name\n\n"
-  clash_tags+=("vmess-ws-$hostname")
+    clash_tags+=("vmess-ws-$hostname")
+  fi
 
   # Hysteria 2
-  clash_proxies+="- name: hysteria2-$hostname
+  if [[ "$server_ipcl" = "dual" ]]; then
+    # IPV4
+    clash_proxies+="- name: hysteria2-$hostname-IPV4
+  type: hysteria2
+  server: $v4_addr
+  port: $hy2_port
+  ports: $cmhy2pt
+  password: $uuid
+  alpn:
+    - h3
+  sni: $hy2_name
+  skip-cert-verify: false"
+    if $hy2_ins && [[ -n "$SHA256" ]]; then
+      clash_proxies+="
+  fingerprint: $SHA256"
+    fi
+    clash_proxies+="
+  fast-open: true\n\n"
+    clash_tags+=("hysteria2-$hostname-IPV4")
+
+    # IPV6
+    clash_proxies+="- name: hysteria2-$hostname-IPV6
+  type: hysteria2
+  server: $v6_addr
+  port: $hy2_port
+  ports: $cmhy2pt
+  password: $uuid
+  alpn:
+    - h3
+  sni: $hy2_name
+  skip-cert-verify: false"
+    if $hy2_ins && [[ -n "$SHA256" ]]; then
+      clash_proxies+="
+  fingerprint: $SHA256"
+    fi
+    clash_proxies+="
+  fast-open: true\n\n"
+    clash_tags+=("hysteria2-$hostname-IPV6")
+  else
+    clash_proxies+="- name: hysteria2-$hostname
   type: hysteria2
   server: $cl_hy2_ip
   port: $hy2_port
@@ -1481,16 +1928,62 @@ EOF
     - h3
   sni: $hy2_name
   skip-cert-verify: false"
-  if $hy2_ins && [[ -n "$SHA256" ]]; then
-    clash_proxies+="
+    if $hy2_ins && [[ -n "$SHA256" ]]; then
+      clash_proxies+="
   fingerprint: $SHA256"
-  fi
-  clash_proxies+="
+    fi
+    clash_proxies+="
   fast-open: true\n\n"
-  clash_tags+=("hysteria2-$hostname")
+    clash_tags+=("hysteria2-$hostname")
+  fi
 
   # Tuic 5
-  clash_proxies+="- name: tuic5-$hostname
+  if [[ "$server_ipcl" = "dual" ]]; then
+    # IPV4
+    clash_proxies+="- name: tuic5-$hostname-IPV4
+  type: tuic
+  server: $v4_addr
+  port: $tu5_port
+  uuid: $uuid
+  password: $uuid
+  alpn: [h3]
+  disable-sni: $tu5_ins
+  reduce-rtt: true
+  udp-relay-mode: native
+  congestion-controller: bbr
+  sni: $tu5_name
+  skip-cert-verify: false"
+    if $tu5_ins && [[ -n "$cert_content" ]]; then
+      clash_proxies+="
+  ca-str: |
+$(echo "$cert_content" | sed 's/^/    /')"
+    fi
+    clash_proxies+="\n\n"
+    clash_tags+=("tuic5-$hostname-IPV4")
+
+    # IPV6
+    clash_proxies+="- name: tuic5-$hostname-IPV6
+  type: tuic
+  server: $v6_addr
+  port: $tu5_port
+  uuid: $uuid
+  password: $uuid
+  alpn: [h3]
+  disable-sni: $tu5_ins
+  reduce-rtt: true
+  udp-relay-mode: native
+  congestion-controller: bbr
+  sni: $tu5_name
+  skip-cert-verify: false"
+    if $tu5_ins && [[ -n "$cert_content" ]]; then
+      clash_proxies+="
+  ca-str: |
+$(echo "$cert_content" | sed 's/^/    /')"
+    fi
+    clash_proxies+="\n\n"
+    clash_tags+=("tuic5-$hostname-IPV6")
+  else
+    clash_proxies+="- name: tuic5-$hostname
   type: tuic
   server: $cl_tu5_ip
   port: $tu5_port
@@ -1503,17 +1996,45 @@ EOF
   congestion-controller: bbr
   sni: $tu5_name
   skip-cert-verify: false"
-  if $tu5_ins && [[ -n "$cert_content" ]]; then
-    clash_proxies+="
+    if $tu5_ins && [[ -n "$cert_content" ]]; then
+      clash_proxies+="
   ca-str: |
 $(echo "$cert_content" | sed 's/^/    /')"
+    fi
+    clash_proxies+="\n\n"
+    clash_tags+=("tuic5-$hostname")
   fi
-  clash_proxies+="\n\n"
-  clash_tags+=("tuic5-$hostname")
 
   # Anytls
   if [[ "$sbnh" != "1.10" ]]; then
-    clash_proxies+="- name: anytls-$hostname
+    if [[ "$server_ipcl" = "dual" ]]; then
+      clash_proxies+="- name: anytls-$hostname-IPV4
+  type: anytls
+  server: $v4_addr
+  port: $an_port
+  password: $uuid
+  client-fingerprint: chrome
+  udp: true
+  idle-session-check-interval: 30
+  idle-session-timeout: 30
+  sni: $an_name
+  skip-cert-verify: $an_ins\n\n"
+      clash_tags+=("anytls-$hostname-IPV4")
+
+      clash_proxies+="- name: anytls-$hostname-IPV6
+  type: anytls
+  server: $v6_addr
+  port: $an_port
+  password: $uuid
+  client-fingerprint: chrome
+  udp: true
+  idle-session-check-interval: 30
+  idle-session-timeout: 30
+  sni: $an_name
+  skip-cert-verify: $an_ins\n\n"
+      clash_tags+=("anytls-$hostname-IPV6")
+    else
+      clash_proxies+="- name: anytls-$hostname
   type: anytls
   server: $cl_an_ip
   port: $an_port
@@ -1524,7 +2045,8 @@ $(echo "$cert_content" | sed 's/^/    /')"
   idle-session-timeout: 30
   sni: $an_name
   skip-cert-verify: $an_ins\n\n"
-    clash_tags+=("anytls-$hostname")
+      clash_tags+=("anytls-$hostname")
+    fi
   fi
 
   # Argo Fixed
