@@ -3300,25 +3300,25 @@ changeport() {
   [[ -n "$port_vl_re" ]] && green " 1：VLESS-Reality协议 ${yellow}端口:$port_vl_re${plain}"
   [[ -n "$port_vl_ws_tls" ]] && green " 2：VLESS-WS-TLS协议 ${yellow}端口:$port_vl_ws_tls${plain}"
   [[ -n "$port_vl_hu_tls" ]] && green " 3：VLESS-HTTPUpgrade-TLS协议 ${yellow}端口:$port_vl_hu_tls${plain}"
-  [[ -n "$port_vm_ws" ]] && green " 4：VMess-WS协议 ${yellow}端口:$port_vm_ws${plain}"
-  [[ -n "$port_vm_ws_tls" ]] && green " 5：VMess-WS-TLS协议 ${yellow}端口:$port_vm_ws_tls${plain}"
-  [[ -n "$port_vm_hu_tls" ]] && green " 6：VMess-HTTPUpgrade-TLS协议 ${yellow}端口:$port_vm_hu_tls${plain}"
-  [[ -n "$port_tr_tls" ]] && green " 7：Trojan-TLS协议 ${yellow}端口:$port_tr_tls${plain}"
-  [[ -n "$port_tr_ws_tls" ]] && green " 8：Trojan-WS-TLS协议 ${yellow}端口:$port_tr_ws_tls${plain}"
-  [[ -n "$port_tr_hu_tls" ]] && green " 9：Trojan-HTTPUpgrade-TLS协议 ${yellow}端口:$port_tr_hu_tls${plain}"
-  [[ -n "$port_ss" ]] && green "10：Shadowsocks协议 ${yellow}端口:$port_ss${plain}"
-  [[ -n "$port_hy2" ]] && green "11：Hysteria 2协议 ${yellow}端口:$port_hy2  转发多端口: $hy2zfport${plain}"
-  [[ -n "$port_tu" ]] && green "12：Tuic-v5协议 ${yellow}端口:$port_tu  转发多端口: $tu5zfport${plain}"
+  [[ -n "$port_vl_h2_tls" ]] && green " 4：VLESS-H2-TLS协议 ${yellow}端口:$port_vl_h2_tls${plain}"
+  [[ -n "$port_vl_h2_re" ]] && green " 5：VLESS-HTTP2-REALITY协议 ${yellow}端口:$port_vl_h2_re${plain}"
+  [[ -n "$port_vm_ws" ]] && green " 6：VMess-WS协议 ${yellow}端口:$port_vm_ws${plain}"
+  [[ -n "$port_vm_ws_tls" ]] && green " 7：VMess-WS-TLS协议 ${yellow}端口:$port_vm_ws_tls${plain}"
+  [[ -n "$port_vm_hu_tls" ]] && green " 8：VMess-HTTPUpgrade-TLS协议 ${yellow}端口:$port_vm_hu_tls${plain}"
+  [[ -n "$port_vm_tcp" ]] && green " 9：VMess-TCP协议 ${yellow}端口:$port_vm_tcp${plain}"
+  [[ -n "$port_vm_http" ]] && green "10：VMess-HTTP协议 ${yellow}端口:$port_vm_http${plain}"
+  [[ -n "$port_vm_quic" ]] && green "11：VMess-QUIC协议 ${yellow}端口:$port_vm_quic${plain}"
+  [[ -n "$port_vm_h2_tls" ]] && green "12：VMess-H2-TLS协议 ${yellow}端口:$port_vm_h2_tls${plain}"
+  [[ -n "$port_tr_tls" ]] && green "13：Trojan-TLS协议 ${yellow}端口:$port_tr_tls${plain}"
+  [[ -n "$port_tr_ws_tls" ]] && green "14：Trojan-WS-TLS协议 ${yellow}端口:$port_tr_ws_tls${plain}"
+  [[ -n "$port_tr_hu_tls" ]] && green "15：Trojan-HTTPUpgrade-TLS协议 ${yellow}端口:$port_tr_hu_tls${plain}"
+  [[ -n "$port_tr_h2_tls" ]] && green "16：Trojan-H2-TLS协议 ${yellow}端口:$port_tr_h2_tls${plain}"
+  [[ -n "$port_ss" ]] && green "17：Shadowsocks协议 ${yellow}端口:$port_ss${plain}"
+  [[ -n "$port_hy2" ]] && green "18：Hysteria 2协议 ${yellow}端口:$port_hy2  转发多端口: $hy2zfport${plain}"
+  [[ -n "$port_tu" ]] && green "19：Tuic-v5协议 ${yellow}端口:$port_tu  转发多端口: $tu5zfport${plain}"
   if [[ "$sbnh" != "1.10" ]] && [[ -n "$port_an" ]]; then
-    green "13：AnyTLS协议 ${yellow}端口:$port_an${plain}"
+    green "20：AnyTLS协议 ${yellow}端口:$port_an${plain}"
   fi
-  [[ -n "$port_vm_tcp" ]] && green "14：VMess-TCP协议 ${yellow}端口:$port_vm_tcp${plain}"
-  [[ -n "$port_vm_http" ]] && green "15：VMess-HTTP协议 ${yellow}端口:$port_vm_http${plain}"
-  [[ -n "$port_vm_quic" ]] && green "16：VMess-QUIC协议 ${yellow}端口:$port_vm_quic${plain}"
-  [[ -n "$port_vm_h2_tls" ]] && green "17：VMess-H2-TLS协议 ${yellow}端口:$port_vm_h2_tls${plain}"
-  [[ -n "$port_vl_h2_tls" ]] && green "18：VLESS-H2-TLS协议 ${yellow}端口:$port_vl_h2_tls${plain}"
-  [[ -n "$port_tr_h2_tls" ]] && green "19：Trojan-H2-TLS协议 ${yellow}端口:$port_tr_h2_tls${plain}"
-  [[ -n "$port_vl_h2_re" ]] && green "20：VLESS-HTTP2-REALITY协议 ${yellow}端口:$port_vl_h2_re${plain}"
   [[ -n "$port_socks" ]] && green "21：Socks协议 ${yellow}端口:$port_socks${plain}"
   green " 0：返回上层"
   readp "请选择要变更端口的协议：" menu
@@ -3346,6 +3346,20 @@ changeport() {
       blue "VLESS-HTTPUpgrade-TLS端口已变更为 $p"
       ;;
     4)
+      [[ -z "$port_vl_h2_tls" ]] && red "协议未安装！" && sleep 2 && changeport && return
+      local p=$(prompt_new_port "VLESS-H2-TLS" "$port_vl_h2_tls")
+      update_inbound_port "vless-h2-tls-sb" "$p"
+      restartsb && sbshare > /dev/null 2>&1
+      blue "VLESS-H2-TLS端口已变更为 $p"
+      ;;
+    5)
+      [[ -z "$port_vl_h2_re" ]] && red "协议未安装！" && sleep 2 && changeport && return
+      local p=$(prompt_new_port "VLESS-HTTP2-REALITY" "$port_vl_h2_re")
+      update_inbound_port "vless-h2-reality-sb" "$p"
+      restartsb && sbshare > /dev/null 2>&1
+      blue "VLESS-HTTP2-REALITY端口已变更为 $p"
+      ;;
+    6)
       [[ -z "$port_vm_ws" ]] && red "协议未安装！" && sleep 2 && changeport && return
       local p=$(prompt_new_port "VMess-WS" "$port_vm_ws")
       update_inbound_port "vmess-ws-sb" "$p"
@@ -3353,49 +3367,84 @@ changeport() {
       blue "VMess-WS端口已变更为 $p"
       blue "切记：如果Argo使用中，临时隧道必须重置，固定隧道的CF设置界面端口必须修改为$p"
       ;;
-    5)
+    7)
       [[ -z "$port_vm_ws_tls" ]] && red "协议未安装！" && sleep 2 && changeport && return
       local p=$(prompt_new_port "VMess-WS-TLS" "$port_vm_ws_tls")
       update_inbound_port "vmess-ws-tls-sb" "$p"
       restartsb && sbshare > /dev/null 2>&1
       blue "VMess-WS-TLS端口已变更为 $p"
       ;;
-    6)
+    8)
       [[ -z "$port_vm_hu_tls" ]] && red "协议未安装！" && sleep 2 && changeport && return
       local p=$(prompt_new_port "VMess-HTTPUpgrade-TLS" "$port_vm_hu_tls")
       update_inbound_port "vmess-hu-tls-sb" "$p"
       restartsb && sbshare > /dev/null 2>&1
       blue "VMess-HTTPUpgrade-TLS端口已变更为 $p"
       ;;
-    7)
+    9)
+      [[ -z "$port_vm_tcp" ]] && red "协议未安装！" && sleep 2 && changeport && return
+      local p=$(prompt_new_port "VMess-TCP" "$port_vm_tcp")
+      update_inbound_port "vmess-tcp-sb" "$p"
+      restartsb && sbshare > /dev/null 2>&1
+      blue "VMess-TCP端口已变更为 $p"
+      ;;
+    10)
+      [[ -z "$port_vm_http" ]] && red "协议未安装！" && sleep 2 && changeport && return
+      local p=$(prompt_new_port "VMess-HTTP" "$port_vm_http")
+      update_inbound_port "vmess-http-sb" "$p"
+      restartsb && sbshare > /dev/null 2>&1
+      blue "VMess-HTTP端口已变更为 $p"
+      ;;
+    11)
+      [[ -z "$port_vm_quic" ]] && red "协议未安装！" && sleep 2 && changeport && return
+      local p=$(prompt_new_port "VMess-QUIC" "$port_vm_quic")
+      update_inbound_port "vmess-quic-sb" "$p"
+      restartsb && sbshare > /dev/null 2>&1
+      blue "VMess-QUIC端口已变更为 $p"
+      ;;
+    12)
+      [[ -z "$port_vm_h2_tls" ]] && red "协议未安装！" && sleep 2 && changeport && return
+      local p=$(prompt_new_port "VMess-H2-TLS" "$port_vm_h2_tls")
+      update_inbound_port "vmess-h2-tls-sb" "$p"
+      restartsb && sbshare > /dev/null 2>&1
+      blue "VMess-H2-TLS端口已变更为 $p"
+      ;;
+    13)
       [[ -z "$port_tr_tls" ]] && red "协议未安装！" && sleep 2 && changeport && return
       local p=$(prompt_new_port "Trojan-TLS" "$port_tr_tls")
       update_inbound_port "trojan-tls-sb" "$p"
       restartsb && sbshare > /dev/null 2>&1
       blue "Trojan-TLS端口已变更为 $p"
       ;;
-    8)
+    14)
       [[ -z "$port_tr_ws_tls" ]] && red "协议未安装！" && sleep 2 && changeport && return
       local p=$(prompt_new_port "Trojan-WS-TLS" "$port_tr_ws_tls")
       update_inbound_port "trojan-ws-tls-sb" "$p"
       restartsb && sbshare > /dev/null 2>&1
       blue "Trojan-WS-TLS端口已变更为 $p"
       ;;
-    9)
+    15)
       [[ -z "$port_tr_hu_tls" ]] && red "协议未安装！" && sleep 2 && changeport && return
       local p=$(prompt_new_port "Trojan-HTTPUpgrade-TLS" "$port_tr_hu_tls")
       update_inbound_port "trojan-hu-tls-sb" "$p"
       restartsb && sbshare > /dev/null 2>&1
       blue "Trojan-HTTPUpgrade-TLS端口已变更为 $p"
       ;;
-    10)
+    16)
+      [[ -z "$port_tr_h2_tls" ]] && red "协议未安装！" && sleep 2 && changeport && return
+      local p=$(prompt_new_port "Trojan-H2-TLS" "$port_tr_h2_tls")
+      update_inbound_port "trojan-h2-tls-sb" "$p"
+      restartsb && sbshare > /dev/null 2>&1
+      blue "Trojan-H2-TLS端口已变更为 $p"
+      ;;
+    17)
       [[ -z "$port_ss" ]] && red "协议未安装！" && sleep 2 && changeport && return
       local p=$(prompt_new_port "Shadowsocks" "$port_ss")
       update_inbound_port "shadowsocks-sb" "$p"
       restartsb && sbshare > /dev/null 2>&1
       blue "Shadowsocks端口已变更为 $p"
       ;;
-    11)
+    18)
       [[ -z "$port_hy2" ]] && red "协议未安装！" && sleep 2 && changeport && return
       green "1：更换Hysteria 2主端口 (原多端口自动重置删除)"
       green "2：添加Hysteria 2多端口"
@@ -3431,7 +3480,7 @@ changeport() {
         changeport
       fi
       ;;
-    12)
+    19)
       [[ -z "$port_tu" ]] && red "协议未安装！" && sleep 2 && changeport && return
       green "1：更换Tuic-v5主端口 (原多端口自动重置删除)"
       green "2：添加Tuic-v5多端口"
@@ -3467,7 +3516,7 @@ changeport() {
         changeport
       fi
       ;;
-    13)
+    20)
       if [[ "$sbnh" != "1.10" ]] && [[ -n "$port_an" ]]; then
         local p=$(prompt_new_port "AnyTLS" "$port_an")
         update_inbound_port "anytls-sb" "$p"
@@ -3476,55 +3525,6 @@ changeport() {
       else
         sb
       fi
-      ;;
-    14)
-      [[ -z "$port_vm_tcp" ]] && red "协议未安装！" && sleep 2 && changeport && return
-      local p=$(prompt_new_port "VMess-TCP" "$port_vm_tcp")
-      update_inbound_port "vmess-tcp-sb" "$p"
-      restartsb && sbshare > /dev/null 2>&1
-      blue "VMess-TCP端口已变更为 $p"
-      ;;
-    15)
-      [[ -z "$port_vm_http" ]] && red "协议未安装！" && sleep 2 && changeport && return
-      local p=$(prompt_new_port "VMess-HTTP" "$port_vm_http")
-      update_inbound_port "vmess-http-sb" "$p"
-      restartsb && sbshare > /dev/null 2>&1
-      blue "VMess-HTTP端口已变更为 $p"
-      ;;
-    16)
-      [[ -z "$port_vm_quic" ]] && red "协议未安装！" && sleep 2 && changeport && return
-      local p=$(prompt_new_port "VMess-QUIC" "$port_vm_quic")
-      update_inbound_port "vmess-quic-sb" "$p"
-      restartsb && sbshare > /dev/null 2>&1
-      blue "VMess-QUIC端口已变更为 $p"
-      ;;
-    17)
-      [[ -z "$port_vm_h2_tls" ]] && red "协议未安装！" && sleep 2 && changeport && return
-      local p=$(prompt_new_port "VMess-H2-TLS" "$port_vm_h2_tls")
-      update_inbound_port "vmess-h2-tls-sb" "$p"
-      restartsb && sbshare > /dev/null 2>&1
-      blue "VMess-H2-TLS端口已变更为 $p"
-      ;;
-    18)
-      [[ -z "$port_vl_h2_tls" ]] && red "协议未安装！" && sleep 2 && changeport && return
-      local p=$(prompt_new_port "VLESS-H2-TLS" "$port_vl_h2_tls")
-      update_inbound_port "vless-h2-tls-sb" "$p"
-      restartsb && sbshare > /dev/null 2>&1
-      blue "VLESS-H2-TLS端口已变更为 $p"
-      ;;
-    19)
-      [[ -z "$port_tr_h2_tls" ]] && red "协议未安装！" && sleep 2 && changeport && return
-      local p=$(prompt_new_port "Trojan-H2-TLS" "$port_tr_h2_tls")
-      update_inbound_port "trojan-h2-tls-sb" "$p"
-      restartsb && sbshare > /dev/null 2>&1
-      blue "Trojan-H2-TLS端口已变更为 $p"
-      ;;
-    20)
-      [[ -z "$port_vl_h2_re" ]] && red "协议未安装！" && sleep 2 && changeport && return
-      local p=$(prompt_new_port "VLESS-HTTP2-REALITY" "$port_vl_h2_re")
-      update_inbound_port "vless-h2-reality-sb" "$p"
-      restartsb && sbshare > /dev/null 2>&1
-      blue "VLESS-HTTP2-REALITY端口已变更为 $p"
       ;;
     21)
       [[ -z "$port_socks" ]] && red "协议未安装！" && sleep 2 && changeport && return
@@ -5659,32 +5659,32 @@ instsllsingbox() {
   use_socks=false        # 21: Socks
 
   echo
-  green "请选择需要安装的协议组合 (回车默认安装 1 5 11 12，或输入数字并用空格分隔，如 1 10 11)"
+  green "请选择需要安装的协议组合 (回车默认安装 1 7 18 19，或输入数字并用空格分隔，如 1 17 18)"
   green "--- VLESS 组合 ---"
   yellow " 1：VLESS-Reality (Vision + TCP)"
   yellow " 2：VLESS-WS-TLS (VLESS over WebSocket + TLS)"
   yellow " 3：VLESS-HTTPUpgrade-TLS (VLESS over HTTPUpgrade + TLS)"
-  yellow "18：VLESS-H2-TLS (VLESS over HTTP/2 + TLS)"
-  yellow "20：VLESS-HTTP2-REALITY (VLESS over HTTP/2 + REALITY)"
+  yellow " 4：VLESS-H2-TLS (VLESS over HTTP/2 + TLS)"
+  yellow " 5：VLESS-HTTP2-REALITY (VLESS over HTTP/2 + REALITY)"
   green "--- VMess 组合 ---"
-  yellow " 4：VMess-WS (VMess over WebSocket，不启用 TLS)"
-  yellow " 5：VMess-WS-TLS (VMess over WebSocket + TLS)"
-  yellow " 6：VMess-HTTPUpgrade-TLS (VMess over HTTPUpgrade + TLS)"
-  yellow "14：VMess-TCP (VMess over TCP，不启用 TLS)"
-  yellow "15：VMess-HTTP (VMess over HTTP，不启用 TLS)"
-  yellow "16：VMess-QUIC (VMess over QUIC，启用 TLS)"
-  yellow "17：VMess-H2-TLS (VMess over HTTP/2 + TLS)"
+  yellow " 6：VMess-WS (VMess over WebSocket，不启用 TLS)"
+  yellow " 7：VMess-WS-TLS (VMess over WebSocket + TLS)"
+  yellow " 8：VMess-HTTPUpgrade-TLS (VMess over HTTPUpgrade + TLS)"
+  yellow " 9：VMess-TCP (VMess over TCP，不启用 TLS)"
+  yellow "10：VMess-HTTP (VMess over HTTP，不启用 TLS)"
+  yellow "11：VMess-QUIC (VMess over QUIC，启用 TLS)"
+  yellow "12：VMess-H2-TLS (VMess over HTTP/2 + TLS)"
   green "--- Trojan 组合 ---"
-  yellow " 7：Trojan-TLS (Trojan over TCP + TLS)"
-  yellow " 8：Trojan-WS-TLS (Trojan over WebSocket + TLS)"
-  yellow " 9：Trojan-HTTPUpgrade-TLS (Trojan over HTTPUpgrade + TLS)"
-  yellow "19：Trojan-H2-TLS (Trojan over HTTP/2 + TLS)"
+  yellow "13：Trojan-TLS (Trojan over TCP + TLS)"
+  yellow "14：Trojan-WS-TLS (Trojan over WebSocket + TLS)"
+  yellow "15：Trojan-HTTPUpgrade-TLS (Trojan over HTTPUpgrade + TLS)"
+  yellow "16：Trojan-H2-TLS (Trojan over HTTP/2 + TLS)"
   green "--- 其他经典/高速协议 ---"
-  yellow "10：Shadowsocks (Shadowsocks 多种加密)"
-  yellow "11：Hysteria 2 (QUIC/UDP)"
-  yellow "12：Tuic-v5 (QUIC/UDP)"
+  yellow "17：Shadowsocks (Shadowsocks 多种加密)"
+  yellow "18：Hysteria 2 (QUIC/UDP)"
+  yellow "19：Tuic-v5 (QUIC/UDP)"
   if [[ "$sbnh" != "1.10" ]]; then
-    yellow "13：AnyTLS"
+    yellow "20：AnyTLS"
   fi
   yellow "21：Socks (Socks5 代理服务)"
   readp "请选择【1-21】：" select_proto
@@ -5701,23 +5701,23 @@ instsllsingbox() {
         1) use_vl_re=true ;;
         2) use_vl_ws_tls=true ;;
         3) use_vl_hu_tls=true ;;
-        4) use_vm_ws=true ;;
-        5) use_vm_ws_tls=true ;;
-        6) use_vm_hu_tls=true ;;
-        7) use_tr_tls=true ;;
-        8) use_tr_ws_tls=true ;;
-        9) use_tr_hu_tls=true ;;
-        10) use_ss=true ;;
-        11) use_hy2=true ;;
-        12) use_tu=true ;;
-        13) [[ "$sbnh" != "1.10" ]] && use_an=true ;;
-        14) use_vm_tcp=true ;;
-        15) use_vm_http=true ;;
-        16) use_vm_quic=true ;;
-        17) use_vm_h2_tls=true ;;
-        18) use_vl_h2_tls=true ;;
-        19) use_tr_h2_tls=true ;;
-        20) use_vl_h2_re=true ;;
+        4) use_vl_h2_tls=true ;;
+        5) use_vl_h2_re=true ;;
+        6) use_vm_ws=true ;;
+        7) use_vm_ws_tls=true ;;
+        8) use_vm_hu_tls=true ;;
+        9) use_vm_tcp=true ;;
+        10) use_vm_http=true ;;
+        11) use_vm_quic=true ;;
+        12) use_vm_h2_tls=true ;;
+        13) use_tr_tls=true ;;
+        14) use_tr_ws_tls=true ;;
+        15) use_tr_hu_tls=true ;;
+        16) use_tr_h2_tls=true ;;
+        17) use_ss=true ;;
+        18) use_hy2=true ;;
+        19) use_tu=true ;;
+        20) [[ "$sbnh" != "1.10" ]] && use_an=true ;;
         21) use_socks=true ;;
       esac
     done
