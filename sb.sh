@@ -1813,6 +1813,18 @@ result_vl_vm_hy_tu() {
   
   server_ip=$(cat "$SBFOLDER/server_ip.log" 2>/dev/null)
   server_ipcl=$(cat "$SBFOLDER/server_ipcl.log" 2>/dev/null)
+
+  if [[ -f "$SBFOLDER/cfvmadd_local.txt" ]]; then
+    vmadd_local=$(cat "$SBFOLDER/cfvmadd_local.txt" 2>/dev/null)
+  else
+    vmadd_local="$server_ipcl"
+  fi
+
+  if [[ -f "$SBFOLDER/cfvmadd_argo.txt" ]]; then
+    vmadd_argo=$(cat "$SBFOLDER/cfvmadd_argo.txt" 2>/dev/null)
+  else
+    vmadd_argo="cloudflare-ech.com"
+  fi
   
   local clean_json=$(strip_json_comments "$SBFOLDER/sb.json")
   
@@ -2081,7 +2093,7 @@ resvmess() {
       red "🚀【 vmess-ws(tls)+Argo 】临时节点信息如下 (可选择3-8-3，自定义CDN优选地址)：" && sleep 2
       echo
       echo "分享链接【v2rayn、v2rayng、nekobox、小火箭shadowrocket】"
-      local argo_domain=$(cat "$SBFOLDER/argo.log" 2>/dev/null | grep -a trycloudflare.com | awk 'NR==2{print}' | awk -F// '{print $2}' | awk '{print $1}')
+      local argo_domain=$(grep -a -o -E '[a-zA-Z0-9.-]+\.trycloudflare\.com' "$SBFOLDER/argo.log" 2>/dev/null | head -n 1)
       local vm_argo_temp_link="vmess://$(echo '{"add":"'$vmadd_argo'","aid":"0","host":"'$argo_domain'","id":"'$uuid_vm_ws'","net":"ws","path":"'$uuid_vm_ws'","port":"443","ps":"'vm-argo-$hostname'","tls":"tls","sni":"'$argo_domain'","fp":"chrome","type":"none","v":"2"}' | base64 -w 0)"
       echo -e "${yellow}$vm_argo_temp_link${plain}"
       echo
@@ -2111,7 +2123,13 @@ resvmess() {
     
     echo
     white "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-    if [[ "$server_ip" = "dual" ]]; then
+    if [[ -f "$SBFOLDER/cfvmadd_local.txt" ]]; then
+      local vm_ws_link="vmess://$(echo '{"add":"'$vmadd_local'","aid":"0","host":"'$tls_sni'","id":"'$uuid_vm_ws'","net":"ws","path":"'$uuid_vm_ws'","port":"'$port_vm_ws'","ps":"'vm-ws-$hostname'","tls":"","type":"none","v":"2"}' | base64 -w 0)"
+      echo "$vm_ws_link" > "$SBFOLDER/vm_ws.txt"
+      red "🚀【 vmess-ws 】节点信息如下 (已启用自定义优选地址)：" && sleep 2
+      echo -e "${yellow}$vm_ws_link${plain}\n"
+      print_qr "$vm_ws_link"
+    elif [[ "$server_ip" = "dual" ]]; then
       local v4_addr=$(cat "$SBFOLDER/v4.log" 2>/dev/null)
       local v6_addr=$(cat "$SBFOLDER/v6.log" 2>/dev/null)
       local vm_ws_link_v4="vmess://$(echo '{"add":"'$v4_addr'","aid":"0","host":"'$tls_sni'","id":"'$uuid_vm_ws'","net":"ws","path":"'$uuid_vm_ws'","port":"'$port_vm_ws'","ps":"'vm-ws-$hostname-IPV4'","tls":"","type":"none","v":"2"}' | base64 -w 0)"
@@ -2135,7 +2153,13 @@ resvmess() {
   if [[ -n "$port_vm_ws_tls" ]]; then
     echo
     white "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-    if [[ "$server_ip" = "dual" ]]; then
+    if [[ -f "$SBFOLDER/cfvmadd_local.txt" ]]; then
+      red "🚀【 vmess-ws-tls 】节点信息如下 (已启用自定义优选地址)：" && sleep 2
+      local vm_ws_tls_link="vmess://$(echo '{"add":"'$vmadd_local'","aid":"0","host":"'$tls_sni'","id":"'$uuid_vm_ws_tls'","net":"ws","path":"'$uuid_vm_ws_tls'","port":"'$p_vm_ws_tls'","ps":"'vm-ws-tls-$hostname'","tls":"tls","sni":"'$tls_sni'","fp":"chrome","type":"none","v":"2"}' | base64 -w 0)"
+      echo -e "${yellow}$vm_ws_tls_link${plain}"
+      print_qr "$vm_ws_tls_link"
+      echo "$vm_ws_tls_link" > "$SBFOLDER/vm_ws_tls.txt"
+    elif [[ "$server_ip" = "dual" ]]; then
       local v4_addr=$(cat "$SBFOLDER/v4.log" 2>/dev/null)
       local v6_addr=$(cat "$SBFOLDER/v6.log" 2>/dev/null)
       local vm_ws_tls_link_v4="vmess://$(echo '{"add":"'$v4_addr'","aid":"0","host":"'$tls_sni'","id":"'$uuid_vm_ws_tls'","net":"ws","path":"'$uuid_vm_ws_tls'","port":"'$p_vm_ws_tls'","ps":"'vm-ws-tls-$hostname-IPV4'","tls":"tls","sni":"'$tls_sni'","fp":"chrome","type":"none","v":"2"}' | base64 -w 0)"
@@ -2718,19 +2742,24 @@ $extra_yaml\n\n"
     if [[ -z "$var_port" ]]; then
       return 0
     fi
-    local is_domain=false
-    if [[ "$is_self_signed" == "false" && -n "$ym_domain" && "$ym_domain" != "www.bing.com" ]]; then
-      if ! [[ "$ym_domain" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-        is_domain=true
-      fi
-    fi
-    if $is_domain; then
-      echo "single|$ym_domain"
-    elif [[ "$server_ipcl" = "dual" ]]; then
-      echo "v4|$v4_addr v6|[$v6_addr]"
+    if [[ -f "$SBFOLDER/cfvmadd_local.txt" ]]; then
+      local local_cdn=$(cat "$SBFOLDER/cfvmadd_local.txt" 2>/dev/null)
+      echo "single|$local_cdn"
     else
-      local server_ip=$(cat "$SBFOLDER/server_ip.log" 2>/dev/null || curl -s4 ip.sb)
-      echo "single|${server_ip:-$default_server}"
+      local is_domain=false
+      if [[ "$is_self_signed" == "false" && -n "$ym_domain" && "$ym_domain" != "www.bing.com" ]]; then
+        if ! [[ "$ym_domain" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          is_domain=true
+        fi
+      fi
+      if $is_domain; then
+        echo "single|$ym_domain"
+      elif [[ "$server_ipcl" = "dual" ]]; then
+        echo "v4|$v4_addr v6|[$v6_addr]"
+      else
+        local server_ip=$(cat "$SBFOLDER/server_ip.log" 2>/dev/null || curl -s4 ip.sb)
+        echo "single|${server_ip:-$default_server}"
+      fi
     fi
   }
 
@@ -3292,7 +3321,7 @@ $cl_tls_caddy
     fi
     
     if ps -ef 2>/dev/null | grep -q "[l]ocalhost:$port_vm_ws"; then
-      local argo_domain=$(cat "$SBFOLDER/argo.log" 2>/dev/null | grep -a trycloudflare.com | awk 'NR==2{print}' | awk -F// '{print $2}' | awk '{print $1}')
+      local argo_domain=$(grep -a -o -E '[a-zA-Z0-9.-]+\.trycloudflare\.com' "$SBFOLDER/argo.log" 2>/dev/null | head -n 1)
       local argo_temp_extra=$(jq -n --arg uuid "$uuid_vm_ws" --arg host "$argo_domain" --arg path "$argo_path" \
         '{uuid: $uuid, security: "auto", packet_encoding: "packetaddr", transport: {type: "ws", path: $path, headers: {Host: $host}}, tls: {enabled: true, server_name: $host, insecure: false, utls: {enabled: true, fingerprint: "chrome"}}}')
       add_sb_outbound "vmess-tls-argo临时-$hostname" "vmess" "$vmadd_argo" "443" "$argo_temp_extra"
@@ -3397,10 +3426,12 @@ sbshare() {
     if [[ "$qr_choice" =~ ^[Yy]$ ]]; then
       show_qr_code=true
     fi
-    show_client_config=true
-    readp "是否需要同时在控制台输出Mihomo、Sing-box客户端SFA/SFI/SFW三合一配置？[Y/n] (默认输出)：" client_choice
-    if [[ "$client_choice" =~ ^[Nn]$ ]]; then
-      show_client_config=false
+    if [[ "$1" == "install" ]]; then
+      show_client_config=true
+      readp "是否需要同时在控制台输出Mihomo、Sing-box客户端SFA/SFI/SFW三合一配置？[Y/n] (默认输出)：" client_choice
+      if [[ "$client_choice" =~ ^[Nn]$ ]]; then
+        show_client_config=false
+      fi
     fi
   fi
 
@@ -3542,8 +3573,8 @@ cfargo_ym() {
     yellow "因未安装 VMess 协议，无法开启 Argo 隧道！" && sleep 2 && changeserv
     return
   fi
-  tls=$(echo "$clean_json" | jq -r '(.inbounds[] | select(.type == "vmess") | .tls.enabled) // empty')
-  if [[ "$tls" = "false" ]]; then
+  local vm_no_tls=$(echo "$clean_json" | jq -r '(.inbounds[] | select(.tag == "vmess-ws-sb") | .listen_port) // empty')
+  if [[ -n "$vm_no_tls" ]]; then
     echo
     yellow "1：添加或者删除Argo临时隧道"
     yellow "2：添加或者删除Argo固定隧道"
@@ -3646,15 +3677,37 @@ cfargo() {
   yellow "0：返回上层"
   readp "请选择【0-2】：" menu
   local clean_json=$(strip_json_comments "$SBFOLDER/sb.json")
-  local vm_listen_port=$(echo "$clean_json" | jq -r '(.inbounds[] | select(.type == "vmess") | .listen_port) // empty')
+  local vm_listen_port=$(echo "$clean_json" | jq -r '(.inbounds[] | select(.tag == "vmess-ws-sb") | .listen_port) // empty')
   if [ "$menu" = "1" ]; then
     green "请稍等……"
     cloudflaredargo
     ps -ef | grep "[l]ocalhost:$vm_listen_port" | awk '{print $2}' | xargs kill 2>/dev/null
     nohup "$SBFOLDER/cloudflared" tunnel --url "http://localhost:$vm_listen_port" --edge-ip-version auto --no-autoupdate --protocol http2 > "$SBFOLDER/argo.log" 2>&1 &
-    sleep 20
-    local argo_url=$(cat "$SBFOLDER/argo.log" 2>/dev/null | grep -a trycloudflare.com | awk 'NR==2{print}' | awk -F// '{print $2}' | awk '{print $1}')
-    if [[ -n $(curl -sL "https://$argo_url/" -I | awk 'NR==1 && /404|400|503/') ]]; then
+    local argo_url=""
+    local count=0
+    while [ $count -lt 15 ]; do
+      sleep 2
+      argo_url=$(grep -a -o -E '[a-zA-Z0-9.-]+\.trycloudflare\.com' "$SBFOLDER/argo.log" 2>/dev/null | head -n 1)
+      if [[ -n "$argo_url" ]]; then
+        break
+      fi
+      count=$((count + 1))
+    done
+
+    local verified=false
+    if [[ -n "$argo_url" ]]; then
+      local vcount=0
+      while [ $vcount -lt 5 ]; do
+        if [[ -n $(curl -sL "https://$argo_url/" -I 2>/dev/null | awk 'NR==1 && /404|400|503|200|502/') ]]; then
+          verified=true
+          break
+        fi
+        sleep 2
+        vcount=$((vcount + 1))
+      done
+    fi
+
+    if [ "$verified" = "true" ]; then
       argo=$argo_url
       sbshare > /dev/null 2>&1
       blue "Argo临时隧道申请成功，域名验证有效：$argo" && sleep 2
@@ -5731,7 +5784,7 @@ unins() {
   fi
   
   local clean_json=$(strip_json_comments "$SBFOLDER/sb.json" 2>/dev/null)
-  local vm_listen_port=$(echo "$clean_json" | jq -r '(.inbounds[] | select(.type == "vmess") | .listen_port) // empty' 2>/dev/null)
+  local vm_listen_port=$(echo "$clean_json" | jq -r '(.inbounds[] | select(.tag == "vmess-ws-sb") | .listen_port) // empty' 2>/dev/null)
   [ -n "$vm_listen_port" ] && ps -ef | grep "[l]ocalhost:$vm_listen_port" | awk '{print $2}' | xargs kill 2>/dev/null
   ps -ef | grep -E '[s]bwpph|[w]arp-plus|[g]ost|[u]sque|[c]loudflared|[c]addy' | awk '{print $2}' | xargs kill -9 2>/dev/null
   if command -v warp-cli >/dev/null 2>&1; then
@@ -6154,7 +6207,7 @@ showprotocol() {
 
   if [ "$argoym" = "已开启" ]; then
     if ps -ef 2>/dev/null | grep -q "[l]ocalhost:$port_vm_ws"; then
-      echo -e "Argo临时域名：${yellow}$(cat "$SBFOLDER/argo.log" 2>/dev/null | grep -a trycloudflare.com | awk 'NR==2{print}' | awk -F// '{print $2}' | awk '{print $1}')${plain}"
+      echo -e "Argo临时域名：${yellow}$(grep -a -o -E '[a-zA-Z0-9.-]+\.trycloudflare\.com' "$SBFOLDER/argo.log" 2>/dev/null | head -n 1)${plain}"
     fi
     if ps -ef 2>/dev/null | grep -q '[c]loudflared.*run'; then
       echo -e "Argo固定域名：${yellow}$(cat "$SBFOLDER/sbargoym.log" 2>/dev/null)${plain}"
@@ -6449,7 +6502,7 @@ instsllsingbox() {
   cronsb
   
   wgcfgo
-  sbshare
+  sbshare "install"
   
   blue "Sing-box脚本安装成功，脚本快捷方式：sb"
   cronsb
