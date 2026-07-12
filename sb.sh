@@ -3391,10 +3391,16 @@ sbshare() {
   rm -rf "$SBFOLDER"/{jhdy,vl_reality,vl_ws_tls,vl_hu_tls,vm_ws_argols,vm_ws_argogd,vm_ws,vm_ws_tls,vm_hu_tls,hy2,tuic5,an,tr_tls,tr_ws_tls,tr_hu_tls,ss,vm_tcp,vm_http,vm_quic,vm_h2_tls,vl_h2_tls,tr_h2_tls,vl_h2_reality,socks}.txt
   
   local show_qr_code=false
+  local show_client_config=false
   if [ -t 1 ]; then
     readp "是否需要同时在控制台输出各个节点的二维码？[y/N] (默认不输出)：" qr_choice
     if [[ "$qr_choice" =~ ^[Yy]$ ]]; then
       show_qr_code=true
+    fi
+    show_client_config=true
+    readp "是否需要同时在控制台输出Mihomo、Sing-box客户端SFA/SFI/SFW三合一配置？[Y/n] (默认输出)：" client_choice
+    if [[ "$client_choice" =~ ^[Nn]$ ]]; then
+      show_client_config=false
     fi
   fi
 
@@ -3461,6 +3467,26 @@ sbshare() {
   white "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
   echo
   sb_client
+
+  if $show_client_config; then
+    white "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    red "🚀Mihomo配置文件显示如下："
+    red "文件目录 $SBFOLDER/clmi.yaml ，复制自建以yaml文件格式为准" && sleep 2
+    echo
+    cat "$SBFOLDER/clmi.yaml"
+    echo
+    white "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    echo
+    white "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    red "🚀SFA/SFI/SFW配置文件显示如下："
+    red "安卓SFA、苹果SFI，win电脑官方文件包SFW请到官方Github项目自行下载，"
+    red "文件目录 $SBFOLDER/sbox.json ，复制自建以json文件格式为准" && sleep 2
+    echo
+    cat "$SBFOLDER/sbox.json"
+    echo
+    white "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    echo
+  fi
 }
 
 clash_sb_share() {
