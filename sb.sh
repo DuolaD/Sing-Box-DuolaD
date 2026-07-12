@@ -269,6 +269,42 @@ inssb() {
 }
 
 # --- Certificate Generation & Acms.sh wrapping ---
+generate_self_signed_cert() {
+  local target_key="$1"
+  local target_cert="$2"
+  local domain="www.bing.com"
+  
+  if ! command -v openssl &>/dev/null; then
+    if command -v apt &>/dev/null; then
+      apt update -y && apt install -y openssl
+    elif command -v yum &>/dev/null; then
+      yum install -y openssl
+    fi
+  fi
+  
+  cat > /tmp/openssl_ca.cnf <<EOF
+[req]
+distinguished_name = req_distinguished_name
+x509_extensions = v3_ca
+prompt = no
+
+[req_distinguished_name]
+CN = $domain
+
+[v3_ca]
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid:always,issuer
+basicConstraints = critical, CA:true
+keyUsage = critical, digitalSignature, cRLSign, keyCertSign
+extendedKeyUsage = serverAuth
+subjectAltName = DNS:$domain
+EOF
+
+  openssl ecparam -genkey -name prime256v1 -out "$target_key" >/dev/null 2>&1
+  openssl req -new -x509 -days 36500 -key "$target_key" -out "$target_cert" -config /tmp/openssl_ca.cnf >/dev/null 2>&1
+  rm -f /tmp/openssl_ca.cnf
+}
+
 inscertificate() {
   ymzs() {
     ym_vl_re=apple.com
@@ -294,8 +330,7 @@ inscertificate() {
   green "二、生成并设置相关证书"
   echo
   blue "自动生成bing自签证书中……" && sleep 2
-  openssl ecparam -genkey -name prime256v1 -out "$SBFOLDER/private.key"
-  openssl req -new -x509 -days 36500 -key "$SBFOLDER/private.key" -out "$SBFOLDER/cert.pem" -subj "/CN=www.bing.com"
+  generate_self_signed_cert "$SBFOLDER/private.key" "$SBFOLDER/cert.pem"
   echo
   if [[ -f "$SBFOLDER/cert.pem" ]]; then
     blue "生成bing自签证书成功"
@@ -575,6 +610,18 @@ insport() {
 
 # --- JSON Config Generator (Server Side) ---
 inssbjsonser() {
+  local use_caddy_active=false
+  if [[ "$use_caddy" == "true" ]]; then
+    use_caddy_active=true
+  elif systemctl is-active --quiet caddy 2>/dev/null || rc-service caddy status 2>/dev/null | grep -q "started"; then
+    use_caddy_active=true
+  fi
+
+  local sb_tls_enabled="true"
+  if $use_caddy_active; then
+    sb_tls_enabled="false"
+  fi
+
   # VLESS-Reality
   local vl_re_inb='{
     "type": "vless",
@@ -615,12 +662,12 @@ inssbjsonser() {
     ],
     "transport": {
       "type": "ws",
-      "path": "'"${uuid_vl_ws}"'",
+      "path": "/'"${uuid_vl_ws}"'",
       "max_early_data": 2048,
       "early_data_header_name": "Sec-WebSocket-Protocol"
     },
     "tls": {
-      "enabled": true,
+      "enabled": '"$sb_tls_enabled"',
       "server_name": "'"${ym_domain}"'",
       "certificate_path": "'"${certificatec}"'",
       "key_path": "'"${certificatep}"'"
@@ -640,10 +687,10 @@ inssbjsonser() {
     ],
     "transport": {
       "type": "httpupgrade",
-      "path": "'"${uuid_vl_hu}"'"
+      "path": "/'"${uuid_vl_hu}"'"
     },
     "tls": {
-      "enabled": true,
+      "enabled": '"$sb_tls_enabled"',
       "server_name": "'"${ym_domain}"'",
       "certificate_path": "'"${certificatec}"'",
       "key_path": "'"${certificatep}"'"
@@ -664,7 +711,7 @@ inssbjsonser() {
     ],
     "transport": {
       "type": "ws",
-      "path": "'"${uuid_vm_ws}"'",
+      "path": "/'"${uuid_vm_ws}"'",
       "max_early_data": 2048,
       "early_data_header_name": "Sec-WebSocket-Protocol"
     },
@@ -687,12 +734,12 @@ inssbjsonser() {
     ],
     "transport": {
       "type": "ws",
-      "path": "'"${uuid_vm_ws_tls}"'",
+      "path": "/'"${uuid_vm_ws_tls}"'",
       "max_early_data": 2048,
       "early_data_header_name": "Sec-WebSocket-Protocol"
     },
     "tls": {
-      "enabled": true,
+      "enabled": '"$sb_tls_enabled"',
       "server_name": "'"${ym_domain}"'",
       "certificate_path": "'"${certificatec}"'",
       "key_path": "'"${certificatep}"'"
@@ -713,10 +760,10 @@ inssbjsonser() {
     ],
     "transport": {
       "type": "httpupgrade",
-      "path": "'"${uuid_vm_hu_tls}"'"
+      "path": "/'"${uuid_vm_hu_tls}"'"
     },
     "tls": {
-      "enabled": true,
+      "enabled": '"$sb_tls_enabled"',
       "server_name": "'"${ym_domain}"'",
       "certificate_path": "'"${certificatec}"'",
       "key_path": "'"${certificatep}"'"
@@ -755,12 +802,12 @@ inssbjsonser() {
     ],
     "transport": {
       "type": "ws",
-      "path": "'"${uuid_tr_ws_tls}"'",
+      "path": "/'"${uuid_tr_ws_tls}"'",
       "max_early_data": 2048,
       "early_data_header_name": "Sec-WebSocket-Protocol"
     },
     "tls": {
-      "enabled": true,
+      "enabled": '"$sb_tls_enabled"',
       "server_name": "'"${ym_domain}"'",
       "certificate_path": "'"${certificatec}"'",
       "key_path": "'"${certificatep}"'"
@@ -780,10 +827,10 @@ inssbjsonser() {
     ],
     "transport": {
       "type": "httpupgrade",
-      "path": "'"${uuid_tr_hu_tls}"'"
+      "path": "/'"${uuid_tr_hu_tls}"'"
     },
     "tls": {
-      "enabled": true,
+      "enabled": '"$sb_tls_enabled"',
       "server_name": "'"${ym_domain}"'",
       "certificate_path": "'"${certificatec}"'",
       "key_path": "'"${certificatep}"'"
@@ -935,7 +982,7 @@ inssbjsonser() {
     "transport": {
       "type": "http",
       "host": ["'"${ym_domain}"'"],
-      "path": "'"${uuid_vm_h2_tls}"'"
+      "path": "/'"${uuid_vm_h2_tls}"'"
     },
     "tls": {
       "enabled": true,
@@ -959,7 +1006,7 @@ inssbjsonser() {
     "transport": {
       "type": "http",
       "host": ["'"${ym_domain}"'"],
-      "path": "'"${uuid_vl_h2}"'"
+      "path": "/'"${uuid_vl_h2}"'"
     },
     "tls": {
       "enabled": true,
@@ -983,7 +1030,7 @@ inssbjsonser() {
     "transport": {
       "type": "http",
       "host": ["'"${ym_domain}"'"],
-      "path": "'"${uuid_tr_h2_tls}"'"
+      "path": "/'"${uuid_tr_h2_tls}"'"
     },
     "tls": {
       "enabled": true,
@@ -1007,7 +1054,7 @@ inssbjsonser() {
     "transport": {
       "type": "http",
       "host": ["'"${ym_vl_re:-apple.com}"'"],
-      "path": "'"${uuid_vl_h2_re}"'"
+      "path": "/'"${uuid_vl_h2_re}"'"
     },
     "tls": {
       "enabled": true,
@@ -1344,6 +1391,265 @@ inssbjsonser() {
   sync_configs_from_sb_json
 }
 
+# --- Caddy Helper Functions ---
+write_caddyfile() {
+  local clean_json=$(strip_json_comments "$SBFOLDER/sb.json")
+  
+  local port_vl_ws=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "vless-ws-tls-sb") | .listen_port // empty' 2>/dev/null | head -n 1)
+  local port_vl_hu=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "vless-hu-tls-sb") | .listen_port // empty' 2>/dev/null | head -n 1)
+  local port_vl_h2=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "vless-h2-tls-sb") | .listen_port // empty' 2>/dev/null | head -n 1)
+  local port_vm_ws_tls=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "vmess-ws-tls-sb") | .listen_port // empty' 2>/dev/null | head -n 1)
+  local port_vm_hu_tls=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "vmess-hu-tls-sb") | .listen_port // empty' 2>/dev/null | head -n 1)
+  local port_vm_h2_tls=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "vmess-h2-tls-sb") | .listen_port // empty' 2>/dev/null | head -n 1)
+  local port_tr_ws_tls=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "trojan-ws-tls-sb") | .listen_port // empty' 2>/dev/null | head -n 1)
+  local port_tr_hu_tls=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "trojan-hu-tls-sb") | .listen_port // empty' 2>/dev/null | head -n 1)
+  local port_tr_h2_tls=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "trojan-h2-tls-sb") | .listen_port // empty' 2>/dev/null | head -n 1)
+
+  local path_vl_ws=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "vless-ws-tls-sb") | .users[0].uuid // empty' 2>/dev/null | head -n 1)
+  local path_vl_hu=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "vless-hu-tls-sb") | .users[0].uuid // empty' 2>/dev/null | head -n 1)
+  local path_vl_h2=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "vless-h2-tls-sb") | .users[0].uuid // empty' 2>/dev/null | head -n 1)
+  local path_vm_ws_tls=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "vmess-ws-tls-sb") | .users[0].uuid // empty' 2>/dev/null | head -n 1)
+  local path_vm_hu_tls=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "vmess-hu-tls-sb") | .users[0].uuid // empty' 2>/dev/null | head -n 1)
+  local path_vm_h2_tls=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "vmess-h2-tls-sb") | .users[0].uuid // empty' 2>/dev/null | head -n 1)
+  local path_tr_ws_tls=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "trojan-ws-tls-sb") | .users[0].password // empty' 2>/dev/null | head -n 1)
+  local path_tr_hu_tls=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "trojan-hu-tls-sb") | .users[0].password // empty' 2>/dev/null | head -n 1)
+  local path_tr_h2_tls=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "trojan-h2-tls-sb") | .users[0].password // empty' 2>/dev/null | head -n 1)
+
+  local cert_type=$(cat /etc/s-box/cert_type.log 2>/dev/null || echo "self")
+  local server_ip=$(cat "$SBFOLDER/server_ip.log" 2>/dev/null || curl -s4 ip.sb)
+  local ym_domain=$(cat /root/ygkkkca/ca.log 2>/dev/null)
+  
+  local site_addr=":443"
+  local tls_directive=""
+  local global_options="admin off"
+  
+  if [[ "$cert_type" == "domain" && -n "$ym_domain" ]]; then
+    site_addr="$ym_domain:443"
+  elif [[ "$cert_type" == "ip" && -n "$server_ip" ]]; then
+    site_addr="$server_ip:443"
+    tls_directive="tls /etc/s-box/cert.pem /etc/s-box/private.key"
+    global_options="admin off
+  auto_https off"
+  else
+    site_addr=":443"
+    tls_directive="tls /etc/s-box/cert.pem /etc/s-box/private.key"
+    global_options="admin off
+  auto_https off"
+  fi
+
+  mkdir -p /etc/caddy
+  cat > /etc/caddy/Caddyfile <<EOF
+{
+  $global_options
+}
+
+$site_addr {
+  $tls_directive
+EOF
+
+  if [[ -n "$port_vl_ws" && -n "$path_vl_ws" ]]; then
+    echo "  reverse_proxy /$path_vl_ws 127.0.0.1:$port_vl_ws" >> /etc/caddy/Caddyfile
+  fi
+  if [[ -n "$port_vl_hu" && -n "$path_vl_hu" ]]; then
+    echo "  reverse_proxy /$path_vl_hu 127.0.0.1:$port_vl_hu" >> /etc/caddy/Caddyfile
+  fi
+  if [[ -n "$port_vm_ws_tls" && -n "$path_vm_ws_tls" ]]; then
+    echo "  reverse_proxy /$path_vm_ws_tls 127.0.0.1:$port_vm_ws_tls" >> /etc/caddy/Caddyfile
+  fi
+  if [[ -n "$port_vm_hu_tls" && -n "$path_vm_hu_tls" ]]; then
+    echo "  reverse_proxy /$path_vm_hu_tls 127.0.0.1:$port_vm_hu_tls" >> /etc/caddy/Caddyfile
+  fi
+  if [[ -n "$port_tr_ws_tls" && -n "$path_tr_ws_tls" ]]; then
+    echo "  reverse_proxy /$path_tr_ws_tls 127.0.0.1:$port_tr_ws_tls" >> /etc/caddy/Caddyfile
+  fi
+  if [[ -n "$port_tr_hu_tls" && -n "$path_tr_hu_tls" ]]; then
+    echo "  reverse_proxy /$path_tr_hu_tls 127.0.0.1:$port_tr_hu_tls" >> /etc/caddy/Caddyfile
+  fi
+
+  if [[ -n "$port_vl_h2" && -n "$path_vl_h2" ]]; then
+    cat >> /etc/caddy/Caddyfile <<EOF
+  reverse_proxy /$path_vl_h2 https://127.0.0.1:$port_vl_h2 {
+    transport http {
+      tls_insecure_skip_verify
+    }
+  }
+EOF
+  fi
+  if [[ -n "$port_vm_h2_tls" && -n "$path_vm_h2_tls" ]]; then
+    cat >> /etc/caddy/Caddyfile <<EOF
+  reverse_proxy /$path_vm_h2_tls https://127.0.0.1:$port_vm_h2_tls {
+    transport http {
+      tls_insecure_skip_verify
+    }
+  }
+EOF
+  fi
+  if [[ -n "$port_tr_h2_tls" && -n "$path_tr_h2_tls" ]]; then
+    cat >> /etc/caddy/Caddyfile <<EOF
+  reverse_proxy /$path_tr_h2_tls https://127.0.0.1:$port_tr_h2_tls {
+    transport http {
+      tls_insecure_skip_verify
+    }
+  }
+EOF
+  fi
+
+  echo "}" >> /etc/caddy/Caddyfile
+}
+
+setup_caddy_cert() {
+  echo "$cert_type" > /etc/s-box/cert_type.log
+  mkdir -p /etc/s-box
+  
+  if [[ "$cert_type" == "self" ]]; then
+    blue "正在生成 Caddy 自签证书..."
+    generate_self_signed_cert /etc/s-box/private.key /etc/s-box/cert.pem
+    cp -f /etc/s-box/private.key "$SBFOLDER/private.key" 2>/dev/null
+    cp -f /etc/s-box/cert.pem "$SBFOLDER/cert.pem" 2>/dev/null
+    cp -f /etc/s-box/ca.pem "$SBFOLDER/ca.pem" 2>/dev/null
+    is_self_signed=true
+    tls_sni="www.bing.com"
+    ym_domain="www.bing.com"
+    certificatec="/etc/s-box/cert.pem"
+    certificatep="/etc/s-box/private.key"
+  elif [[ "$cert_type" == "ip" ]]; then
+    local server_ip=$(cat "$SBFOLDER/server_ip.log" 2>/dev/null || curl -s4 ip.sb)
+    blue "正在使用 acme.sh 申请 IP 证书 ($server_ip)..."
+    
+    if ! command -v ~/.acme.sh/acme.sh &>/dev/null; then
+      blue "正在安装 acme.sh..."
+      curl -s https://get.acme.sh | sh >/dev/null 2>&1
+    fi
+    
+    if ss -tunlp | grep -q -E ":80\b"; then
+      yellow "警告：检测到 80 端口已被占用，临时停止冲突服务..."
+      systemctl stop nginx caddy apache2 2>/dev/null
+    fi
+    
+    ~/.acme.sh/acme.sh --set-default-ca --server letsencrypt --force > /dev/null 2>&1
+    ~/.acme.sh/acme.sh --register-account -m "caddy_singbox@gmail.com" > /dev/null 2>&1
+    
+    ~/.acme.sh/acme.sh --issue \
+        -d "$server_ip" \
+        --standalone \
+        --server letsencrypt \
+        --certificate-profile shortlived \
+        --days 6 \
+        --httpport 80 \
+        --force
+        
+    if [[ $? -eq 0 ]]; then
+      ~/.acme.sh/acme.sh --installcert --force -d "$server_ip" \
+          --key-file "/etc/s-box/private.key" \
+          --fullchain-file "/etc/s-box/cert.pem"
+      chmod 600 /etc/s-box/private.key
+      chmod 644 /etc/s-box/cert.pem
+      cp -f /etc/s-box/private.key "$SBFOLDER/private.key" 2>/dev/null
+      cp -f /etc/s-box/cert.pem "$SBFOLDER/cert.pem" 2>/dev/null
+      blue "IP 证书申请并安装成功！"
+      is_self_signed=false
+      tls_sni="$server_ip"
+      ym_domain="$server_ip"
+      certificatec="/etc/s-box/cert.pem"
+      certificatep="/etc/s-box/private.key"
+    else
+      red "IP 证书申请失败！回退使用自签证书。"
+      cert_type="self"
+      setup_caddy_cert
+    fi
+  elif [[ "$cert_type" == "domain" ]]; then
+    blue "域名证书将由 Caddy 自动申请与续期。"
+    is_self_signed=false
+    tls_sni="$ym_domain"
+    generate_self_signed_cert /etc/s-box/private.key /etc/s-box/cert.pem
+    cp -f /etc/s-box/private.key "$SBFOLDER/private.key" 2>/dev/null
+    cp -f /etc/s-box/cert.pem "$SBFOLDER/cert.pem" 2>/dev/null
+    cp -f /etc/s-box/ca.pem "$SBFOLDER/ca.pem" 2>/dev/null
+    certificatec="/etc/s-box/cert.pem"
+    certificatep="/etc/s-box/private.key"
+  fi
+}
+
+caddyservice() {
+  [[ "$use_caddy" != "true" ]] && return 0
+  
+  if [[ ! -f /usr/local/bin/caddy ]]; then
+    echo
+    blue "正在下载并安装 Caddy..."
+    local cver="2.8.4"
+    local arch_name="amd64"
+    case "$cpu" in
+      arm64) arch_name="arm64" ;;
+      armv7) arch_name="armv6" ;;
+      amd64) arch_name="amd64" ;;
+    esac
+    local caddy_url="https://github.com/caddyserver/caddy/releases/download/v${cver}/caddy_${cver}_linux_${arch_name}.tar.gz"
+    mkdir -p /tmp/caddy
+    if curl -sL "$caddy_url" -o /tmp/caddy/caddy.tar.gz; then
+      tar -zxf /tmp/caddy/caddy.tar.gz -C /tmp/caddy
+      mv -f /tmp/caddy/caddy /usr/local/bin/caddy
+      chmod +x /usr/local/bin/caddy
+      rm -rf /tmp/caddy
+      blue "Caddy 安装成功"
+    else
+      red "Caddy 下载失败！"
+      exit 1
+    fi
+  fi
+
+  write_caddyfile
+
+  if command -v apk >/dev/null 2>&1; then
+    cat > /etc/init.d/caddy <<EOF
+#!/sbin/openrc-run
+name="Caddy"
+description="Caddy web server"
+command="/usr/local/bin/caddy"
+command_args="run --environ --config /etc/caddy/Caddyfile --adapter caddyfile"
+command_background=true
+pidfile="/var/run/caddy.pid"
+
+supervisor=supervise-daemon
+
+depend() {
+    need net
+    after firewall
+}
+EOF
+    chmod +x /etc/init.d/caddy
+    rc-update add caddy default
+    rc-service caddy restart
+  else
+    cat > /etc/systemd/system/caddy.service <<EOF
+[Unit]
+Description=Caddy
+Documentation=https://caddyserver.com/docs/
+After=network.target network-online.target
+Requires=network-online.target
+
+[Service]
+Type=exec
+User=root
+Group=root
+ExecStart=/usr/local/bin/caddy run --environ --config /etc/caddy/Caddyfile --adapter caddyfile
+ExecReload=/usr/local/bin/caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile
+TimeoutStopSec=5s
+LimitNPROC=10000
+LimitNOFILE=1048576
+PrivateTmp=true
+ProtectSystem=full
+
+[Install]
+WantedBy=multi-user.target
+EOF
+    systemctl daemon-reload
+    systemctl enable caddy
+    systemctl restart caddy
+  fi
+  
+  blue "Caddy 服务已启动/重启！"
+}
+
 # --- Service Management (Systemd & OpenRC) ---
 sbservice() {
   if command -v apk >/dev/null 2>&1; then
@@ -1645,6 +1951,26 @@ resvless() {
     vl_tls_params+="&pinnedPeerCertSha256=$SHA256"
   fi
   
+  local caddy_active=false
+  if systemctl is-active --quiet caddy 2>/dev/null || rc-service caddy status 2>/dev/null | grep -q "started"; then
+    caddy_active=true
+  fi
+
+  local p_vl_ws="$port_vl_ws_tls"
+  local p_vl_hu="$port_vl_hu_tls"
+  local s_ip_ws="$server_ip"
+  local s_ip_hu="$server_ip"
+  
+  if $caddy_active; then
+    p_vl_ws="443"
+    p_vl_hu="443"
+    local cert_type=$(cat /etc/s-box/cert_type.log 2>/dev/null || echo "self")
+    if [[ "$cert_type" == "domain" && -n "$tls_sni" ]]; then
+      s_ip_ws="$tls_sni"
+      s_ip_hu="$tls_sni"
+    fi
+  fi
+
   if [[ -n "$port_vl_re" ]]; then
     echo
     white "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
@@ -1675,8 +2001,8 @@ resvless() {
     if [[ "$server_ip" = "dual" ]]; then
       local v4_addr=$(cat "$SBFOLDER/v4.log" 2>/dev/null)
       local v6_addr=$(cat "$SBFOLDER/v6.log" 2>/dev/null)
-      local vl_ws_link_v4="vless://$uuid_vl_ws@$v4_addr:$port_vl_ws_tls?encryption=none&security=tls&sni=$tls_sni&type=ws&path=%2F${uuid_vl_ws}&${vl_tls_params}#vl-ws-tls-$hostname-IPV4"
-      local vl_ws_link_v6="vless://$uuid_vl_ws@[$v6_addr]:$port_vl_ws_tls?encryption=none&security=tls&sni=$tls_sni&type=ws&path=%2F${uuid_vl_ws}&${vl_tls_params}#vl-ws-tls-$hostname-IPV6"
+      local vl_ws_link_v4="vless://$uuid_vl_ws@$v4_addr:$p_vl_ws?encryption=none&security=tls&sni=$tls_sni&type=ws&path=%2F${uuid_vl_ws}&${vl_tls_params}#vl-ws-tls-$hostname-IPV4"
+      local vl_ws_link_v6="vless://$uuid_vl_ws@[$v6_addr]:$p_vl_ws?encryption=none&security=tls&sni=$tls_sni&type=ws&path=%2F${uuid_vl_ws}&${vl_tls_params}#vl-ws-tls-$hostname-IPV6"
       echo -e "$vl_ws_link_v4\n$vl_ws_link_v6" > "$SBFOLDER/vl_ws_tls.txt"
       red "🚀【 vless-ws-tls-IPV4 】节点信息如下：" && sleep 1
       echo -e "${yellow}$vl_ws_link_v4${plain}\n"
@@ -1685,7 +2011,7 @@ resvless() {
       echo -e "${yellow}$vl_ws_link_v6${plain}\n"
       print_qr "$vl_ws_link_v6"
     else
-      local vl_ws_link="vless://$uuid_vl_ws@$server_ip:$port_vl_ws_tls?encryption=none&security=tls&sni=$tls_sni&type=ws&path=%2F${uuid_vl_ws}&${vl_tls_params}#vl-ws-tls-$hostname"
+      local vl_ws_link="vless://$uuid_vl_ws@$s_ip_ws:$p_vl_ws?encryption=none&security=tls&sni=$tls_sni&type=ws&path=%2F${uuid_vl_ws}&${vl_tls_params}#vl-ws-tls-$hostname"
       echo "$vl_ws_link" > "$SBFOLDER/vl_ws_tls.txt"
       red "🚀【 vless-ws-tls 】节点信息如下：" && sleep 2
       echo -e "${yellow}$vl_ws_link${plain}\n"
@@ -1699,8 +2025,8 @@ resvless() {
     if [[ "$server_ip" = "dual" ]]; then
       local v4_addr=$(cat "$SBFOLDER/v4.log" 2>/dev/null)
       local v6_addr=$(cat "$SBFOLDER/v6.log" 2>/dev/null)
-      local vl_hu_link_v4="vless://$uuid_vl_hu@$v4_addr:$port_vl_hu_tls?encryption=none&security=tls&sni=$tls_sni&type=httpupgrade&path=%2F${uuid_vl_hu}&${vl_tls_params}#vl-hu-tls-$hostname-IPV4"
-      local vl_hu_link_v6="vless://$uuid_vl_hu@[$v6_addr]:$port_vl_hu_tls?encryption=none&security=tls&sni=$tls_sni&type=httpupgrade&path=%2F${uuid_vl_hu}&${vl_tls_params}#vl-hu-tls-$hostname-IPV6"
+      local vl_hu_link_v4="vless://$uuid_vl_hu@$v4_addr:$p_vl_hu?encryption=none&security=tls&sni=$tls_sni&type=httpupgrade&path=%2F${uuid_vl_hu}&${vl_tls_params}#vl-hu-tls-$hostname-IPV4"
+      local vl_hu_link_v6="vless://$uuid_vl_hu@[$v6_addr]:$p_vl_hu?encryption=none&security=tls&sni=$tls_sni&type=httpupgrade&path=%2F${uuid_vl_hu}&${vl_tls_params}#vl-hu-tls-$hostname-IPV6"
       echo -e "$vl_hu_link_v4\n$vl_hu_link_v6" > "$SBFOLDER/vl_hu_tls.txt"
       red "🚀【 vless-hu-tls-IPV4 】节点信息如下：" && sleep 1
       echo -e "${yellow}$vl_hu_link_v4${plain}\n"
@@ -1709,7 +2035,7 @@ resvless() {
       echo -e "${yellow}$vl_hu_link_v6${plain}\n"
       print_qr "$vl_hu_link_v6"
     else
-      local vl_hu_link="vless://$uuid_vl_hu@$server_ip:$port_vl_hu_tls?encryption=none&security=tls&sni=$tls_sni&type=httpupgrade&path=%2F${uuid_vl_hu}&${vl_tls_params}#vl-hu-tls-$hostname"
+      local vl_hu_link="vless://$uuid_vl_hu@$s_ip_hu:$p_vl_hu?encryption=none&security=tls&sni=$tls_sni&type=httpupgrade&path=%2F${uuid_vl_hu}&${vl_tls_params}#vl-hu-tls-$hostname"
       echo "$vl_hu_link" > "$SBFOLDER/vl_hu_tls.txt"
       red "🚀【 vless-hu-tls 】节点信息如下：" && sleep 2
       echo -e "${yellow}$vl_hu_link${plain}\n"
@@ -1722,9 +2048,30 @@ resvmess() {
   [[ -z "$port_vm_ws" && -z "$port_vm_ws_tls" && -z "$port_vm_hu_tls" ]] && return 0
   server_ip=$(cat "$SBFOLDER/server_ip.log" 2>/dev/null)
   
+  local caddy_active=false
+  if systemctl is-active --quiet caddy 2>/dev/null || rc-service caddy status 2>/dev/null | grep -q "started"; then
+    caddy_active=true
+  fi
+
+  local p_vm_ws_tls="$port_vm_ws_tls"
+  local p_vm_hu_tls="$port_vm_hu_tls"
+  local s_ipcl_ws="$server_ipcl"
+  local s_ipcl_hu="$server_ipcl"
+  
+  if $caddy_active; then
+    p_vm_ws_tls="443"
+    p_vm_hu_tls="443"
+    local cert_type=$(cat /etc/s-box/cert_type.log 2>/dev/null || echo "self")
+    if [[ "$cert_type" == "domain" && -n "$tls_sni" ]]; then
+      s_ipcl_ws="$tls_sni"
+      s_ipcl_hu="$tls_sni"
+    fi
+  fi
+
   if [[ -n "$port_vm_ws" ]]; then
     local port_active=false
-    if ps -ef 2>/dev/null | grep -q "[l]ocalhost:$port_vm_ws"; then
+    if [[ -f "$SBFOLDER/argo.log" && -s "$SBFOLDER/argo.log" ]] && \
+       ps -ef | grep -v grep | grep -q "cloudflared.*localhost:$port_vm_ws"; then
       port_active=true
     fi
     
@@ -1742,7 +2089,13 @@ resvmess() {
       print_qr "$vm_argo_temp_link"
     fi
     
-    if ps -ef 2>/dev/null | grep -q '[c]loudflared.*run'; then
+    local fixed_argo_active=false
+    if [[ -f "$SBFOLDER/sbargoym.log" && -s "$SBFOLDER/sbargoym.log" ]] && \
+       { systemctl is-active --quiet argo 2>/dev/null || rc-service argo status 2>/dev/null | grep -q "started"; }; then
+      fixed_argo_active=true
+    fi
+    
+    if $fixed_argo_active; then
       local argogd=$(cat "$SBFOLDER/sbargoym.log" 2>/dev/null)
       echo
       white "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
@@ -1785,8 +2138,8 @@ resvmess() {
     if [[ "$server_ip" = "dual" ]]; then
       local v4_addr=$(cat "$SBFOLDER/v4.log" 2>/dev/null)
       local v6_addr=$(cat "$SBFOLDER/v6.log" 2>/dev/null)
-      local vm_ws_tls_link_v4="vmess://$(echo '{"add":"'$v4_addr'","aid":"0","host":"'$tls_sni'","id":"'$uuid_vm_ws_tls'","net":"ws","path":"'$uuid_vm_ws_tls'","port":"'$port_vm_ws_tls'","ps":"'vm-ws-tls-$hostname-IPV4'","tls":"tls","sni":"'$tls_sni'","fp":"chrome","type":"none","v":"2"}' | base64 -w 0)"
-      local vm_ws_tls_link_v6="vmess://$(echo '{"add":"['$v6_addr']","aid":"0","host":"'$tls_sni'","id":"'$uuid_vm_ws_tls'","net":"ws","path":"'$uuid_vm_ws_tls'","port":"'$port_vm_ws_tls'","ps":"'vm-ws-tls-$hostname-IPV6'","tls":"tls","sni":"'$tls_sni'","fp":"chrome","type":"none","v":"2"}' | base64 -w 0)"
+      local vm_ws_tls_link_v4="vmess://$(echo '{"add":"'$v4_addr'","aid":"0","host":"'$tls_sni'","id":"'$uuid_vm_ws_tls'","net":"ws","path":"'$uuid_vm_ws_tls'","port":"'$p_vm_ws_tls'","ps":"'vm-ws-tls-$hostname-IPV4'","tls":"tls","sni":"'$tls_sni'","fp":"chrome","type":"none","v":"2"}' | base64 -w 0)"
+      local vm_ws_tls_link_v6="vmess://$(echo '{"add":"['$v6_addr']","aid":"0","host":"'$tls_sni'","id":"'$uuid_vm_ws_tls'","net":"ws","path":"'$uuid_vm_ws_tls'","port":"'$p_vm_ws_tls'","ps":"'vm-ws-tls-$hostname-IPV6'","tls":"tls","sni":"'$tls_sni'","fp":"chrome","type":"none","v":"2"}' | base64 -w 0)"
       echo -e "$vm_ws_tls_link_v4\n$vm_ws_tls_link_v6" > "$SBFOLDER/vm_ws_tls.txt"
       red "🚀【 vmess-ws-tls-IPV4 】节点信息如下 (建议选择3-8-1，设置为CDN优选节点)：" && sleep 1
       echo -e "${yellow}$vm_ws_tls_link_v4${plain}\n"
@@ -1796,7 +2149,7 @@ resvmess() {
       print_qr "$vm_ws_tls_link_v6"
     else
       red "🚀【 vmess-ws-tls 】节点信息如下 (建议选择3-8-1，设置为CDN优选节点)：" && sleep 2
-      local vm_ws_tls_link="vmess://$(echo '{"add":"'$server_ipcl'","aid":"0","host":"'$tls_sni'","id":"'$uuid_vm_ws_tls'","net":"ws","path":"'$uuid_vm_ws_tls'","port":"'$port_vm_ws_tls'","ps":"'vm-ws-tls-$hostname'","tls":"tls","sni":"'$tls_sni'","fp":"chrome","type":"none","v":"2"}' | base64 -w 0)"
+      local vm_ws_tls_link="vmess://$(echo '{"add":"'$s_ipcl_ws'","aid":"0","host":"'$tls_sni'","id":"'$uuid_vm_ws_tls'","net":"ws","path":"'$uuid_vm_ws_tls'","port":"'$p_vm_ws_tls'","ps":"'vm-ws-tls-$hostname'","tls":"tls","sni":"'$tls_sni'","fp":"chrome","type":"none","v":"2"}' | base64 -w 0)"
       echo -e "${yellow}$vm_ws_tls_link${plain}"
       print_qr "$vm_ws_tls_link"
       echo "$vm_ws_tls_link" > "$SBFOLDER/vm_ws_tls.txt"
@@ -1809,8 +2162,8 @@ resvmess() {
     if [[ "$server_ip" = "dual" ]]; then
       local v4_addr=$(cat "$SBFOLDER/v4.log" 2>/dev/null)
       local v6_addr=$(cat "$SBFOLDER/v6.log" 2>/dev/null)
-      local vm_hu_tls_link_v4="vmess://$(echo '{"add":"'$v4_addr'","aid":"0","host":"'$tls_sni'","id":"'$uuid_vm_hu_tls'","net":"httpupgrade","path":"'$uuid_vm_hu_tls'","port":"'$port_vm_hu_tls'","ps":"'vm-hu-tls-$hostname-IPV4'","tls":"tls","sni":"'$tls_sni'","fp":"chrome","type":"none","v":"2"}' | base64 -w 0)"
-      local vm_hu_tls_link_v6="vmess://$(echo '{"add":"['$v6_addr']","aid":"0","host":"'$tls_sni'","id":"'$uuid_vm_hu_tls'","net":"httpupgrade","path":"'$uuid_vm_hu_tls'","port":"'$port_vm_hu_tls'","ps":"'vm-hu-tls-$hostname-IPV6'","tls":"tls","sni":"'$tls_sni'","fp":"chrome","type":"none","v":"2"}' | base64 -w 0)"
+      local vm_hu_tls_link_v4="vmess://$(echo '{"add":"'$v4_addr'","aid":"0","host":"'$tls_sni'","id":"'$uuid_vm_hu_tls'","net":"httpupgrade","path":"'$uuid_vm_hu_tls'","port":"'$p_vm_hu_tls'","ps":"'vm-hu-tls-$hostname-IPV4'","tls":"tls","sni":"'$tls_sni'","fp":"chrome","type":"none","v":"2"}' | base64 -w 0)"
+      local vm_hu_tls_link_v6="vmess://$(echo '{"add":"['$v6_addr']","aid":"0","host":"'$tls_sni'","id":"'$uuid_vm_hu_tls'","net":"httpupgrade","path":"'$uuid_vm_hu_tls'","port":"'$p_vm_hu_tls'","ps":"'vm-hu-tls-$hostname-IPV6'","tls":"tls","sni":"'$tls_sni'","fp":"chrome","type":"none","v":"2"}' | base64 -w 0)"
       echo -e "$vm_hu_tls_link_v4\n$vm_hu_tls_link_v6" > "$SBFOLDER/vm_hu_tls.txt"
       red "🚀【 vmess-hu-tls-IPV4 】节点信息如下 (建议选择3-8-1，设置为CDN优选节点)：" && sleep 1
       echo -e "${yellow}$vm_hu_tls_link_v4${plain}\n"
@@ -1819,7 +2172,7 @@ resvmess() {
       echo -e "${yellow}$vm_hu_tls_link_v6${plain}\n"
       print_qr "$vm_hu_tls_link_v6"
     else
-      local vm_hu_tls_link="vmess://$(echo '{"add":"'$server_ipcl'","aid":"0","host":"'$tls_sni'","id":"'$uuid_vm_hu_tls'","net":"httpupgrade","path":"'$uuid_vm_hu_tls'","port":"'$port_vm_hu_tls'","ps":"'vm-hu-tls-$hostname'","tls":"tls","sni":"'$tls_sni'","fp":"chrome","type":"none","v":"2"}' | base64 -w 0)"
+      local vm_hu_tls_link="vmess://$(echo '{"add":"'$s_ipcl_hu'","aid":"0","host":"'$tls_sni'","id":"'$uuid_vm_hu_tls'","net":"httpupgrade","path":"'$uuid_vm_hu_tls'","port":"'$p_vm_hu_tls'","ps":"'vm-hu-tls-$hostname'","tls":"tls","sni":"'$tls_sni'","fp":"chrome","type":"none","v":"2"}' | base64 -w 0)"
       echo "$vm_hu_tls_link" > "$SBFOLDER/vm_hu_tls.txt"
       red "🚀【 vmess-hu-tls 】节点信息如下 (建议选择3-8-1，设置为CDN优选节点)：" && sleep 2
       echo -e "${yellow}$vm_hu_tls_link${plain}\n"
@@ -1930,6 +2283,26 @@ restrojan() {
     tr_tls_params+="&pinnedPeerCertSha256=$SHA256"
   fi
   
+  local caddy_active=false
+  if systemctl is-active --quiet caddy 2>/dev/null || rc-service caddy status 2>/dev/null | grep -q "started"; then
+    caddy_active=true
+  fi
+
+  local p_tr_ws_tls="$port_tr_ws_tls"
+  local p_tr_hu_tls="$port_tr_hu_tls"
+  local s_ip_ws="$server_ip"
+  local s_ip_hu="$server_ip"
+  
+  if $caddy_active; then
+    p_tr_ws_tls="443"
+    p_tr_hu_tls="443"
+    local cert_type=$(cat /etc/s-box/cert_type.log 2>/dev/null || echo "self")
+    if [[ "$cert_type" == "domain" && -n "$tls_sni" ]]; then
+      s_ip_ws="$tls_sni"
+      s_ip_hu="$tls_sni"
+    fi
+  fi
+
   if [[ -n "$port_tr_tls" ]]; then
     echo
     white "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
@@ -1960,8 +2333,8 @@ restrojan() {
     if [[ "$server_ip" = "dual" ]]; then
       local v4_addr=$(cat "$SBFOLDER/v4.log" 2>/dev/null)
       local v6_addr=$(cat "$SBFOLDER/v6.log" 2>/dev/null)
-      local tr_ws_link_v4="trojan://$uuid_tr_ws_tls@$v4_addr:$port_tr_ws_tls?security=tls&sni=$tls_sni&type=ws&path=%2F${uuid_tr_ws_tls}&${tr_tls_params}#tr-ws-tls-$hostname-IPV4"
-      local tr_ws_link_v6="trojan://$uuid_tr_ws_tls@[$v6_addr]:$port_tr_ws_tls?security=tls&sni=$tls_sni&type=ws&path=%2F${uuid_tr_ws_tls}&${tr_tls_params}#tr-ws-tls-$hostname-IPV6"
+      local tr_ws_link_v4="trojan://$uuid_tr_ws_tls@$v4_addr:$p_tr_ws_tls?security=tls&sni=$tls_sni&type=ws&path=%2F${uuid_tr_ws_tls}&${tr_tls_params}#tr-ws-tls-$hostname-IPV4"
+      local tr_ws_link_v6="trojan://$uuid_tr_ws_tls@[$v6_addr]:$p_tr_ws_tls?security=tls&sni=$tls_sni&type=ws&path=%2F${uuid_tr_ws_tls}&${tr_tls_params}#tr-ws-tls-$hostname-IPV6"
       echo -e "$tr_ws_link_v4\n$tr_ws_link_v6" > "$SBFOLDER/tr_ws_tls.txt"
       red "🚀【 Trojan-WS-TLS-IPV4 】节点信息如下：" && sleep 1
       echo -e "${yellow}$tr_ws_link_v4${plain}\n"
@@ -1970,7 +2343,7 @@ restrojan() {
       echo -e "${yellow}$tr_ws_link_v6${plain}\n"
       print_qr "$tr_ws_link_v6"
     else
-      local tr_ws_link="trojan://$uuid_tr_ws_tls@$server_ip:$port_tr_ws_tls?security=tls&sni=$tls_sni&type=ws&path=%2F${uuid_tr_ws_tls}&${tr_tls_params}#tr-ws-tls-$hostname"
+      local tr_ws_link="trojan://$uuid_tr_ws_tls@$s_ip_ws:$p_tr_ws_tls?security=tls&sni=$tls_sni&type=ws&path=%2F${uuid_tr_ws_tls}&${tr_tls_params}#tr-ws-tls-$hostname"
       echo "$tr_ws_link" > "$SBFOLDER/tr_ws_tls.txt"
       red "🚀【 Trojan-WS-TLS 】节点信息如下：" && sleep 2
       echo -e "${yellow}$tr_ws_link${plain}\n"
@@ -1984,8 +2357,8 @@ restrojan() {
     if [[ "$server_ip" = "dual" ]]; then
       local v4_addr=$(cat "$SBFOLDER/v4.log" 2>/dev/null)
       local v6_addr=$(cat "$SBFOLDER/v6.log" 2>/dev/null)
-      local tr_hu_link_v4="trojan://$uuid_tr_hu_tls@$v4_addr:$port_tr_hu_tls?security=tls&sni=$tls_sni&type=httpupgrade&path=%2F${uuid_tr_hu_tls}&${tr_tls_params}#tr-hu-tls-$hostname-IPV4"
-      local tr_hu_link_v6="trojan://$uuid_tr_hu_tls@[$v6_addr]:$port_tr_hu_tls?security=tls&sni=$tls_sni&type=httpupgrade&path=%2F${uuid_tr_hu_tls}&${tr_tls_params}#tr-hu-tls-$hostname-IPV6"
+      local tr_hu_link_v4="trojan://$uuid_tr_hu_tls@$v4_addr:$p_tr_hu_tls?security=tls&sni=$tls_sni&type=httpupgrade&path=%2F${uuid_tr_hu_tls}&${tr_tls_params}#tr-hu-tls-$hostname-IPV4"
+      local tr_hu_link_v6="trojan://$uuid_tr_hu_tls@[$v6_addr]:$p_tr_hu_tls?security=tls&sni=$tls_sni&type=httpupgrade&path=%2F${uuid_tr_hu_tls}&${tr_tls_params}#tr-hu-tls-$hostname-IPV6"
       echo -e "$tr_hu_link_v4\n$tr_hu_link_v6" > "$SBFOLDER/tr_hu_tls.txt"
       red "🚀【 Trojan-HTTPUpgrade-TLS-IPV4 】节点信息如下：" && sleep 1
       echo -e "${yellow}$tr_hu_link_v4${plain}\n"
@@ -1994,7 +2367,7 @@ restrojan() {
       echo -e "${yellow}$tr_hu_link_v6${plain}\n"
       print_qr "$tr_hu_link_v6"
     else
-      local tr_hu_link="trojan://$uuid_tr_hu_tls@$server_ip:$port_tr_hu_tls?security=tls&sni=$tls_sni&type=httpupgrade&path=%2F${uuid_tr_hu_tls}&${tr_tls_params}#tr-hu-tls-$hostname"
+      local tr_hu_link="trojan://$uuid_tr_hu_tls@$s_ip_hu:$p_tr_hu_tls?security=tls&sni=$tls_sni&type=httpupgrade&path=%2F${uuid_tr_hu_tls}&${tr_tls_params}#tr-hu-tls-$hostname"
       echo "$tr_hu_link" > "$SBFOLDER/tr_hu_tls.txt"
       red "🚀【 Trojan-HTTPUpgrade-TLS 】节点信息如下：" && sleep 2
       echo -e "${yellow}$tr_hu_link${plain}\n"
@@ -2072,7 +2445,23 @@ resvmess_h2_tls() {
   echo
   white "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
   server_ip=$(cat "$SBFOLDER/server_ip.log" 2>/dev/null)
-  local vm_h2_link="vmess://$(echo '{"add":"'$server_ip'","aid":"0","host":"'$ym_domain'","id":"'$uuid_vm_h2_tls'","net":"h2","path":"'$uuid_vm_h2_tls'","port":"'$port_vm_h2_tls'","ps":"vm-h2-tls-'$hostname'","tls":"tls","sni":"'$ym_domain'","type":"none","v":"2"}' | base64 -w 0)"
+  
+  local caddy_active=false
+  if systemctl is-active --quiet caddy 2>/dev/null || rc-service caddy status 2>/dev/null | grep -q "started"; then
+    caddy_active=true
+  fi
+
+  local p_vm_h2="$port_vm_h2_tls"
+  local s_ip_h2="$server_ip"
+  if $caddy_active; then
+    p_vm_h2="443"
+    local cert_type=$(cat /etc/s-box/cert_type.log 2>/dev/null || echo "self")
+    if [[ "$cert_type" == "domain" && -n "$ym_domain" ]]; then
+      s_ip_h2="$ym_domain"
+    fi
+  fi
+
+  local vm_h2_link="vmess://$(echo '{"add":"'$s_ip_h2'","aid":"0","host":"'$ym_domain'","id":"'$uuid_vm_h2_tls'","net":"h2","path":"'$uuid_vm_h2_tls'","port":"'$p_vm_h2'","ps":"vm-h2-tls-'$hostname'","tls":"tls","sni":"'$ym_domain'","type":"none","v":"2"}' | base64 -w 0)"
   echo "$vm_h2_link" > "$SBFOLDER/vm_h2_tls.txt"
   red "🚀【 VMess-H2-TLS 】节点信息如下：" && sleep 2
   echo -e "${yellow}$vm_h2_link${plain}\n"
@@ -2088,7 +2477,23 @@ resvless_h2_tls() {
   if [[ "$is_self_signed" = "true" ]]; then
     vl_tls_params+="&pinnedPeerCertSha256=$SHA256"
   fi
-  local vl_h2_link="vless://$uuid_vl_h2@$server_ip:$port_vl_h2_tls?encryption=none&security=tls&sni=$ym_domain&type=h2&host=$ym_domain&path=%2F${uuid_vl_h2}&${vl_tls_params}#vl-h2-tls-$hostname"
+
+  local caddy_active=false
+  if systemctl is-active --quiet caddy 2>/dev/null || rc-service caddy status 2>/dev/null | grep -q "started"; then
+    caddy_active=true
+  fi
+
+  local p_vl_h2="$port_vl_h2_tls"
+  local s_ip_h2="$server_ip"
+  if $caddy_active; then
+    p_vl_h2="443"
+    local cert_type=$(cat /etc/s-box/cert_type.log 2>/dev/null || echo "self")
+    if [[ "$cert_type" == "domain" && -n "$ym_domain" ]]; then
+      s_ip_h2="$ym_domain"
+    fi
+  fi
+
+  local vl_h2_link="vless://$uuid_vl_h2@$s_ip_h2:$p_vl_h2?encryption=none&security=tls&sni=$ym_domain&type=h2&host=$ym_domain&path=%2F${uuid_vl_h2}&${vl_tls_params}#vl-h2-tls-$hostname"
   echo "$vl_h2_link" > "$SBFOLDER/vl_h2_tls.txt"
   red "🚀【 VLESS-H2-TLS 】节点信息如下：" && sleep 2
   echo -e "${yellow}$vl_h2_link${plain}\n"
@@ -2100,7 +2505,23 @@ restrojan_h2_tls() {
   echo
   white "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
   server_ip=$(cat "$SBFOLDER/server_ip.log" 2>/dev/null)
-  local tr_h2_link="trojan://$uuid_tr_h2_tls@$server_ip:$port_tr_h2_tls?security=tls&sni=$ym_domain&type=h2&host=$ym_domain&path=%2F${uuid_tr_h2_tls}#tr-h2-tls-$hostname"
+
+  local caddy_active=false
+  if systemctl is-active --quiet caddy 2>/dev/null || rc-service caddy status 2>/dev/null | grep -q "started"; then
+    caddy_active=true
+  fi
+
+  local p_tr_h2="$port_tr_h2_tls"
+  local s_ip_h2="$server_ip"
+  if $caddy_active; then
+    p_tr_h2="443"
+    local cert_type=$(cat /etc/s-box/cert_type.log 2>/dev/null || echo "self")
+    if [[ "$cert_type" == "domain" && -n "$ym_domain" ]]; then
+      s_ip_h2="$ym_domain"
+    fi
+  fi
+
+  local tr_h2_link="trojan://$uuid_tr_h2_tls@$s_ip_h2:$p_tr_h2?security=tls&sni=$ym_domain&type=h2&host=$ym_domain&path=%2F${uuid_tr_h2_tls}#tr-h2-tls-$hostname"
   echo "$tr_h2_link" > "$SBFOLDER/tr_h2_tls.txt"
   red "🚀【 Trojan-H2-TLS 】节点信息如下：" && sleep 2
   echo -e "${yellow}$tr_h2_link${plain}\n"
@@ -2136,8 +2557,61 @@ sb_client() {
   # dynamically utilizing jq, reducing 1000+ lines of duplicate templates.
 
   local cert_content=""
-  if [[ -f "$SBFOLDER/cert.pem" ]]; then
+  if [[ -f "$SBFOLDER/ca.pem" ]]; then
+    cert_content=$(cat "$SBFOLDER/ca.pem")
+  elif [[ -f "$SBFOLDER/cert.pem" ]]; then
     cert_content=$(cat "$SBFOLDER/cert.pem")
+  fi
+
+  local caddy_active=false
+  if systemctl is-active --quiet caddy 2>/dev/null || rc-service caddy status 2>/dev/null | grep -q "started"; then
+    caddy_active=true
+  fi
+
+  # Helper variables for Caddy port/server overrides
+  local cl_p_vl_ws="$port_vl_ws_tls"
+  local cl_p_vl_hu="$port_vl_hu_tls"
+  local cl_p_vl_h2="$port_vl_h2_tls"
+  local cl_p_vm_ws="$port_vm_ws_tls"
+  local cl_p_vm_hu="$port_vm_hu_tls"
+  local cl_p_vm_h2="$port_vm_h2_tls"
+  local cl_p_tr_ws="$port_tr_ws_tls"
+  local cl_p_tr_hu="$port_tr_hu_tls"
+  local cl_p_tr_h2="$port_tr_h2_tls"
+
+  local cl_s_vl_ws="$tls_sni"
+  local cl_s_vl_hu="$tls_sni"
+  local cl_s_vl_h2="$tls_sni"
+  local cl_s_vm_ws="$tls_sni"
+  local cl_s_vm_hu="$tls_sni"
+  local cl_s_vm_h2="$tls_sni"
+  local cl_s_tr_ws="$tls_sni"
+  local cl_s_tr_hu="$tls_sni"
+  local cl_s_tr_h2="$tls_sni"
+
+  if $caddy_active; then
+    cl_p_vl_ws="443"
+    cl_p_vl_hu="443"
+    cl_p_vl_h2="443"
+    cl_p_vm_ws="443"
+    cl_p_vm_hu="443"
+    cl_p_vm_h2="443"
+    cl_p_tr_ws="443"
+    cl_p_tr_hu="443"
+    cl_p_tr_h2="443"
+    
+    local cert_type=$(cat /etc/s-box/cert_type.log 2>/dev/null || echo "self")
+    if [[ "$cert_type" == "domain" && -n "$tls_sni" ]]; then
+      cl_s_vl_ws="$tls_sni"
+      cl_s_vl_hu="$tls_sni"
+      cl_s_vl_h2="$tls_sni"
+      cl_s_vm_ws="$tls_sni"
+      cl_s_vm_hu="$tls_sni"
+      cl_s_vm_h2="$tls_sni"
+      cl_s_tr_ws="$tls_sni"
+      cl_s_tr_hu="$tls_sni"
+      cl_s_tr_h2="$tls_sni"
+    fi
   fi
 
   # 1. BASE TEMPLATE FOR CLIENT (SING-BOX)
@@ -2239,10 +2713,19 @@ $extra_yaml\n\n"
     if [[ -z "$var_port" ]]; then
       return 0
     fi
-    if [[ "$server_ipcl" = "dual" ]]; then
+    local is_domain=false
+    if [[ "$is_self_signed" == "false" && -n "$ym_domain" && "$ym_domain" != "www.bing.com" ]]; then
+      if ! [[ "$ym_domain" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+        is_domain=true
+      fi
+    fi
+    if $is_domain; then
+      echo "single|$ym_domain"
+    elif [[ "$server_ipcl" = "dual" ]]; then
       echo "v4|$v4_addr v6|[$v6_addr]"
     else
-      echo "single|$default_server"
+      local server_ip=$(cat "$SBFOLDER/server_ip.log" 2>/dev/null || curl -s4 ip.sb)
+      echo "single|${server_ip:-$default_server}"
     fi
   }
 
@@ -2254,6 +2737,17 @@ $extra_yaml\n\n"
 $indented_cert"
   else
     cl_tls_common="  skip-cert-verify: false"
+  fi
+
+  local cl_tls_caddy=""
+  if $caddy_active; then
+    if [[ "$is_self_signed" = "true" ]]; then
+      cl_tls_caddy="  skip-cert-verify: true"
+    else
+      cl_tls_caddy="  skip-cert-verify: false"
+    fi
+  else
+    cl_tls_caddy="$cl_tls_common"
   fi
 
   # 1. VLESS Reality
@@ -2284,7 +2778,7 @@ $indented_cert"
 
   # 2. VLESS WS TLS
   if [[ -n "$port_vl_ws_tls" ]]; then
-    local servers_list=$(resolve_servers "$port_vl_ws_tls" "$tls_sni")
+    local servers_list=$(resolve_servers "$cl_p_vl_ws" "$cl_s_vl_ws")
     for s_info in $servers_list; do
       local s_type=$(echo "$s_info" | cut -d'|' -f1)
       local s_addr=$(echo "$s_info" | cut -d'|' -f2)
@@ -2293,24 +2787,24 @@ $indented_cert"
       
       local vl_ws_extra=$(jq -n --arg uuid "$uuid_vl_ws" --arg sni "$tls_sni" --argjson is_self "$is_self_signed" --arg cert "$cert_content" \
         '{uuid: $uuid, transport: {type: "ws", path: $uuid}, tls: ({enabled: true, server_name: $sni, insecure: false, utls: {enabled: true, fingerprint: "chrome"}} + (if $is_self and ($cert | length) > 0 then {certificate: [$cert]} else {} end))}')
-      add_sb_outbound "vless-ws-tls${suffix}" "vless" "$s_addr" "$port_vl_ws_tls" "$vl_ws_extra"
+      add_sb_outbound "vless-ws-tls${suffix}" "vless" "$s_addr" "$cl_p_vl_ws" "$vl_ws_extra"
       
       local cl_vl_ws_opts="  uuid: $uuid_vl_ws
   network: ws
   tls: true
   servername: $tls_sni
-$cl_tls_common
+$cl_tls_caddy
   ws-opts:
     path: \"/${uuid_vl_ws}\"
     headers:
       Host: $tls_sni"
-      add_clash_proxy "vless-ws-tls${suffix}" "vless" "$s_addr" "$port_vl_ws_tls" "$cl_vl_ws_opts"
+      add_clash_proxy "vless-ws-tls${suffix}" "vless" "$s_addr" "$cl_p_vl_ws" "$cl_vl_ws_opts"
     done
   fi
 
   # 3. VLESS HTTPUpgrade TLS
   if [[ -n "$port_vl_hu_tls" ]]; then
-    local servers_list=$(resolve_servers "$port_vl_hu_tls" "$tls_sni")
+    local servers_list=$(resolve_servers "$cl_p_vl_hu" "$cl_s_vl_hu")
     for s_info in $servers_list; do
       local s_type=$(echo "$s_info" | cut -d'|' -f1)
       local s_addr=$(echo "$s_info" | cut -d'|' -f2)
@@ -2319,18 +2813,18 @@ $cl_tls_common
       
       local vl_hu_extra=$(jq -n --arg uuid "$uuid_vl_hu" --arg sni "$tls_sni" --argjson is_self "$is_self_signed" --arg cert "$cert_content" \
         '{uuid: $uuid, transport: {type: "httpupgrade", path: $uuid}, tls: ({enabled: true, server_name: $sni, insecure: false, utls: {enabled: true, fingerprint: "chrome"}} + (if $is_self and ($cert | length) > 0 then {certificate: [$cert]} else {} end))}')
-      add_sb_outbound "vless-hu-tls${suffix}" "vless" "$s_addr" "$port_vl_hu_tls" "$vl_hu_extra"
+      add_sb_outbound "vless-hu-tls${suffix}" "vless" "$s_addr" "$cl_p_vl_hu" "$vl_hu_extra"
       
       local cl_vl_hu_opts="  uuid: $uuid_vl_hu
   network: httpupgrade
   tls: true
   servername: $tls_sni
-$cl_tls_common
+$cl_tls_caddy
   httpupgrade-opts:
     path: \"/${uuid_vl_hu}\"
     headers:
       Host: $tls_sni"
-      add_clash_proxy "vless-hu-tls${suffix}" "vless" "$s_addr" "$port_vl_hu_tls" "$cl_vl_hu_opts"
+      add_clash_proxy "vless-hu-tls${suffix}" "vless" "$s_addr" "$cl_p_vl_hu" "$cl_vl_hu_opts"
     done
   fi
 
@@ -2362,7 +2856,7 @@ $cl_tls_common
 
   # 5. VMess WS TLS
   if [[ -n "$port_vm_ws_tls" ]]; then
-    local servers_list=$(resolve_servers "$port_vm_ws_tls" "$tls_sni")
+    local servers_list=$(resolve_servers "$cl_p_vm_ws" "$cl_s_vm_ws")
     for s_info in $servers_list; do
       local s_type=$(echo "$s_info" | cut -d'|' -f1)
       local s_addr=$(echo "$s_info" | cut -d'|' -f2)
@@ -2371,7 +2865,7 @@ $cl_tls_common
       
       local vm_ws_tls_extra=$(jq -n --arg uuid "$uuid_vm_ws_tls" --arg sni "$tls_sni" --argjson is_self "$is_self_signed" --arg cert "$cert_content" \
         '{uuid: $uuid, security: "auto", packet_encoding: "packetaddr", transport: {type: "ws", path: $uuid}, tls: ({enabled: true, server_name: $sni, insecure: false, utls: {enabled: true, fingerprint: "chrome"}} + (if $is_self and ($cert | length) > 0 then {certificate: [$cert]} else {} end))}')
-      add_sb_outbound "vmess-ws-tls${suffix}" "vmess" "$s_addr" "$port_vm_ws_tls" "$vm_ws_tls_extra"
+      add_sb_outbound "vmess-ws-tls${suffix}" "vmess" "$s_addr" "$cl_p_vm_ws" "$vm_ws_tls_extra"
       
       local cl_vm_ws_tls_opts="  uuid: $uuid_vm_ws_tls
   alterId: 0
@@ -2379,18 +2873,19 @@ $cl_tls_common
   network: ws
   tls: true
   servername: $tls_sni
-$cl_tls_common
+$cl_tls_caddy
   ws-opts:
     path: \"/${uuid_vm_ws_tls}\"
     headers:
       Host: $tls_sni"
-      add_clash_proxy "vmess-ws-tls${suffix}" "vmess" "$s_addr" "$port_vm_ws_tls" "$cl_vm_ws_tls_opts"
+      add_clash_proxy "vmess-ws-tls${suffix}" "vmess" "$s_addr" "$cl_p_vm_ws" "$cl_vm_ws_tls_opts"
     done
   fi
 
   # 6. VMess HTTPUpgrade TLS
+  # 6. VMess HTTPUpgrade TLS
   if [[ -n "$port_vm_hu_tls" ]]; then
-    local servers_list=$(resolve_servers "$port_vm_hu_tls" "$tls_sni")
+    local servers_list=$(resolve_servers "$cl_p_vm_hu" "$cl_s_vm_hu")
     for s_info in $servers_list; do
       local s_type=$(echo "$s_info" | cut -d'|' -f1)
       local s_addr=$(echo "$s_info" | cut -d'|' -f2)
@@ -2399,7 +2894,7 @@ $cl_tls_common
       
       local vm_hu_tls_extra=$(jq -n --arg uuid "$uuid_vm_hu_tls" --arg sni "$tls_sni" --argjson is_self "$is_self_signed" --arg cert "$cert_content" \
         '{uuid: $uuid, security: "auto", packet_encoding: "packetaddr", transport: {type: "httpupgrade", path: $uuid}, tls: ({enabled: true, server_name: $sni, insecure: false, utls: {enabled: true, fingerprint: "chrome"}} + (if $is_self and ($cert | length) > 0 then {certificate: [$cert]} else {} end))}')
-      add_sb_outbound "vmess-hu-tls${suffix}" "vmess" "$s_addr" "$port_vm_hu_tls" "$vm_hu_tls_extra"
+      add_sb_outbound "vmess-hu-tls${suffix}" "vmess" "$s_addr" "$cl_p_vm_hu" "$vm_hu_tls_extra"
       
       local cl_vm_hu_tls_opts="  uuid: $uuid_vm_hu_tls
   alterId: 0
@@ -2407,12 +2902,12 @@ $cl_tls_common
   network: httpupgrade
   tls: true
   servername: $tls_sni
-$cl_tls_common
+$cl_tls_caddy
   httpupgrade-opts:
     path: \"/${uuid_vm_hu_tls}\"
     headers:
       Host: $tls_sni"
-      add_clash_proxy "vmess-hu-tls${suffix}" "vmess" "$s_addr" "$port_vm_hu_tls" "$cl_vm_hu_tls_opts"
+      add_clash_proxy "vmess-hu-tls${suffix}" "vmess" "$s_addr" "$cl_p_vm_hu" "$cl_vm_hu_tls_opts"
     done
   fi
 
@@ -2440,7 +2935,7 @@ $cl_tls_common"
 
   # 8. Trojan WS TLS
   if [[ -n "$port_tr_ws_tls" ]]; then
-    local servers_list=$(resolve_servers "$port_tr_ws_tls" "$tls_sni")
+    local servers_list=$(resolve_servers "$cl_p_tr_ws" "$cl_s_tr_ws")
     for s_info in $servers_list; do
       local s_type=$(echo "$s_info" | cut -d'|' -f1)
       local s_addr=$(echo "$s_info" | cut -d'|' -f2)
@@ -2449,24 +2944,24 @@ $cl_tls_common"
       
       local tr_ws_extra=$(jq -n --arg uuid "$uuid_tr_ws_tls" --arg sni "$tls_sni" --argjson is_self "$is_self_signed" --arg cert "$cert_content" \
         '{password: $uuid, transport: {type: "ws", path: $uuid}, tls: ({enabled: true, server_name: $sni, insecure: false, utls: {enabled: true, fingerprint: "chrome"}} + (if $is_self and ($cert | length) > 0 then {certificate: [$cert]} else {} end))}')
-      add_sb_outbound "trojan-ws-tls${suffix}" "trojan" "$s_addr" "$port_tr_ws_tls" "$tr_ws_extra"
+      add_sb_outbound "trojan-ws-tls${suffix}" "trojan" "$s_addr" "$cl_p_tr_ws" "$tr_ws_extra"
       
       local cl_tr_ws_opts="  password: $uuid_tr_ws_tls
   network: ws
   tls: true
   servername: $tls_sni
-$cl_tls_common
+$cl_tls_caddy
   ws-opts:
     path: \"/${uuid_tr_ws_tls}\"
     headers:
       Host: $tls_sni"
-      add_clash_proxy "trojan-ws-tls${suffix}" "trojan" "$s_addr" "$port_tr_ws_tls" "$cl_tr_ws_opts"
+      add_clash_proxy "trojan-ws-tls${suffix}" "trojan" "$s_addr" "$cl_p_tr_ws" "$cl_tr_ws_opts"
     done
   fi
 
   # 9. Trojan HTTPUpgrade TLS
   if [[ -n "$port_tr_hu_tls" ]]; then
-    local servers_list=$(resolve_servers "$port_tr_hu_tls" "$tls_sni")
+    local servers_list=$(resolve_servers "$cl_p_tr_hu" "$cl_s_tr_hu")
     for s_info in $servers_list; do
       local s_type=$(echo "$s_info" | cut -d'|' -f1)
       local s_addr=$(echo "$s_info" | cut -d'|' -f2)
@@ -2475,18 +2970,18 @@ $cl_tls_common
       
       local tr_hu_extra=$(jq -n --arg uuid "$uuid_tr_hu_tls" --arg sni "$tls_sni" --argjson is_self "$is_self_signed" --arg cert "$cert_content" \
         '{password: $uuid, transport: {type: "httpupgrade", path: $uuid}, tls: ({enabled: true, server_name: $sni, insecure: false, utls: {enabled: true, fingerprint: "chrome"}} + (if $is_self and ($cert | length) > 0 then {certificate: [$cert]} else {} end))}')
-      add_sb_outbound "trojan-hu-tls${suffix}" "trojan" "$s_addr" "$port_tr_hu_tls" "$tr_hu_extra"
+      add_sb_outbound "trojan-hu-tls${suffix}" "trojan" "$s_addr" "$cl_p_tr_hu" "$tr_hu_extra"
       
       local cl_tr_hu_opts="  password: $uuid_tr_hu_tls
   network: httpupgrade
   tls: true
   servername: $tls_sni
-$cl_tls_common
+$cl_tls_caddy
   httpupgrade-opts:
     path: \"/${uuid_tr_hu_tls}\"
     headers:
       Host: $tls_sni"
-      add_clash_proxy "trojan-hu-tls${suffix}" "trojan" "$s_addr" "$port_tr_hu_tls" "$cl_tr_hu_opts"
+      add_clash_proxy "trojan-hu-tls${suffix}" "trojan" "$s_addr" "$cl_p_tr_hu" "$cl_tr_hu_opts"
     done
   fi
 
@@ -2653,75 +3148,75 @@ $cl_tls_common"
 
   # VMess-H2-TLS
   if [[ -n "$port_vm_h2_tls" ]]; then
-    local servers_list=$(resolve_servers "$port_vm_h2_tls" "$ym_domain")
+    local servers_list=$(resolve_servers "$cl_p_vm_h2" "$cl_s_vm_h2")
     for s_info in $servers_list; do
       local s_type=$(echo "$s_info" | cut -d'|' -f1)
       local s_addr=$(echo "$s_info" | cut -d'|' -f2)
       local suffix=""
       [[ "$server_ipcl" = "dual" ]] && suffix="-${s_type^^}"
-      local vm_h2_extra=$(jq -n --arg uuid "$uuid_vm_h2_tls" --arg sni "$ym_domain" --argjson is_self "$is_self_signed" --arg cert "$cert_content" \
+      local vm_h2_extra=$(jq -n --arg uuid "$uuid_vm_h2_tls" --arg sni "$cl_s_vm_h2" --argjson is_self "$is_self_signed" --arg cert "$cert_content" \
         '{uuid: $uuid, security: "auto", packet_encoding: "packetaddr", transport: {type: "http", host: [$sni], path: $uuid}, tls: ({enabled: true, server_name: $sni, insecure: false} + (if $is_self and ($cert | length) > 0 then {certificate: [$cert]} else {} end))}')
-      add_sb_outbound "vmess-h2-tls${suffix}" "vmess" "$s_addr" "$port_vm_h2_tls" "$vm_h2_extra"
+      add_sb_outbound "vmess-h2-tls${suffix}" "vmess" "$s_addr" "$cl_p_vm_h2" "$vm_h2_extra"
       local cl_vm_h2_opts="  uuid: $uuid_vm_h2_tls
   alterId: 0
   cipher: auto
   network: h2
   tls: true
-  servername: $ym_domain
-$cl_tls_common
+  servername: $cl_s_vm_h2
+$cl_tls_caddy
   h2-opts:
     host:
-      - $ym_domain
+      - $cl_s_vm_h2
     path: /$uuid_vm_h2_tls"
-      add_clash_proxy "vmess-h2-tls${suffix}" "vmess" "$s_addr" "$port_vm_h2_tls" "$cl_vm_h2_opts"
+      add_clash_proxy "vmess-h2-tls${suffix}" "vmess" "$s_addr" "$cl_p_vm_h2" "$cl_vm_h2_opts"
     done
   fi
 
   # VLESS-H2-TLS
   if [[ -n "$port_vl_h2_tls" ]]; then
-    local servers_list=$(resolve_servers "$port_vl_h2_tls" "$ym_domain")
+    local servers_list=$(resolve_servers "$cl_p_vl_h2" "$cl_s_vl_h2")
     for s_info in $servers_list; do
       local s_type=$(echo "$s_info" | cut -d'|' -f1)
       local s_addr=$(echo "$s_info" | cut -d'|' -f2)
       local suffix=""
       [[ "$server_ipcl" = "dual" ]] && suffix="-${s_type^^}"
-      local vl_h2_extra=$(jq -n --arg uuid "$uuid_vl_h2" --arg sni "$ym_domain" --argjson is_self "$is_self_signed" --arg cert "$cert_content" \
+      local vl_h2_extra=$(jq -n --arg uuid "$uuid_vl_h2" --arg sni "$cl_s_vl_h2" --argjson is_self "$is_self_signed" --arg cert "$cert_content" \
         '{uuid: $uuid, transport: {type: "http", host: [$sni], path: $uuid}, tls: ({enabled: true, server_name: $sni, insecure: false} + (if $is_self and ($cert | length) > 0 then {certificate: [$cert]} else {} end))}')
-      add_sb_outbound "vless-h2-tls${suffix}" "vless" "$s_addr" "$port_vl_h2_tls" "$vl_h2_extra"
+      add_sb_outbound "vless-h2-tls${suffix}" "vless" "$s_addr" "$cl_p_vl_h2" "$vl_h2_extra"
       local cl_vl_h2_opts="  uuid: $uuid_vl_h2
   network: h2
   tls: true
-  servername: $ym_domain
-$cl_tls_common
+  servername: $cl_s_vl_h2
+$cl_tls_caddy
   h2-opts:
     host:
-      - $ym_domain
+      - $cl_s_vl_h2
     path: /$uuid_vl_h2"
-      add_clash_proxy "vless-h2-tls${suffix}" "vless" "$s_addr" "$port_vl_h2_tls" "$cl_vl_h2_opts"
+      add_clash_proxy "vless-h2-tls${suffix}" "vless" "$s_addr" "$cl_p_vl_h2" "$cl_vl_h2_opts"
     done
   fi
 
   # Trojan-H2-TLS
   if [[ -n "$port_tr_h2_tls" ]]; then
-    local servers_list=$(resolve_servers "$port_tr_h2_tls" "$ym_domain")
+    local servers_list=$(resolve_servers "$cl_p_tr_h2" "$cl_s_tr_h2")
     for s_info in $servers_list; do
       local s_type=$(echo "$s_info" | cut -d'|' -f1)
       local s_addr=$(echo "$s_info" | cut -d'|' -f2)
       local suffix=""
       [[ "$server_ipcl" = "dual" ]] && suffix="-${s_type^^}"
-      local tr_h2_extra=$(jq -n --arg password "$uuid_tr_h2_tls" --arg sni "$ym_domain" --argjson is_self "$is_self_signed" --arg cert "$cert_content" \
+      local tr_h2_extra=$(jq -n --arg password "$uuid_tr_h2_tls" --arg sni "$cl_s_tr_h2" --argjson is_self "$is_self_signed" --arg cert "$cert_content" \
         '{password: $password, transport: {type: "http", host: [$sni], path: $password}, tls: ({enabled: true, server_name: $sni, insecure: false} + (if $is_self and ($cert | length) > 0 then {certificate: [$cert]} else {} end))}')
-      add_sb_outbound "trojan-h2-tls${suffix}" "trojan" "$s_addr" "$port_tr_h2_tls" "$tr_h2_extra"
+      add_sb_outbound "trojan-h2-tls${suffix}" "trojan" "$s_addr" "$cl_p_tr_h2" "$tr_h2_extra"
       local cl_tr_h2_opts="  password: $uuid_tr_h2_tls
   network: h2
   tls: true
-  servername: $ym_domain
-$cl_tls_common
+  servername: $cl_s_tr_h2
+$cl_tls_caddy
   h2-opts:
     host:
-      - $ym_domain
+      - $cl_s_tr_h2
     path: /$uuid_tr_h2_tls"
-      add_clash_proxy "trojan-h2-tls${suffix}" "trojan" "$s_addr" "$port_tr_h2_tls" "$cl_tr_h2_opts"
+      add_clash_proxy "trojan-h2-tls${suffix}" "trojan" "$s_addr" "$cl_p_tr_h2" "$cl_tr_h2_opts"
     done
   fi
 
@@ -3673,24 +4168,24 @@ changeuuid() {
             --arg socks_p "$socks_password" \
             '.inbounds[] |= (
               if .tag == "vless-reality-sb" then .users[0].uuid = $vl_re
-              elif .tag == "vless-ws-tls-sb" then .users[0].uuid = $vl_ws | .transport.path = $vl_ws
-              elif .tag == "vless-hu-tls-sb" then .users[0].uuid = $vl_hu | .transport.path = $vl_hu
-              elif .tag == "vmess-ws-sb" then .users[0].uuid = $vm_ws | .transport.path = $vm_ws
-              elif .tag == "vmess-ws-tls-sb" then .users[0].uuid = $vm_ws_tls | .transport.path = $vm_ws_tls
-              elif .tag == "vmess-hu-tls-sb" then .users[0].uuid = $vm_hu_tls | .transport.path = $vm_hu_tls
+              elif .tag == "vless-ws-tls-sb" then .users[0].uuid = $vl_ws | .transport.path = ("/" + $vl_ws)
+              elif .tag == "vless-hu-tls-sb" then .users[0].uuid = $vl_hu | .transport.path = ("/" + $vl_hu)
+              elif .tag == "vmess-ws-sb" then .users[0].uuid = $vm_ws | .transport.path = ("/" + $vm_ws)
+              elif .tag == "vmess-ws-tls-sb" then .users[0].uuid = $vm_ws_tls | .transport.path = ("/" + $vm_ws_tls)
+              elif .tag == "vmess-hu-tls-sb" then .users[0].uuid = $vm_hu_tls | .transport.path = ("/" + $vm_hu_tls)
               elif .tag == "trojan-tls-sb" then .users[0].password = $tr_tls
-              elif .tag == "trojan-ws-tls-sb" then .users[0].password = $tr_ws_tls | .transport.path = $tr_ws_tls
-              elif .tag == "trojan-hu-tls-sb" then .users[0].password = $tr_hu_tls | .transport.path = $tr_hu_tls
+              elif .tag == "trojan-ws-tls-sb" then .users[0].password = $tr_ws_tls | .transport.path = ("/" + $tr_ws_tls)
+              elif .tag == "trojan-hu-tls-sb" then .users[0].password = $tr_hu_tls | .transport.path = ("/" + $tr_hu_tls)
               elif .tag == "hy2-sb" then .users[0].password = $hy2
               elif .tag == "tuic5-sb" then .users[0].uuid = $tu | .users[0].password = $tu
               elif .tag == "anytls-sb" then .users[0].password = $an
               elif .tag == "vmess-tcp-sb" then .users[0].uuid = $vm_tcp
               elif .tag == "vmess-http-sb" then .users[0].uuid = $vm_http
               elif .tag == "vmess-quic-sb" then .users[0].uuid = $vm_quic
-              elif .tag == "vmess-h2-tls-sb" then .users[0].uuid = $vm_h2 | .transport.path = $vm_h2
-              elif .tag == "vless-h2-tls-sb" then .users[0].uuid = $vl_h2 | .transport.path = $vl_h2
-              elif .tag == "trojan-h2-tls-sb" then .users[0].password = $tr_h2 | .transport.path = $tr_h2
-              elif .tag == "vless-h2-reality-sb" then .users[0].uuid = $vl_h2_re | .transport.path = $vl_h2_re
+              elif .tag == "vmess-h2-tls-sb" then .users[0].uuid = $vm_h2 | .transport.path = ("/" + $vm_h2)
+              elif .tag == "vless-h2-tls-sb" then .users[0].uuid = $vl_h2 | .transport.path = ("/" + $vl_h2)
+              elif .tag == "trojan-h2-tls-sb" then .users[0].password = $tr_h2 | .transport.path = ("/" + $tr_h2)
+              elif .tag == "vless-h2-reality-sb" then .users[0].uuid = $vl_h2_re | .transport.path = ("/" + $vl_h2_re)
               elif .tag == "socks-sb" then .users[0].username = $socks_u | .users[0].password = $socks_p
               else . end
             )' "$file" > /tmp/tmp.json && mv /tmp/tmp.json "$file"
@@ -3707,6 +4202,7 @@ changeuuid() {
     readp "输入Vmess-WS of path路径，回车表示不变：" menu
     if [ -n "$menu" ]; then
       vmpath=$menu
+      [[ "$vmpath" != /* ]] && vmpath="/$vmpath"
       for file in $SBFILES; do
         if [ -f "$file" ]; then
           jq --arg p "$vmpath" '(.inbounds[] | select(.tag == "vmess-ws-sb")).transport.path = $p' "$file" > /tmp/tmp.json && mv /tmp/tmp.json "$file"
@@ -4267,10 +4763,18 @@ restartsb() {
   sync_configs_from_sb_json
   if command -v apk >/dev/null 2>&1; then
     rc-service sing-box restart
+    if rc-service caddy status 2>/dev/null | grep -q "started"; then
+      write_caddyfile
+      rc-service caddy restart
+    fi
   else
     systemctl enable sing-box >/dev/null 2>&1
     systemctl start sing-box >/dev/null 2>&1
     systemctl restart sing-box >/dev/null 2>&1
+    if systemctl is-active --quiet caddy 2>/dev/null; then
+      write_caddyfile
+      systemctl restart caddy
+    fi
   fi
 }
 
@@ -5175,27 +5679,39 @@ unins() {
     return 1
   fi
   if command -v apk >/dev/null 2>&1; then
-    for svc in sing-box argo usque gost; do
+    for svc in sing-box argo usque gost caddy; do
       rc-service "$svc" stop >/dev/null 2>&1
       rc-update del "$svc" default >/dev/null 2>&1
     done
-    rm -rf /etc/init.d/{sing-box,argo,usque,gost}
+    rm -rf /etc/init.d/{sing-box,argo,usque,gost,caddy}
   else
-    for svc in sing-box argo usque gost; do
+    for svc in sing-box argo usque gost caddy; do
       systemctl stop "$svc" >/dev/null 2>&1
       systemctl disable "$svc" >/dev/null 2>&1
     done
-    rm -rf /etc/systemd/system/{sing-box.service,argo.service,usque.service,gost.service}
+    rm -rf /etc/systemd/system/{sing-box.service,argo.service,usque.service,gost.service,caddy.service}
     systemctl daemon-reload >/dev/null 2>&1
   fi
-  rm -f /usr/local/bin/usque /usr/local/bin/gost
+  rm -f /usr/local/bin/usque /usr/local/bin/gost /usr/local/bin/caddy
+  
+  if [[ -d ~/.acme.sh ]]; then
+    ~/.acme.sh/acme.sh --uninstall >/dev/null 2>&1
+    rm -rf ~/.acme.sh >/dev/null 2>&1
+  fi
   
   local clean_json=$(strip_json_comments "$SBFOLDER/sb.json" 2>/dev/null)
   local vm_listen_port=$(echo "$clean_json" | jq -r '(.inbounds[] | select(.type == "vmess") | .listen_port) // empty' 2>/dev/null)
   [ -n "$vm_listen_port" ] && ps -ef | grep "[l]ocalhost:$vm_listen_port" | awk '{print $2}' | xargs kill 2>/dev/null
-  ps -ef | grep -E '[s]bwpph|[w]arp-plus|[g]ost|[u]sque' | awk '{print $2}' | xargs kill 2>/dev/null
+  ps -ef | grep -E '[s]bwpph|[w]arp-plus|[g]ost|[u]sque|[c]loudflared|[c]addy' | awk '{print $2}' | xargs kill -9 2>/dev/null
   if command -v warp-cli >/dev/null 2>&1; then
     warp-cli disconnect >/dev/null 2>&1
+    if pidof systemd >/dev/null 2>&1; then
+      systemctl stop warp-svc >/dev/null 2>&1
+      systemctl disable warp-svc >/dev/null 2>&1
+    elif command -v rc-service >/dev/null 2>&1; then
+      rc-service warp-svc stop >/dev/null 2>&1
+      rc-update del warp-svc default >/dev/null 2>&1
+    fi
   fi
   kill -15 $(pgrep -f 'websbox' 2>/dev/null) >/dev/null 2>&1
 
@@ -5224,8 +5740,8 @@ unins() {
   rm -f /etc/sysctl.d/99-gost-usque.conf
   sysctl --system >/dev/null 2>&1
   
-  rm -rf "$SBFOLDER" sbyg_update "$SCRIPT_SHORTCUT" /root/geoip.db /root/geosite.db /root/warpapi /root/warpip /root/websbox
-  rm -f /etc/local.d/alpineargo.start /etc/local.d/alpinesub.start /etc/local.d/alpinews5.start
+  rm -rf "$SBFOLDER" sbyg_update "$SCRIPT_SHORTCUT" /root/geoip.db /root/geosite.db /root/warpapi /root/warpip /root/websbox /root/ygkkkca /root/tcpx.sh
+  rm -f /etc/local.d/alpineargo.start /etc/local.d/alpinesub.start /etc/local.d/alpinews5.start /etc/local.d/alpinecaddy.start
   uncronsb
   iptables -t nat -F PREROUTING >/dev/null 2>&1
   netfilter-persistent save >/dev/null 2>&1
@@ -5356,7 +5872,17 @@ showprotocol() {
   fi
   # Argo detection
   argoym="未开启"
-  if ps -ef 2>/dev/null | grep -q '[c]loudflared.*run' || ps -ef 2>/dev/null | grep -q "[l]ocalhost:$port_vm_ws"; then
+  local temp_argo_active=false
+  local fixed_argo_active=false
+  if [[ -n "$port_vm_ws" && -f "$SBFOLDER/argo.log" && -s "$SBFOLDER/argo.log" ]] && \
+     ps -ef | grep -v grep | grep -q "cloudflared.*localhost:$port_vm_ws"; then
+    temp_argo_active=true
+  fi
+  if [[ -f "$SBFOLDER/sbargoym.log" && -s "$SBFOLDER/sbargoym.log" ]] && \
+     { systemctl is-active --quiet argo 2>/dev/null || rc-service argo status 2>/dev/null | grep -q "started"; }; then
+    fixed_argo_active=true
+  fi
+  if $temp_argo_active || $fixed_argo_active; then
     argoym="已开启"
   fi
 
@@ -5764,6 +6290,97 @@ instsllsingbox() {
     fi
   fi
 
+  # Check if Reality, WS, HTTPUpgrade, or H2 transport is chosen
+  local need_caddy_check=false
+  if [[ "$use_vl_re" = "true" || "$use_vl_h2_re" = "true" || \
+        "$use_vl_ws_tls" = "true" || "$use_vl_hu_tls" = "true" || "$use_vl_h2_tls" = "true" || \
+        "$use_vm_ws" = "true" || "$use_vm_ws_tls" = "true" || "$use_vm_hu_tls" = "true" || "$use_vm_h2_tls" = "true" || \
+        "$use_tr_ws_tls" = "true" || "$use_tr_hu_tls" = "true" || "$use_tr_h2_tls" = "true" ]]; then
+    need_caddy_check=true
+  fi
+
+  use_caddy=false
+  cert_type="self"
+  ym_domain=""
+  
+  if $need_caddy_check; then
+    local need_tls_caddy=false
+    if [[ "$use_vl_ws_tls" = "true" || "$use_vl_hu_tls" = "true" || "$use_vl_h2_tls" = "true" || \
+          "$use_vm_ws_tls" = "true" || "$use_vm_hu_tls" = "true" || "$use_vm_h2_tls" = "true" || \
+          "$use_tr_ws_tls" = "true" || "$use_tr_hu_tls" = "true" || "$use_tr_h2_tls" = "true" ]]; then
+      need_tls_caddy=true
+    fi
+
+    local port_443_in_use=false
+    if ss -tunlp | grep -q -E ":443\b"; then
+      port_443_in_use=true
+    fi
+
+    if $port_443_in_use; then
+      echo
+      yellow "警告：检测到端口 443 已被占用。"
+      green "是否选择不使用 443 标准端口，转而直连 Sing-Box？"
+      yellow "1：是，不使用 443 标准端口，转而直连 Sing-Box (回车默认)"
+      yellow "2：否，回到协议选择界面"
+      readp "请选择【1-2】：" caddy_choice
+      if [[ "$caddy_choice" = "2" ]]; then
+        instsllsingbox
+        return
+      else
+        use_caddy=false
+      fi
+    else
+      if $need_tls_caddy; then
+        use_caddy=true
+      fi
+    fi
+    
+    if [[ "$use_caddy" == "true" ]]; then
+      echo
+      green "请选择 SSL 证书类型："
+      yellow "1：自签证书 (www.bing.com) (回车默认)"
+      yellow "2：纯 IP 证书 (由 Let's Encrypt 签发，仅当 80 端口可用时使用)"
+      yellow "3：域名证书 (自动 ACME 申请，自备已解析的域名)"
+      readp "请选择【1-3】：" cert_menu
+      case "$cert_menu" in
+        2)
+          cert_type="ip"
+          ;;
+        3)
+          cert_type="domain"
+          while true; do
+            readp "请输入解析至当前 VPS 的域名：" ym_domain
+            if [[ -z "$ym_domain" ]]; then
+              red "域名不能为空，请重新输入！"
+            else
+              local resolved_ip=$(dig +short "$ym_domain" 2>/dev/null || nslookup "$ym_domain" 2>/dev/null | awk '/Address:/ {print $2}' | tail -n 1)
+              if [[ -z "$resolved_ip" ]]; then
+                resolved_ip=$(ping -c 1 -W 2 "$ym_domain" 2>/dev/null | head -n 1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+')
+              fi
+              local server_ip=$(cat "$SBFOLDER/server_ip.log" 2>/dev/null || curl -s4 ip.sb)
+              if [[ -z "$resolved_ip" || "$resolved_ip" != "$server_ip" ]]; then
+                red "检测到域名 $ym_domain 未解析到当前 VPS 外部 IP $server_ip (解析到的 IP 是: ${resolved_ip:-无})。"
+                yellow "请先确保域名解析生效，或者输入 y 忽略并强制继续："
+                readp "忽略并继续？[y/N]：" force_dns
+                if [[ "$force_dns" =~ ^[Yy]$ ]]; then
+                  break
+                fi
+              else
+                blue "域名解析检测通过！"
+                break
+              fi
+            fi
+          done
+          mkdir -p /root/ygkkkca
+          echo "$ym_domain" > /root/ygkkkca/ca.log
+          ;;
+        *)
+          cert_type="self"
+          ;;
+      esac
+    fi
+  fi
+
   if [[ "$use_vl_re" = "true" || "$use_vl_h2_re" = "true" ]]; then
     # Reality public/private keys
     reality_keys=$("$SBFOLDER/sing-box" generate reality-keypair)
@@ -5780,7 +6397,11 @@ instsllsingbox() {
         "$use_hy2" = "true" || "$use_tu" = "true" || "$use_an" = "true" || \
         "$use_vm_quic" = "true" || "$use_vm_h2_tls" = "true" || \
         "$use_vl_h2_tls" = "true" || "$use_tr_h2_tls" = "true" ]]; then
-    inscertificate
+    if [[ "$use_caddy" == "true" ]]; then
+      setup_caddy_cert
+    else
+      inscertificate
+    fi
   fi
   insport
   
@@ -5791,6 +6412,7 @@ instsllsingbox() {
   detect_network_settings
   inssbjsonser
   sbservice
+  caddyservice
   curl -sL "https://raw.githubusercontent.com/DuolaD/sing-box/main/version" | awk -F "更新内容" '{print $1}' | head -n 1 > "$SBFOLDER/v"
   lnsb
   cronsb
