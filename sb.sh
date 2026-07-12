@@ -826,194 +826,191 @@ inssbjsonser() {
     }
   }'
 
-  local config_json
-  if [[ "$sbnh" == "1.10" ]]; then
-    # Base 1.10 json
-    config_json='{
-      "log": {
-        "disabled": false,
-        "level": "info",
-        "timestamp": true
+  # Base 1.10 json
+  local config_json_10='{
+    "log": {
+      "disabled": false,
+      "level": "info",
+      "timestamp": true
+    },
+    "inbounds": [],
+    "outbounds": [
+      {
+        "type": "direct",
+        "tag": "direct",
+        "domain_strategy": "'"${ipv}"'"
       },
-      "inbounds": [],
-      "outbounds": [
+      {
+        "type": "direct",
+        "tag": "vps-outbound-v4", 
+        "domain_strategy": "prefer_ipv4"
+      },
+      {
+        "type": "direct",
+        "tag": "vps-outbound-v6",
+        "domain_strategy": "prefer_ipv6"
+      },
+      {
+        "type": "socks",
+        "tag": "socks-out",
+        "server": "127.0.0.1",
+        "server_port": 40000,
+        "version": "5"
+      },
+      {
+        "type": "direct",
+        "tag": "socks-IPv4-out",
+        "detour": "socks-out",
+        "domain_strategy": "prefer_ipv4"
+      },
+      {
+        "type": "direct",
+        "tag": "socks-IPv6-out",
+        "detour": "socks-out",
+        "domain_strategy": "prefer_ipv6"
+      },
+      {
+        "type": "direct",
+        "tag": "warp-IPv4-out",
+        "detour": "wireguard-out",
+        "domain_strategy": "prefer_ipv4"
+      },
+      {
+        "type": "direct",
+        "tag": "warp-IPv6-out",
+        "detour": "wireguard-out",
+        "domain_strategy": "prefer_ipv6"
+      },
+      {
+        "type": "wireguard",
+        "tag": "wireguard-out",
+        "server": "'"${endip}"'",
+        "server_port": 2408,
+        "local_address": [
+          "172.16.0.2/32",
+          "'"${v6}/128"'"
+        ],
+        "private_key": "'"${pvk}"'",
+        "peer_public_key": "bmXOC+F1FxEMF9dyiK2H5/1SUtzH0JuVo51h2wPfgyo=",
+        "reserved": '"${res}"'
+      },
+      {
+        "type": "block",
+        "tag": "block"
+      }
+    ],
+    "route": {
+      "rules": [
         {
-          "type": "direct",
-          "tag": "direct",
-          "domain_strategy": "'"${ipv}"'"
+          "protocol": ["quic", "stun"],
+          "outbound": "block"
         },
         {
-          "type": "direct",
-          "tag": "vps-outbound-v4", 
-          "domain_strategy": "prefer_ipv4"
+          "outbound": "warp-IPv4-out",
+          "domain_suffix": ["yg_kkk"]
         },
         {
-          "type": "direct",
-          "tag": "vps-outbound-v6",
-          "domain_strategy": "prefer_ipv6"
+          "outbound": "warp-IPv6-out",
+          "domain_suffix": ["yg_kkk"]
         },
         {
-          "type": "socks",
-          "tag": "socks-out",
-          "server": "127.0.0.1",
-          "server_port": 40000,
-          "version": "5"
+          "outbound": "socks-IPv4-out",
+          "domain_suffix": ["yg_kkk"]
         },
         {
-          "type": "direct",
-          "tag": "socks-IPv4-out",
-          "detour": "socks-out",
-          "domain_strategy": "prefer_ipv4"
+          "outbound": "socks-IPv6-out",
+          "domain_suffix": ["yg_kkk"]
         },
         {
-          "type": "direct",
-          "tag": "socks-IPv6-out",
-          "detour": "socks-out",
-          "domain_strategy": "prefer_ipv6"
+          "outbound": "vps-outbound-v4",
+          "domain_suffix": ["yg_kkk"]
         },
         {
-          "type": "direct",
-          "tag": "warp-IPv4-out",
-          "detour": "wireguard-out",
-          "domain_strategy": "prefer_ipv4"
+          "outbound": "vps-outbound-v6",
+          "domain_suffix": ["yg_kkk"]
         },
         {
-          "type": "direct",
-          "tag": "warp-IPv6-out",
-          "detour": "wireguard-out",
-          "domain_strategy": "prefer_ipv6"
-        },
-        {
-          "type": "wireguard",
-          "tag": "wireguard-out",
-          "server": "'"${endip}"'",
-          "server_port": 2408,
-          "local_address": [
-            "172.16.0.2/32",
-            "'"${v6}/128"'"
-          ],
-          "private_key": "'"${pvk}"'",
-          "peer_public_key": "bmXOC+F1FxEMF9dyiK2H5/1SUtzH0JuVo51h2wPfgyo=",
-          "reserved": '"${res}"'
-        },
-        {
-          "type": "block",
-          "tag": "block"
+          "outbound": "direct",
+          "network": "udp,tcp"
         }
-      ],
-      "route": {
-        "rules": [
+      ]
+    }
+  }'
+
+  # Base 1.11 json
+  local config_json_11='{
+    "log": {
+      "disabled": false,
+      "level": "info",
+      "timestamp": true
+    },
+    "inbounds": [],
+    "endpoints": [
+      {
+        "type": "wireguard",
+        "tag": "warp-out",
+        "address": [
+          "172.16.0.2/32",
+          "'"${v6}/128"'"
+        ],
+        "private_key": "'"${pvk}"'",
+        "peers": [
           {
-            "protocol": ["quic", "stun"],
-            "outbound": "block"
-          },
-          {
-            "outbound": "warp-IPv4-out",
-            "domain_suffix": ["yg_kkk"]
-          },
-          {
-            "outbound": "warp-IPv6-out",
-            "domain_suffix": ["yg_kkk"]
-          },
-          {
-            "outbound": "socks-IPv4-out",
-            "domain_suffix": ["yg_kkk"]
-          },
-          {
-            "outbound": "socks-IPv6-out",
-            "domain_suffix": ["yg_kkk"]
-          },
-          {
-            "outbound": "vps-outbound-v4",
-            "domain_suffix": ["yg_kkk"]
-          },
-          {
-            "outbound": "vps-outbound-v6",
-            "domain_suffix": ["yg_kkk"]
-          },
-          {
-            "outbound": "direct",
-            "network": "udp,tcp"
+            "address": "'"${endip}"'",
+            "port": 2408,
+            "public_key": "bmXOC+F1FxEMF9dyiK2H5/1SUtzH0JuVo51h2wPfgyo=",
+            "allowed_ips": [
+              "0.0.0.0/0",
+              "::/0"
+            ],
+            "reserved": '"${res}"'
           }
         ]
       }
-    }'
-  else
-    # Base 1.11 json
-    config_json='{
-      "log": {
-        "disabled": false,
-        "level": "info",
-        "timestamp": true
+    ],
+    "outbounds": [
+      {
+        "type": "direct",
+        "tag": "direct"
       },
-      "inbounds": [],
-      "endpoints": [
+      {
+        "type": "socks",
+        "tag": "socks-out",
+        "server": "127.0.0.1",
+        "server_port": 40000,
+        "version": "5"
+      }
+    ],
+    "route": {
+      "rules": [
         {
-          "type": "wireguard",
-          "tag": "warp-out",
-          "address": [
-            "172.16.0.2/32",
-            "'"${v6}/128"'"
-          ],
-          "private_key": "'"${pvk}"'",
-          "peers": [
-            {
-              "address": "'"${endip}"'",
-              "port": 2408,
-              "public_key": "bmXOC+F1FxEMF9dyiK2H5/1SUtzH0JuVo51h2wPfgyo=",
-              "allowed_ips": [
-                "0.0.0.0/0",
-                "::/0"
-              ],
-              "reserved": '"${res}"'
-            }
-          ]
-        }
-      ],
-      "outbounds": [
-        {
-          "type": "direct",
-          "tag": "direct"
+          "action": "sniff"
         },
         {
-          "type": "socks",
-          "tag": "socks-out",
-          "server": "127.0.0.1",
-          "server_port": 40000,
-          "version": "5"
+          "action": "resolve",
+          "domain_suffix": ["yg_kkk"],
+          "strategy": "prefer_ipv4"
+        },
+        {
+          "action": "resolve",
+          "domain_suffix": ["yg_kkk"],
+          "strategy": "prefer_ipv6"
+        },
+        {
+          "domain_suffix": ["yg_kkk"],
+          "outbound": "socks-out"
+        },
+        {
+          "domain_suffix": ["yg_kkk"],
+          "outbound": "warp-out"
+        },
+        {
+          "outbound": "direct",
+          "network": "udp,tcp"
         }
-      ],
-      "route": {
-        "rules": [
-          {
-            "action": "sniff"
-          },
-          {
-            "action": "resolve",
-            "domain_suffix": ["yg_kkk"],
-            "strategy": "prefer_ipv4"
-          },
-          {
-            "action": "resolve",
-            "domain_suffix": ["yg_kkk"],
-            "strategy": "prefer_ipv6"
-          },
-          {
-            "domain_suffix": ["yg_kkk"],
-            "outbound": "socks-out"
-          },
-          {
-            "domain_suffix": ["yg_kkk"],
-            "outbound": "warp-out"
-          },
-          {
-            "outbound": "direct",
-            "network": "udp,tcp"
-          }
-        ]
-      }
-    }'
-  fi
+      ]
+    }
+  }'
 
   # Default initializations if not set
   : ${use_vl_re:=true}
@@ -1030,22 +1027,68 @@ inssbjsonser() {
   : ${use_tu:=false}
   : ${use_an:=false}
 
-  # Dynamically add selected inbounds
-  [[ "$use_vl_re" == "true" ]] && config_json=$(echo "$config_json" | jq --argjson inb "$vl_re_inb" '.inbounds += [$inb]')
-  [[ "$use_vl_ws_tls" == "true" ]] && config_json=$(echo "$config_json" | jq --argjson inb "$vl_ws_tls_inb" '.inbounds += [$inb]')
-  [[ "$use_vl_hu_tls" == "true" ]] && config_json=$(echo "$config_json" | jq --argjson inb "$vl_hu_tls_inb" '.inbounds += [$inb]')
-  [[ "$use_vm_ws" == "true" ]] && config_json=$(echo "$config_json" | jq --argjson inb "$vm_ws_inb" '.inbounds += [$inb]')
-  [[ "$use_vm_ws_tls" == "true" ]] && config_json=$(echo "$config_json" | jq --argjson inb "$vm_ws_tls_inb" '.inbounds += [$inb]')
-  [[ "$use_vm_hu_tls" == "true" ]] && config_json=$(echo "$config_json" | jq --argjson inb "$vm_hu_tls_inb" '.inbounds += [$inb]')
-  [[ "$use_tr_tls" == "true" ]] && config_json=$(echo "$config_json" | jq --argjson inb "$tr_tls_inb" '.inbounds += [$inb]')
-  [[ "$use_tr_ws_tls" == "true" ]] && config_json=$(echo "$config_json" | jq --argjson inb "$tr_ws_tls_inb" '.inbounds += [$inb]')
-  [[ "$use_tr_hu_tls" == "true" ]] && config_json=$(echo "$config_json" | jq --argjson inb "$tr_hu_tls_inb" '.inbounds += [$inb]')
-  [[ "$use_ss" == "true" ]] && config_json=$(echo "$config_json" | jq --argjson inb "$ss_inb" '.inbounds += [$inb]')
-  [[ "$use_hy2" == "true" ]] && config_json=$(echo "$config_json" | jq --argjson inb "$hy2_inb" '.inbounds += [$inb]')
-  [[ "$use_tu" == "true" ]] && config_json=$(echo "$config_json" | jq --argjson inb "$tu_inb" '.inbounds += [$inb]')
-  [[ "$use_an" == "true" ]] && config_json=$(echo "$config_json" | jq --argjson inb "$an_inb" '.inbounds += [$inb]')
+  # Dynamically add selected inbounds to both templates
+  if [[ "$use_vl_re" == "true" ]]; then
+    config_json_10=$(echo "$config_json_10" | jq --argjson inb "$vl_re_inb" '.inbounds += [$inb]')
+    config_json_11=$(echo "$config_json_11" | jq --argjson inb "$vl_re_inb" '.inbounds += [$inb]')
+  fi
+  if [[ "$use_vl_ws_tls" == "true" ]]; then
+    config_json_10=$(echo "$config_json_10" | jq --argjson inb "$vl_ws_tls_inb" '.inbounds += [$inb]')
+    config_json_11=$(echo "$config_json_11" | jq --argjson inb "$vl_ws_tls_inb" '.inbounds += [$inb]')
+  fi
+  if [[ "$use_vl_hu_tls" == "true" ]]; then
+    config_json_10=$(echo "$config_json_10" | jq --argjson inb "$vl_hu_tls_inb" '.inbounds += [$inb]')
+    config_json_11=$(echo "$config_json_11" | jq --argjson inb "$vl_hu_tls_inb" '.inbounds += [$inb]')
+  fi
+  if [[ "$use_vm_ws" == "true" ]]; then
+    config_json_10=$(echo "$config_json_10" | jq --argjson inb "$vm_ws_inb" '.inbounds += [$inb]')
+    config_json_11=$(echo "$config_json_11" | jq --argjson inb "$vm_ws_inb" '.inbounds += [$inb]')
+  fi
+  if [[ "$use_vm_ws_tls" == "true" ]]; then
+    config_json_10=$(echo "$config_json_10" | jq --argjson inb "$vm_ws_tls_inb" '.inbounds += [$inb]')
+    config_json_11=$(echo "$config_json_11" | jq --argjson inb "$vm_ws_tls_inb" '.inbounds += [$inb]')
+  fi
+  if [[ "$use_vm_hu_tls" == "true" ]]; then
+    config_json_10=$(echo "$config_json_10" | jq --argjson inb "$vm_hu_tls_inb" '.inbounds += [$inb]')
+    config_json_11=$(echo "$config_json_11" | jq --argjson inb "$vm_hu_tls_inb" '.inbounds += [$inb]')
+  fi
+  if [[ "$use_tr_tls" == "true" ]]; then
+    config_json_10=$(echo "$config_json_10" | jq --argjson inb "$tr_tls_inb" '.inbounds += [$inb]')
+    config_json_11=$(echo "$config_json_11" | jq --argjson inb "$tr_tls_inb" '.inbounds += [$inb]')
+  fi
+  if [[ "$use_tr_ws_tls" == "true" ]]; then
+    config_json_10=$(echo "$config_json_10" | jq --argjson inb "$tr_ws_tls_inb" '.inbounds += [$inb]')
+    config_json_11=$(echo "$config_json_11" | jq --argjson inb "$tr_ws_tls_inb" '.inbounds += [$inb]')
+  fi
+  if [[ "$use_tr_hu_tls" == "true" ]]; then
+    config_json_10=$(echo "$config_json_10" | jq --argjson inb "$tr_hu_tls_inb" '.inbounds += [$inb]')
+    config_json_11=$(echo "$config_json_11" | jq --argjson inb "$tr_hu_tls_inb" '.inbounds += [$inb]')
+  fi
+  if [[ "$use_ss" == "true" ]]; then
+    config_json_10=$(echo "$config_json_10" | jq --argjson inb "$ss_inb" '.inbounds += [$inb]')
+    config_json_11=$(echo "$config_json_11" | jq --argjson inb "$ss_inb" '.inbounds += [$inb]')
+  fi
+  if [[ "$use_hy2" == "true" ]]; then
+    config_json_10=$(echo "$config_json_10" | jq --argjson inb "$hy2_inb" '.inbounds += [$inb]')
+    config_json_11=$(echo "$config_json_11" | jq --argjson inb "$hy2_inb" '.inbounds += [$inb]')
+  fi
+  if [[ "$use_tu" == "true" ]]; then
+    config_json_10=$(echo "$config_json_10" | jq --argjson inb "$tu_inb" '.inbounds += [$inb]')
+    config_json_11=$(echo "$config_json_11" | jq --argjson inb "$tu_inb" '.inbounds += [$inb]')
+  fi
+  if [[ "$use_an" == "true" ]]; then
+    config_json_10=$(echo "$config_json_10" | jq --argjson inb "$an_inb" '.inbounds += [$inb]')
+    config_json_11=$(echo "$config_json_11" | jq --argjson inb "$an_inb" '.inbounds += [$inb]')
+  fi
 
-  echo "$config_json" > "$SBFOLDER/sb.json"
+  echo "$config_json_10" > "$SBFOLDER/sb10.json"
+  echo "$config_json_11" > "$SBFOLDER/sb11.json"
+
+  if [[ "$sbnh" == "1.10" ]]; then
+    cp "$SBFOLDER/sb10.json" "$SBFOLDER/sb.json"
+  else
+    cp "$SBFOLDER/sb11.json" "$SBFOLDER/sb.json"
+  fi
 }
 
 # --- Service Management (Systemd & OpenRC) ---
@@ -4949,6 +4992,10 @@ instsllsingbox() {
 sb() {
   clear
   detect_system
+  if [ -f "$SBFOLDER/sb.json" ]; then
+    [ ! -f "$SBFOLDER/sb10.json" ] && cp "$SBFOLDER/sb.json" "$SBFOLDER/sb10.json"
+    [ ! -f "$SBFOLDER/sb11.json" ] && cp "$SBFOLDER/sb.json" "$SBFOLDER/sb11.json"
+  fi
   white "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" 
   echo -e "${bblue}   _____ _             _                  ${plain}"
   echo -e "${bblue}  / ____(_)           | |                 ${plain}"
