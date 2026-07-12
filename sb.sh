@@ -4895,25 +4895,25 @@ instsllsingbox() {
   use_an=false           # 13: AnyTLS
 
   echo
-  green "请选择需要安装的协议组合 (回车默认安装 1,5,11,12，或输入数字并用逗号分隔，如 1,10,11)"
+  green "请选择需要安装的协议组合 (回车默认安装 1 5 11 12，或输入数字并用空格分隔，如 1 10 11)"
   green "--- VLESS 组合 ---"
-  yellow " 1：VLESS-Reality (Vision + TCP) (推荐，TCP伪装)"
+  yellow " 1：VLESS-Reality (Vision + TCP)"
   yellow " 2：VLESS-WS-TLS (VLESS over WebSocket + TLS)"
   yellow " 3：VLESS-HTTPUpgrade-TLS (VLESS over HTTPUpgrade + TLS)"
   green "--- VMess 组合 ---"
-  yellow " 4：VMess-WS (VMess over WebSocket，不启用 TLS，适合 CDN/Argo)"
-  yellow " 5：VMess-WS-TLS (VMess over WebSocket + TLS，域名证书)"
-  yellow " 6：VMess-HTTPUpgrade-TLS (VMess over HTTPUpgrade + TLS，域名证书)"
+  yellow " 4：VMess-WS (VMess over WebSocket，不启用 TLS)"
+  yellow " 5：VMess-WS-TLS (VMess over WebSocket + TLS)"
+  yellow " 6：VMess-HTTPUpgrade-TLS (VMess over HTTPUpgrade + TLS)"
   green "--- Trojan 组合 ---"
   yellow " 7：Trojan-TLS (Trojan over TCP + TLS)"
   yellow " 8：Trojan-WS-TLS (Trojan over WebSocket + TLS)"
   yellow " 9：Trojan-HTTPUpgrade-TLS (Trojan over HTTPUpgrade + TLS)"
   green "--- 其他经典/高速协议 ---"
-  yellow "10：Shadowsocks (极速 Shadowsocks-2022 加密，适合游戏)"
-  yellow "11：Hysteria 2 (推荐，QUIC/UDP 高速抗丢包)"
-  yellow "12：Tuic-v5 (QUIC/UDP 低延迟)"
+  yellow "10：Shadowsocks (Shadowsocks-2022 加密)"
+  yellow "11：Hysteria 2 (QUIC/UDP)"
+  yellow "12：Tuic-v5 (QUIC/UDP)"
   if [[ "$sbnh" != "1.10" ]]; then
-    yellow "13：AnyTLS (防主动探测)"
+    yellow "13：AnyTLS"
   fi
   readp "请选择【1-13】：" select_proto
   if [[ -z "$select_proto" ]]; then
@@ -4922,7 +4922,7 @@ instsllsingbox() {
     use_hy2=true
     use_tu=true
   else
-    IFS=',' read -r -a proto_arr <<< "$select_proto"
+    read -r -a proto_arr <<< "$select_proto"
     for item in "${proto_arr[@]}"; do
       item=$(echo "$item" | xargs)
       case "$item" in
