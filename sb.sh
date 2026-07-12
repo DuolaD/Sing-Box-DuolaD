@@ -519,9 +519,20 @@ insport() {
   [[ "$use_an" = "true" ]] && blue "Anytls端口：$port_an"
   
   red "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-  green "四、自动生成各个协议统一的uuid (密码)"
-  uuid=$("$SBFOLDER/sing-box" generate uuid)
-  blue "已确认uuid (密码)：${uuid}"
+  green "四、自动生成各个协议独立的uuid (密码)"
+  uuid_vl_re=$("$SBFOLDER/sing-box" generate uuid)
+  uuid_vl_ws=$("$SBFOLDER/sing-box" generate uuid)
+  uuid_vl_hu=$("$SBFOLDER/sing-box" generate uuid)
+  uuid_vm_ws=$("$SBFOLDER/sing-box" generate uuid)
+  uuid_vm_ws_tls=$("$SBFOLDER/sing-box" generate uuid)
+  uuid_vm_hu_tls=$("$SBFOLDER/sing-box" generate uuid)
+  uuid_tr_tls=$("$SBFOLDER/sing-box" generate uuid)
+  uuid_tr_ws_tls=$("$SBFOLDER/sing-box" generate uuid)
+  uuid_tr_hu_tls=$("$SBFOLDER/sing-box" generate uuid)
+  uuid_hy2=$("$SBFOLDER/sing-box" generate uuid)
+  uuid_tu=$("$SBFOLDER/sing-box" generate uuid)
+  uuid_an=$("$SBFOLDER/sing-box" generate uuid)
+  blue "已确认各个协议独立的uuid (密码)已自动生成"
   if [[ "$use_ss" = "true" ]]; then
     ss_password=$("$SBFOLDER/sing-box" generate rand 16 --base64)
     blue "已确认Shadowsocks密码(SS-2022)：${ss_password}"
@@ -538,7 +549,7 @@ inssbjsonser() {
     "listen_port": '"${port_vl_re:-443}"',
     "users": [
       {
-        "uuid": "'"${uuid}"'",
+        "uuid": "'"${uuid_vl_re}"'",
         "flow": "xtls-rprx-vision"
       }
     ],
@@ -565,12 +576,12 @@ inssbjsonser() {
     "listen_port": '"${port_vl_ws_tls:-443}"',
     "users": [
       {
-        "uuid": "'"${uuid}"'"
+        "uuid": "'"${uuid_vl_ws}"'"
       }
     ],
     "transport": {
       "type": "ws",
-      "path": "'"${uuid}-vlws"'",
+      "path": "'"${uuid_vl_ws}"'",
       "max_early_data": 2048,
       "early_data_header_name": "Sec-WebSocket-Protocol"
     },
@@ -590,12 +601,12 @@ inssbjsonser() {
     "listen_port": '"${port_vl_hu_tls:-443}"',
     "users": [
       {
-        "uuid": "'"${uuid}"'"
+        "uuid": "'"${uuid_vl_hu}"'"
       }
     ],
     "transport": {
       "type": "httpupgrade",
-      "path": "'"${uuid}-vlhu"'"
+      "path": "'"${uuid_vl_hu}"'"
     },
     "tls": {
       "enabled": true,
@@ -613,13 +624,13 @@ inssbjsonser() {
     "listen_port": '"${port_vm_ws:-80}"',
     "users": [
       {
-        "uuid": "'"${uuid}"'",
+        "uuid": "'"${uuid_vm_ws}"'",
         "alterId": 0
       }
     ],
     "transport": {
       "type": "ws",
-      "path": "'"${uuid}-vmws"'",
+      "path": "'"${uuid_vm_ws}"'",
       "max_early_data": 2048,
       "early_data_header_name": "Sec-WebSocket-Protocol"
     },
@@ -636,13 +647,13 @@ inssbjsonser() {
     "listen_port": '"${port_vm_ws_tls:-443}"',
     "users": [
       {
-        "uuid": "'"${uuid}"'",
+        "uuid": "'"${uuid_vm_ws_tls}"'",
         "alterId": 0
       }
     ],
     "transport": {
       "type": "ws",
-      "path": "'"${uuid}-vmwstls"'",
+      "path": "'"${uuid_vm_ws_tls}"'",
       "max_early_data": 2048,
       "early_data_header_name": "Sec-WebSocket-Protocol"
     },
@@ -662,13 +673,13 @@ inssbjsonser() {
     "listen_port": '"${port_vm_hu_tls:-443}"',
     "users": [
       {
-        "uuid": "'"${uuid}"'",
+        "uuid": "'"${uuid_vm_hu_tls}"'",
         "alterId": 0
       }
     ],
     "transport": {
       "type": "httpupgrade",
-      "path": "'"${uuid}-vmhu"'"
+      "path": "'"${uuid_vm_hu_tls}"'"
     },
     "tls": {
       "enabled": true,
@@ -686,7 +697,7 @@ inssbjsonser() {
     "listen_port": '"${port_tr_tls:-443}"',
     "users": [
       {
-        "password": "'"${uuid}"'"
+        "password": "'"${uuid_tr_tls}"'"
       }
     ],
     "tls": {
@@ -705,12 +716,12 @@ inssbjsonser() {
     "listen_port": '"${port_tr_ws_tls:-443}"',
     "users": [
       {
-        "password": "'"${uuid}"'"
+        "password": "'"${uuid_tr_ws_tls}"'"
       }
     ],
     "transport": {
       "type": "ws",
-      "path": "'"${uuid}-trws"'",
+      "path": "'"${uuid_tr_ws_tls}"'",
       "max_early_data": 2048,
       "early_data_header_name": "Sec-WebSocket-Protocol"
     },
@@ -730,12 +741,12 @@ inssbjsonser() {
     "listen_port": '"${port_tr_hu_tls:-443}"',
     "users": [
       {
-        "password": "'"${uuid}"'"
+        "password": "'"${uuid_tr_hu_tls}"'"
       }
     ],
     "transport": {
       "type": "httpupgrade",
-      "path": "'"${uuid}-trhu"'"
+      "path": "'"${uuid_tr_hu_tls}"'"
     },
     "tls": {
       "enabled": true,
@@ -763,7 +774,7 @@ inssbjsonser() {
     "listen_port": '"${port_hy2:-443}"',
     "users": [
       {
-        "password": "'"${uuid}"'"
+        "password": "'"${uuid_hy2}"'"
       }
     ],
     "ignore_client_bandwidth": false,
@@ -783,8 +794,8 @@ inssbjsonser() {
     "listen_port": '"${port_tu:-443}"',
     "users": [
       {
-        "uuid": "'"${uuid}"'",
-        "password": "'"${uuid}"'"
+        "uuid": "'"${uuid_tu}"'",
+        "password": "'"${uuid_tu}"'"
       }
     ],
     "congestion_control": "bbr",
@@ -804,7 +815,7 @@ inssbjsonser() {
     "listen_port": '"${port_an:-443}"',
     "users": [
       {
-        "password": "'"${uuid}"'"
+        "password": "'"${uuid_an}"'"
       }
     ],
     "padding_scheme": [],
@@ -1159,7 +1170,18 @@ result_vl_vm_hy_tu() {
     echo "$clean_json" | jq -r ".inbounds[] | select(.tag == \"$tag\") | .listen_port // empty" 2>/dev/null | head -n 1
   }
 
-  uuid=$(echo "$clean_json" | jq -r '(.inbounds[] | select(.users != null and .users[0].uuid != null) | .users[0].uuid) // (.inbounds[] | select(.users != null and .users[0].password != null) | .users[0].password) // (.inbounds[] | select(.users != null and .users[0].password != null) | .users[0].password) // empty' | head -n 1)
+  uuid_vl_re=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "vless-reality-sb") | .users[0].uuid // empty' 2>/dev/null | head -n 1)
+  uuid_vl_ws=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "vless-ws-tls-sb") | .users[0].uuid // empty' 2>/dev/null | head -n 1)
+  uuid_vl_hu=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "vless-hu-tls-sb") | .users[0].uuid // empty' 2>/dev/null | head -n 1)
+  uuid_vm_ws=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "vmess-ws-sb") | .users[0].uuid // empty' 2>/dev/null | head -n 1)
+  uuid_vm_ws_tls=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "vmess-ws-tls-sb") | .users[0].uuid // empty' 2>/dev/null | head -n 1)
+  uuid_vm_hu_tls=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "vmess-hu-tls-sb") | .users[0].uuid // empty' 2>/dev/null | head -n 1)
+  uuid_tr_tls=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "trojan-tls-sb") | .users[0].password // empty' 2>/dev/null | head -n 1)
+  uuid_tr_ws_tls=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "trojan-ws-tls-sb") | .users[0].password // empty' 2>/dev/null | head -n 1)
+  uuid_tr_hu_tls=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "trojan-hu-tls-sb") | .users[0].password // empty' 2>/dev/null | head -n 1)
+  uuid_hy2=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "hy2-sb") | .users[0].password // empty' 2>/dev/null | head -n 1)
+  uuid_tu=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "tuic5-sb") | .users[0].uuid // empty' 2>/dev/null | head -n 1)
+  uuid_an=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "anytls-sb") | .users[0].password // empty' 2>/dev/null | head -n 1)
   
   port_vl_re=$(query_inbound_port "vless-reality-sb")
   port_vl_ws_tls=$(query_inbound_port "vless-ws-tls-sb")
@@ -1266,8 +1288,8 @@ resvless() {
     if [[ "$server_ip" = "dual" ]]; then
       local v4_addr=$(cat "$SBFOLDER/v4.log" 2>/dev/null)
       local v6_addr=$(cat "$SBFOLDER/v6.log" 2>/dev/null)
-      vl_link_v4="vless://$uuid@$v4_addr:$port_vl_re?encryption=none&flow=xtls-rprx-vision&security=reality&sni=$vl_name&fp=chrome&pbk=$public_key&sid=$short_id&type=tcp&headerType=none#vl-reality-$hostname-IPV4"
-      vl_link_v6="vless://$uuid@[$v6_addr]:$port_vl_re?encryption=none&flow=xtls-rprx-vision&security=reality&sni=$vl_name&fp=chrome&pbk=$public_key&sid=$short_id&type=tcp&headerType=none#vl-reality-$hostname-IPV6"
+      vl_link_v4="vless://$uuid_vl_re@$v4_addr:$port_vl_re?encryption=none&flow=xtls-rprx-vision&security=reality&sni=$vl_name&fp=chrome&pbk=$public_key&sid=$short_id&type=tcp&headerType=none#vl-reality-$hostname-IPV4"
+      vl_link_v6="vless://$uuid_vl_re@[$v6_addr]:$port_vl_re?encryption=none&flow=xtls-rprx-vision&security=reality&sni=$vl_name&fp=chrome&pbk=$public_key&sid=$short_id&type=tcp&headerType=none#vl-reality-$hostname-IPV6"
       echo -e "$vl_link_v4\n$vl_link_v6" > "$SBFOLDER/vl_reality.txt"
       red "🚀【 vless-reality-vision-IPV4 】节点信息如下：" && sleep 1
       echo -e "${yellow}$vl_link_v4${plain}\n"
@@ -1276,7 +1298,7 @@ resvless() {
       echo -e "${yellow}$vl_link_v6${plain}\n"
       print_qr "$vl_link_v6"
     else
-      vl_link="vless://$uuid@$server_ip:$port_vl_re?encryption=none&flow=xtls-rprx-vision&security=reality&sni=$vl_name&fp=chrome&pbk=$public_key&sid=$short_id&type=tcp&headerType=none#vl-reality-$hostname"
+      vl_link="vless://$uuid_vl_re@$server_ip:$port_vl_re?encryption=none&flow=xtls-rprx-vision&security=reality&sni=$vl_name&fp=chrome&pbk=$public_key&sid=$short_id&type=tcp&headerType=none#vl-reality-$hostname"
       echo "$vl_link" > "$SBFOLDER/vl_reality.txt"
       red "🚀【 vless-reality-vision 】节点信息如下：" && sleep 2
       echo -e "${yellow}$vl_link${plain}\n"
@@ -1290,8 +1312,8 @@ resvless() {
     if [[ "$server_ip" = "dual" ]]; then
       local v4_addr=$(cat "$SBFOLDER/v4.log" 2>/dev/null)
       local v6_addr=$(cat "$SBFOLDER/v6.log" 2>/dev/null)
-      local vl_ws_link_v4="vless://$uuid@$v4_addr:$port_vl_ws_tls?encryption=none&security=tls&sni=$tls_sni&type=ws&path=%2F${uuid}-vlws&${vl_tls_params}#vl-ws-tls-$hostname-IPV4"
-      local vl_ws_link_v6="vless://$uuid@[$v6_addr]:$port_vl_ws_tls?encryption=none&security=tls&sni=$tls_sni&type=ws&path=%2F${uuid}-vlws&${vl_tls_params}#vl-ws-tls-$hostname-IPV6"
+      local vl_ws_link_v4="vless://$uuid_vl_ws@$v4_addr:$port_vl_ws_tls?encryption=none&security=tls&sni=$tls_sni&type=ws&path=%2F${uuid_vl_ws}&${vl_tls_params}#vl-ws-tls-$hostname-IPV4"
+      local vl_ws_link_v6="vless://$uuid_vl_ws@[$v6_addr]:$port_vl_ws_tls?encryption=none&security=tls&sni=$tls_sni&type=ws&path=%2F${uuid_vl_ws}&${vl_tls_params}#vl-ws-tls-$hostname-IPV6"
       echo -e "$vl_ws_link_v4\n$vl_ws_link_v6" > "$SBFOLDER/vl_ws_tls.txt"
       red "🚀【 vless-ws-tls-IPV4 】节点信息如下：" && sleep 1
       echo -e "${yellow}$vl_ws_link_v4${plain}\n"
@@ -1300,7 +1322,7 @@ resvless() {
       echo -e "${yellow}$vl_ws_link_v6${plain}\n"
       print_qr "$vl_ws_link_v6"
     else
-      local vl_ws_link="vless://$uuid@$server_ip:$port_vl_ws_tls?encryption=none&security=tls&sni=$tls_sni&type=ws&path=%2F${uuid}-vlws&${vl_tls_params}#vl-ws-tls-$hostname"
+      local vl_ws_link="vless://$uuid_vl_ws@$server_ip:$port_vl_ws_tls?encryption=none&security=tls&sni=$tls_sni&type=ws&path=%2F${uuid_vl_ws}&${vl_tls_params}#vl-ws-tls-$hostname"
       echo "$vl_ws_link" > "$SBFOLDER/vl_ws_tls.txt"
       red "🚀【 vless-ws-tls 】节点信息如下：" && sleep 2
       echo -e "${yellow}$vl_ws_link${plain}\n"
@@ -1314,8 +1336,8 @@ resvless() {
     if [[ "$server_ip" = "dual" ]]; then
       local v4_addr=$(cat "$SBFOLDER/v4.log" 2>/dev/null)
       local v6_addr=$(cat "$SBFOLDER/v6.log" 2>/dev/null)
-      local vl_hu_link_v4="vless://$uuid@$v4_addr:$port_vl_hu_tls?encryption=none&security=tls&sni=$tls_sni&type=httpupgrade&path=%2F${uuid}-vlhu&${vl_tls_params}#vl-hu-tls-$hostname-IPV4"
-      local vl_hu_link_v6="vless://$uuid@[$v6_addr]:$port_vl_hu_tls?encryption=none&security=tls&sni=$tls_sni&type=httpupgrade&path=%2F${uuid}-vlhu&${vl_tls_params}#vl-hu-tls-$hostname-IPV6"
+      local vl_hu_link_v4="vless://$uuid_vl_hu@$v4_addr:$port_vl_hu_tls?encryption=none&security=tls&sni=$tls_sni&type=httpupgrade&path=%2F${uuid_vl_hu}&${vl_tls_params}#vl-hu-tls-$hostname-IPV4"
+      local vl_hu_link_v6="vless://$uuid_vl_hu@[$v6_addr]:$port_vl_hu_tls?encryption=none&security=tls&sni=$tls_sni&type=httpupgrade&path=%2F${uuid_vl_hu}&${vl_tls_params}#vl-hu-tls-$hostname-IPV6"
       echo -e "$vl_hu_link_v4\n$vl_hu_link_v6" > "$SBFOLDER/vl_hu_tls.txt"
       red "🚀【 vless-hu-tls-IPV4 】节点信息如下：" && sleep 1
       echo -e "${yellow}$vl_hu_link_v4${plain}\n"
@@ -1324,7 +1346,7 @@ resvless() {
       echo -e "${yellow}$vl_hu_link_v6${plain}\n"
       print_qr "$vl_hu_link_v6"
     else
-      local vl_hu_link="vless://$uuid@$server_ip:$port_vl_hu_tls?encryption=none&security=tls&sni=$tls_sni&type=httpupgrade&path=%2F${uuid}-vlhu&${vl_tls_params}#vl-hu-tls-$hostname"
+      local vl_hu_link="vless://$uuid_vl_hu@$server_ip:$port_vl_hu_tls?encryption=none&security=tls&sni=$tls_sni&type=httpupgrade&path=%2F${uuid_vl_hu}&${vl_tls_params}#vl-hu-tls-$hostname"
       echo "$vl_hu_link" > "$SBFOLDER/vl_hu_tls.txt"
       red "🚀【 vless-hu-tls 】节点信息如下：" && sleep 2
       echo -e "${yellow}$vl_hu_link${plain}\n"
@@ -1350,7 +1372,7 @@ resvmess() {
       echo
       echo "分享链接【v2rayn、v2rayng、nekobox、小火箭shadowrocket】"
       local argo_domain=$(cat "$SBFOLDER/argo.log" 2>/dev/null | grep -a trycloudflare.com | awk 'NR==2{print}' | awk -F// '{print $2}' | awk '{print $1}')
-      local vm_argo_temp_link="vmess://$(echo '{"add":"'$vmadd_argo'","aid":"0","host":"'$argo_domain'","id":"'$uuid'","net":"ws","path":"'${uuid}-vmws'","port":"443","ps":"'vm-argo-$hostname'","tls":"tls","sni":"'$argo_domain'","fp":"chrome","type":"none","v":"2"}' | base64 -w 0)"
+      local vm_argo_temp_link="vmess://$(echo '{"add":"'$vmadd_argo'","aid":"0","host":"'$argo_domain'","id":"'$uuid_vm_ws'","net":"ws","path":"'$uuid_vm_ws'","port":"443","ps":"'vm-argo-$hostname'","tls":"tls","sni":"'$argo_domain'","fp":"chrome","type":"none","v":"2"}' | base64 -w 0)"
       echo -e "${yellow}$vm_argo_temp_link${plain}"
       echo
       echo "$vm_argo_temp_link" > "$SBFOLDER/vm_ws_argols.txt"
@@ -1364,7 +1386,7 @@ resvmess() {
       red "🚀【 vmess-ws(tls)+Argo 】固定节点信息如下 (可选择3-8-3，自定义CDN优选地址)：" && sleep 2
       echo
       echo "分享链接【v2rayn、v2rayng、nekobox、小火箭shadowrocket】"
-      local vm_argo_fixed_link="vmess://$(echo '{"add":"'$vmadd_argo'","aid":"0","host":"'$argogd'","id":"'$uuid'","net":"ws","path":"'${uuid}-vmws'","port":"443","ps":"'vm-argo-$hostname'","tls":"tls","sni":"'$argogd'","fp":"chrome","type":"none","v":"2"}' | base64 -w 0)"
+      local vm_argo_fixed_link="vmess://$(echo '{"add":"'$vmadd_argo'","aid":"0","host":"'$argogd'","id":"'$uuid_vm_ws'","net":"ws","path":"'$uuid_vm_ws'","port":"443","ps":"'vm-argo-$hostname'","tls":"tls","sni":"'$argogd'","fp":"chrome","type":"none","v":"2"}' | base64 -w 0)"
       echo -e "${yellow}$vm_argo_fixed_link${plain}"
       echo
       echo "$vm_argo_fixed_link" > "$SBFOLDER/vm_ws_argogd.txt"
@@ -1376,8 +1398,8 @@ resvmess() {
     if [[ "$server_ip" = "dual" ]]; then
       local v4_addr=$(cat "$SBFOLDER/v4.log" 2>/dev/null)
       local v6_addr=$(cat "$SBFOLDER/v6.log" 2>/dev/null)
-      local vm_ws_link_v4="vmess://$(echo '{"add":"'$v4_addr'","aid":"0","host":"'$tls_sni'","id":"'$uuid'","net":"ws","path":"'${uuid}-vmws'","port":"'$port_vm_ws'","ps":"'vm-ws-$hostname-IPV4'","tls":"","type":"none","v":"2"}' | base64 -w 0)"
-      local vm_ws_link_v6="vmess://$(echo '{"add":"['$v6_addr']","aid":"0","host":"'$tls_sni'","id":"'$uuid'","net":"ws","path":"'${uuid}-vmws'","port":"'$port_vm_ws'","ps":"'vm-ws-$hostname-IPV6'","tls":"","type":"none","v":"2"}' | base64 -w 0)"
+      local vm_ws_link_v4="vmess://$(echo '{"add":"'$v4_addr'","aid":"0","host":"'$tls_sni'","id":"'$uuid_vm_ws'","net":"ws","path":"'$uuid_vm_ws'","port":"'$port_vm_ws'","ps":"'vm-ws-$hostname-IPV4'","tls":"","type":"none","v":"2"}' | base64 -w 0)"
+      local vm_ws_link_v6="vmess://$(echo '{"add":"['$v6_addr']","aid":"0","host":"'$tls_sni'","id":"'$uuid_vm_ws'","net":"ws","path":"'$uuid_vm_ws'","port":"'$port_vm_ws'","ps":"'vm-ws-$hostname-IPV6'","tls":"","type":"none","v":"2"}' | base64 -w 0)"
       echo -e "$vm_ws_link_v4\n$vm_ws_link_v6" > "$SBFOLDER/vm_ws.txt"
       red "🚀【 vmess-ws-IPV4 】节点信息如下 (建议选择3-8-1，设置为CDN优选节点)：" && sleep 1
       echo -e "${yellow}$vm_ws_link_v4${plain}\n"
@@ -1386,7 +1408,7 @@ resvmess() {
       echo -e "${yellow}$vm_ws_link_v6${plain}\n"
       print_qr "$vm_ws_link_v6"
     else
-      local vm_ws_link="vmess://$(echo '{"add":"'$server_ipcl'","aid":"0","host":"'$tls_sni'","id":"'$uuid'","net":"ws","path":"'${uuid}-vmws'","port":"'$port_vm_ws'","ps":"'vm-ws-$hostname'","tls":"","type":"none","v":"2"}' | base64 -w 0)"
+      local vm_ws_link="vmess://$(echo '{"add":"'$server_ipcl'","aid":"0","host":"'$tls_sni'","id":"'$uuid_vm_ws'","net":"ws","path":"'$uuid_vm_ws'","port":"'$port_vm_ws'","ps":"'vm-ws-$hostname'","tls":"","type":"none","v":"2"}' | base64 -w 0)"
       echo "$vm_ws_link" > "$SBFOLDER/vm_ws.txt"
       red "🚀【 vmess-ws 】节点信息如下 (建议选择3-8-1，设置为CDN优选节点)：" && sleep 2
       echo -e "${yellow}$vm_ws_link${plain}\n"
@@ -1400,8 +1422,8 @@ resvmess() {
     if [[ "$server_ip" = "dual" ]]; then
       local v4_addr=$(cat "$SBFOLDER/v4.log" 2>/dev/null)
       local v6_addr=$(cat "$SBFOLDER/v6.log" 2>/dev/null)
-      local vm_ws_tls_link_v4="vmess://$(echo '{"add":"'$v4_addr'","aid":"0","host":"'$tls_sni'","id":"'$uuid'","net":"ws","path":"'${uuid}-vmwstls'","port":"'$port_vm_ws_tls'","ps":"'vm-ws-tls-$hostname-IPV4'","tls":"tls","sni":"'$tls_sni'","fp":"chrome","type":"none","v":"2"}' | base64 -w 0)"
-      local vm_ws_tls_link_v6="vmess://$(echo '{"add":"['$v6_addr']","aid":"0","host":"'$tls_sni'","id":"'$uuid'","net":"ws","path":"'${uuid}-vmwstls'","port":"'$port_vm_ws_tls'","ps":"'vm-ws-tls-$hostname-IPV6'","tls":"tls","sni":"'$tls_sni'","fp":"chrome","type":"none","v":"2"}' | base64 -w 0)"
+      local vm_ws_tls_link_v4="vmess://$(echo '{"add":"'$v4_addr'","aid":"0","host":"'$tls_sni'","id":"'$uuid_vm_ws_tls'","net":"ws","path":"'$uuid_vm_ws_tls'","port":"'$port_vm_ws_tls'","ps":"'vm-ws-tls-$hostname-IPV4'","tls":"tls","sni":"'$tls_sni'","fp":"chrome","type":"none","v":"2"}' | base64 -w 0)"
+      local vm_ws_tls_link_v6="vmess://$(echo '{"add":"['$v6_addr']","aid":"0","host":"'$tls_sni'","id":"'$uuid_vm_ws_tls'","net":"ws","path":"'$uuid_vm_ws_tls'","port":"'$port_vm_ws_tls'","ps":"'vm-ws-tls-$hostname-IPV6'","tls":"tls","sni":"'$tls_sni'","fp":"chrome","type":"none","v":"2"}' | base64 -w 0)"
       echo -e "$vm_ws_tls_link_v4\n$vm_ws_tls_link_v6" > "$SBFOLDER/vm_ws_tls.txt"
       red "🚀【 vmess-ws-tls-IPV4 】节点信息如下 (建议选择3-8-1，设置为CDN优选节点)：" && sleep 1
       echo -e "${yellow}$vm_ws_tls_link_v4${plain}\n"
@@ -1411,7 +1433,7 @@ resvmess() {
       print_qr "$vm_ws_tls_link_v6"
     else
       red "🚀【 vmess-ws-tls 】节点信息如下 (建议选择3-8-1，设置为CDN优选节点)：" && sleep 2
-      local vm_ws_tls_link="vmess://$(echo '{"add":"'$server_ipcl'","aid":"0","host":"'$tls_sni'","id":"'$uuid'","net":"ws","path":"'${uuid}-vmwstls'","port":"'$port_vm_ws_tls'","ps":"'vm-ws-tls-$hostname'","tls":"tls","sni":"'$tls_sni'","fp":"chrome","type":"none","v":"2"}' | base64 -w 0)"
+      local vm_ws_tls_link="vmess://$(echo '{"add":"'$server_ipcl'","aid":"0","host":"'$tls_sni'","id":"'$uuid_vm_ws_tls'","net":"ws","path":"'$uuid_vm_ws_tls'","port":"'$port_vm_ws_tls'","ps":"'vm-ws-tls-$hostname'","tls":"tls","sni":"'$tls_sni'","fp":"chrome","type":"none","v":"2"}' | base64 -w 0)"
       echo -e "${yellow}$vm_ws_tls_link${plain}"
       print_qr "$vm_ws_tls_link"
       echo "$vm_ws_tls_link" > "$SBFOLDER/vm_ws_tls.txt"
@@ -1424,8 +1446,8 @@ resvmess() {
     if [[ "$server_ip" = "dual" ]]; then
       local v4_addr=$(cat "$SBFOLDER/v4.log" 2>/dev/null)
       local v6_addr=$(cat "$SBFOLDER/v6.log" 2>/dev/null)
-      local vm_hu_tls_link_v4="vmess://$(echo '{"add":"'$v4_addr'","aid":"0","host":"'$tls_sni'","id":"'$uuid'","net":"httpupgrade","path":"'${uuid}-vmhu'","port":"'$port_vm_hu_tls'","ps":"'vm-hu-tls-$hostname-IPV4'","tls":"tls","sni":"'$tls_sni'","fp":"chrome","type":"none","v":"2"}' | base64 -w 0)"
-      local vm_hu_tls_link_v6="vmess://$(echo '{"add":"['$v6_addr']","aid":"0","host":"'$tls_sni'","id":"'$uuid'","net":"httpupgrade","path":"'${uuid}-vmhu'","port":"'$port_vm_hu_tls'","ps":"'vm-hu-tls-$hostname-IPV6'","tls":"tls","sni":"'$tls_sni'","fp":"chrome","type":"none","v":"2"}' | base64 -w 0)"
+      local vm_hu_tls_link_v4="vmess://$(echo '{"add":"'$v4_addr'","aid":"0","host":"'$tls_sni'","id":"'$uuid_vm_hu_tls'","net":"httpupgrade","path":"'$uuid_vm_hu_tls'","port":"'$port_vm_hu_tls'","ps":"'vm-hu-tls-$hostname-IPV4'","tls":"tls","sni":"'$tls_sni'","fp":"chrome","type":"none","v":"2"}' | base64 -w 0)"
+      local vm_hu_tls_link_v6="vmess://$(echo '{"add":"['$v6_addr']","aid":"0","host":"'$tls_sni'","id":"'$uuid_vm_hu_tls'","net":"httpupgrade","path":"'$uuid_vm_hu_tls'","port":"'$port_vm_hu_tls'","ps":"'vm-hu-tls-$hostname-IPV6'","tls":"tls","sni":"'$tls_sni'","fp":"chrome","type":"none","v":"2"}' | base64 -w 0)"
       echo -e "$vm_hu_tls_link_v4\n$vm_hu_tls_link_v6" > "$SBFOLDER/vm_hu_tls.txt"
       red "🚀【 vmess-hu-tls-IPV4 】节点信息如下 (建议选择3-8-1，设置为CDN优选节点)：" && sleep 1
       echo -e "${yellow}$vm_hu_tls_link_v4${plain}\n"
@@ -1434,7 +1456,7 @@ resvmess() {
       echo -e "${yellow}$vm_hu_tls_link_v6${plain}\n"
       print_qr "$vm_hu_tls_link_v6"
     else
-      local vm_hu_tls_link="vmess://$(echo '{"add":"$server_ipcl","aid":"0","host":"$tls_sni","id":"$uuid","net":"httpupgrade","path":"'${uuid}-vmhu'","port":"'$port_vm_hu_tls'","ps":"'vm-hu-tls-$hostname'","tls":"tls","sni":"'$tls_sni'","fp":"chrome","type":"none","v":"2"}' | base64 -w 0)"
+      local vm_hu_tls_link="vmess://$(echo '{"add":"'$server_ipcl'","aid":"0","host":"'$tls_sni'","id":"'$uuid_vm_hu_tls'","net":"httpupgrade","path":"'$uuid_vm_hu_tls'","port":"'$port_vm_hu_tls'","ps":"'vm-hu-tls-$hostname'","tls":"tls","sni":"'$tls_sni'","fp":"chrome","type":"none","v":"2"}' | base64 -w 0)"
       echo "$vm_hu_tls_link" > "$SBFOLDER/vm_hu_tls.txt"
       red "🚀【 vmess-hu-tls 】节点信息如下 (建议选择3-8-1，设置为CDN优选节点)：" && sleep 2
       echo -e "${yellow}$vm_hu_tls_link${plain}\n"
@@ -1457,8 +1479,8 @@ reshy2() {
   if [[ "$server_ip" = "dual" ]]; then
     local v4_addr=$(cat "$SBFOLDER/v4.log" 2>/dev/null)
     local v6_addr=$(cat "$SBFOLDER/v6.log" 2>/dev/null)
-    hy2_link_v4="hysteria2://$uuid@$v4_addr:$port_hy2?$hy2_params$hyps#hy2-$hostname-IPV4"
-    hy2_link_v6="hysteria2://$uuid@[$v6_addr]:$port_hy2?$hy2_params$hyps#hy2-$hostname-IPV6"
+    hy2_link_v4="hysteria2://$uuid_hy2@$v4_addr:$port_hy2?$hy2_params$hyps#hy2-$hostname-IPV4"
+    hy2_link_v6="hysteria2://$uuid_hy2@[$v6_addr]:$port_hy2?$hy2_params$hyps#hy2-$hostname-IPV6"
     echo -e "$hy2_link_v4\n$hy2_link_v6" > "$SBFOLDER/hy2.txt"
     red "🚀【 Hysteria-2-IPV4 】节点信息如下：" && sleep 1
     echo -e "${yellow}$hy2_link_v4${plain}\n"
@@ -1467,7 +1489,7 @@ reshy2() {
     echo -e "${yellow}$hy2_link_v6${plain}\n"
     print_qr "$hy2_link_v6"
   else
-    hy2_link="hysteria2://$uuid@$sb_hy2_ip:$port_hy2?$hy2_params$hyps#hy2-$hostname"
+    hy2_link="hysteria2://$uuid_hy2@$sb_hy2_ip:$port_hy2?$hy2_params$hyps#hy2-$hostname"
     echo "$hy2_link" > "$SBFOLDER/hy2.txt"
     red "🚀【 Hysteria-2 】节点信息如下：" && sleep 2
     echo -e "${yellow}$hy2_link${plain}\n"
@@ -1489,8 +1511,8 @@ restu5() {
   if [[ "$server_ip" = "dual" ]]; then
     local v4_addr=$(cat "$SBFOLDER/v4.log" 2>/dev/null)
     local v6_addr=$(cat "$SBFOLDER/v6.log" 2>/dev/null)
-    tu_link_v4="tuic://$uuid:$uuid@$v4_addr:$port_tu?$tu5_params#tuic5-$hostname-IPV4"
-    tu_link_v6="tuic://$uuid:$uuid@[$v6_addr]:$port_tu?$tu5_params#tuic5-$hostname-IPV6"
+    tu_link_v4="tuic://$uuid_tu:$uuid_tu@$v4_addr:$port_tu?$tu5_params#tuic5-$hostname-IPV4"
+    tu_link_v6="tuic://$uuid_tu:$uuid_tu@[$v6_addr]:$port_tu?$tu5_params#tuic5-$hostname-IPV6"
     echo -e "$tu_link_v4\n$tu_link_v6" > "$SBFOLDER/tuic5.txt"
     red "🚀【 Tuic-v5-IPV4 】节点信息如下：" && sleep 1
     echo -e "${yellow}$tu_link_v4${plain}\n"
@@ -1499,7 +1521,7 @@ restu5() {
     echo -e "${yellow}$tu_link_v6${plain}\n"
     print_qr "$tu_link_v6"
   else
-    tu_link="tuic://$uuid:$uuid@$sb_tu5_ip:$port_tu?$tu5_params#tuic5-$hostname"
+    tu_link="tuic://$uuid_tu:$uuid_tu@$sb_tu5_ip:$port_tu?$tu5_params#tuic5-$hostname"
     echo "$tu_link" > "$SBFOLDER/tuic5.txt"
     red "🚀【 Tuic-v5 】节点信息如下：" && sleep 2
     echo -e "${yellow}$tu_link${plain}\n"
@@ -1519,8 +1541,8 @@ resan() {
   if [[ "$server_ip" = "dual" ]]; then
     local v4_addr=$(cat "$SBFOLDER/v4.log" 2>/dev/null)
     local v6_addr=$(cat "$SBFOLDER/v6.log" 2>/dev/null)
-    an_link_v4="anytls://$uuid@$v4_addr:$port_an?$an_params#anytls-$hostname-IPV4"
-    an_link_v6="anytls://$uuid@[${v6_addr}]:$port_an?$an_params#anytls-$hostname-IPV6"
+    an_link_v4="anytls://$uuid_an@$v4_addr:$port_an?$an_params#anytls-$hostname-IPV4"
+    an_link_v6="anytls://$uuid_an@[${v6_addr}]:$port_an?$an_params#anytls-$hostname-IPV6"
     echo -e "$an_link_v4\n$an_link_v6" > "$SBFOLDER/an.txt"
     red "🚀【 Anytls-IPV4 】节点信息如下：" && sleep 1
     echo -e "${yellow}$an_link_v4${plain}\n"
@@ -1529,7 +1551,7 @@ resan() {
     echo -e "${yellow}$an_link_v6${plain}\n"
     print_qr "$an_link_v6"
   else
-    an_link="anytls://$uuid@$sb_an_ip:$port_an?$an_params#anytls-$hostname"
+    an_link="anytls://$uuid_an@$sb_an_ip:$port_an?$an_params#anytls-$hostname"
     echo "$an_link" > "$SBFOLDER/an.txt"
     red "🚀【 Anytls】节点信息如下：" && sleep 2
     echo -e "${yellow}$an_link${plain}\n"
@@ -1551,8 +1573,8 @@ restrojan() {
     if [[ "$server_ip" = "dual" ]]; then
       local v4_addr=$(cat "$SBFOLDER/v4.log" 2>/dev/null)
       local v6_addr=$(cat "$SBFOLDER/v6.log" 2>/dev/null)
-      local tr_link_v4="trojan://$uuid@$v4_addr:$port_tr_tls?security=tls&sni=$tls_sni&${tr_tls_params}#tr-tls-$hostname-IPV4"
-      local tr_link_v6="trojan://$uuid@[$v6_addr]:$port_tr_tls?security=tls&sni=$tls_sni&${tr_tls_params}#tr-tls-$hostname-IPV6"
+      local tr_link_v4="trojan://$uuid_tr_tls@$v4_addr:$port_tr_tls?security=tls&sni=$tls_sni&${tr_tls_params}#tr-tls-$hostname-IPV4"
+      local tr_link_v6="trojan://$uuid_tr_tls@[$v6_addr]:$port_tr_tls?security=tls&sni=$tls_sni&${tr_tls_params}#tr-tls-$hostname-IPV6"
       echo -e "$tr_link_v4\n$tr_link_v6" > "$SBFOLDER/tr_tls.txt"
       red "🚀【 Trojan-TLS-IPV4 】节点信息如下：" && sleep 1
       echo -e "${yellow}$tr_link_v4${plain}\n"
@@ -1561,7 +1583,7 @@ restrojan() {
       echo -e "${yellow}$tr_link_v6${plain}\n"
       print_qr "$tr_link_v6"
     else
-      local tr_link="trojan://$uuid@$server_ip:$port_tr_tls?security=tls&sni=$tls_sni&${tr_tls_params}#tr-tls-$hostname"
+      local tr_link="trojan://$uuid_tr_tls@$server_ip:$port_tr_tls?security=tls&sni=$tls_sni&${tr_tls_params}#tr-tls-$hostname"
       echo "$tr_link" > "$SBFOLDER/tr_tls.txt"
       red "🚀【 Trojan-TLS 】节点信息如下：" && sleep 2
       echo -e "${yellow}$tr_link${plain}\n"
@@ -1575,8 +1597,8 @@ restrojan() {
     if [[ "$server_ip" = "dual" ]]; then
       local v4_addr=$(cat "$SBFOLDER/v4.log" 2>/dev/null)
       local v6_addr=$(cat "$SBFOLDER/v6.log" 2>/dev/null)
-      local tr_ws_link_v4="trojan://$uuid@$v4_addr:$port_tr_ws_tls?security=tls&sni=$tls_sni&type=ws&path=%2F${uuid}-trws&${tr_tls_params}#tr-ws-tls-$hostname-IPV4"
-      local tr_ws_link_v6="trojan://$uuid@[$v6_addr]:$port_tr_ws_tls?security=tls&sni=$tls_sni&type=ws&path=%2F${uuid}-trws&${tr_tls_params}#tr-ws-tls-$hostname-IPV6"
+      local tr_ws_link_v4="trojan://$uuid_tr_ws_tls@$v4_addr:$port_tr_ws_tls?security=tls&sni=$tls_sni&type=ws&path=%2F${uuid_tr_ws_tls}&${tr_tls_params}#tr-ws-tls-$hostname-IPV4"
+      local tr_ws_link_v6="trojan://$uuid_tr_ws_tls@[$v6_addr]:$port_tr_ws_tls?security=tls&sni=$tls_sni&type=ws&path=%2F${uuid_tr_ws_tls}&${tr_tls_params}#tr-ws-tls-$hostname-IPV6"
       echo -e "$tr_ws_link_v4\n$tr_ws_link_v6" > "$SBFOLDER/tr_ws_tls.txt"
       red "🚀【 Trojan-WS-TLS-IPV4 】节点信息如下：" && sleep 1
       echo -e "${yellow}$tr_ws_link_v4${plain}\n"
@@ -1585,7 +1607,7 @@ restrojan() {
       echo -e "${yellow}$tr_ws_link_v6${plain}\n"
       print_qr "$tr_ws_link_v6"
     else
-      local tr_ws_link="trojan://$uuid@$server_ip:$port_tr_ws_tls?security=tls&sni=$tls_sni&type=ws&path=%2F${uuid}-trws&${tr_tls_params}#tr-ws-tls-$hostname"
+      local tr_ws_link="trojan://$uuid_tr_ws_tls@$server_ip:$port_tr_ws_tls?security=tls&sni=$tls_sni&type=ws&path=%2F${uuid_tr_ws_tls}&${tr_tls_params}#tr-ws-tls-$hostname"
       echo "$tr_ws_link" > "$SBFOLDER/tr_ws_tls.txt"
       red "🚀【 Trojan-WS-TLS 】节点信息如下：" && sleep 2
       echo -e "${yellow}$tr_ws_link${plain}\n"
@@ -1599,8 +1621,8 @@ restrojan() {
     if [[ "$server_ip" = "dual" ]]; then
       local v4_addr=$(cat "$SBFOLDER/v4.log" 2>/dev/null)
       local v6_addr=$(cat "$SBFOLDER/v6.log" 2>/dev/null)
-      local tr_hu_link_v4="trojan://$uuid@$v4_addr:$port_tr_hu_tls?security=tls&sni=$tls_sni&type=httpupgrade&path=%2F${uuid}-trhu&${tr_tls_params}#tr-hu-tls-$hostname-IPV4"
-      local tr_hu_link_v6="trojan://$uuid@[$v6_addr]:$port_tr_hu_tls?security=tls&sni=$tls_sni&type=httpupgrade&path=%2F${uuid}-trhu&${tr_tls_params}#tr-hu-tls-$hostname-IPV6"
+      local tr_hu_link_v4="trojan://$uuid_tr_hu_tls@$v4_addr:$port_tr_hu_tls?security=tls&sni=$tls_sni&type=httpupgrade&path=%2F${uuid_tr_hu_tls}&${tr_tls_params}#tr-hu-tls-$hostname-IPV4"
+      local tr_hu_link_v6="trojan://$uuid_tr_hu_tls@[$v6_addr]:$port_tr_hu_tls?security=tls&sni=$tls_sni&type=httpupgrade&path=%2F${uuid_tr_hu_tls}&${tr_tls_params}#tr-hu-tls-$hostname-IPV6"
       echo -e "$tr_hu_link_v4\n$tr_hu_link_v6" > "$SBFOLDER/tr_hu_tls.txt"
       red "🚀【 Trojan-HTTPUpgrade-TLS-IPV4 】节点信息如下：" && sleep 1
       echo -e "${yellow}$tr_hu_link_v4${plain}\n"
@@ -1609,7 +1631,7 @@ restrojan() {
       echo -e "${yellow}$tr_hu_link_v6${plain}\n"
       print_qr "$tr_hu_link_v6"
     else
-      local tr_hu_link="trojan://$uuid@$server_ip:$port_tr_hu_tls?security=tls&sni=$tls_sni&type=httpupgrade&path=%2F${uuid}-trhu&${tr_tls_params}#tr-hu-tls-$hostname"
+      local tr_hu_link="trojan://$uuid_tr_hu_tls@$server_ip:$port_tr_hu_tls?security=tls&sni=$tls_sni&type=httpupgrade&path=%2F${uuid_tr_hu_tls}&${tr_tls_params}#tr-hu-tls-$hostname"
       echo "$tr_hu_link" > "$SBFOLDER/tr_hu_tls.txt"
       red "🚀【 Trojan-HTTPUpgrade-TLS 】节点信息如下：" && sleep 2
       echo -e "${yellow}$tr_hu_link${plain}\n"
@@ -1780,11 +1802,11 @@ $indented_cert"
       local suffix=""
       [[ "$server_ipcl" = "dual" ]] && suffix="-${s_type^^}"
       
-      local vl_re_extra=$(jq -n --arg uuid "$uuid" --arg name "$vl_name" --arg pbk "$public_key" --arg sid "$short_id" \
+      local vl_re_extra=$(jq -n --arg uuid "$uuid_vl_re" --arg name "$vl_name" --arg pbk "$public_key" --arg sid "$short_id" \
         '{uuid: $uuid, flow: "xtls-rprx-vision", tls: {enabled: true, server_name: $name, utls: {enabled: true, fingerprint: "chrome"}, reality: {enabled: true, public_key: $pbk, short_id: $sid}}}')
       add_sb_outbound "vless-reality${suffix}" "vless" "$s_addr" "$port_vl_re" "$vl_re_extra"
       
-      local cl_vl_re_opts="  uuid: $uuid
+      local cl_vl_re_opts="  uuid: $uuid_vl_re
   network: tcp
   tls: true
   flow: xtls-rprx-vision
@@ -1806,17 +1828,17 @@ $indented_cert"
       local suffix=""
       [[ "$server_ipcl" = "dual" ]] && suffix="-${s_type^^}"
       
-      local vl_ws_extra=$(jq -n --arg uuid "$uuid" --arg sni "$tls_sni" --argjson is_self "$is_self_signed" --arg cert "$cert_content" \
-        '{uuid: $uuid, transport: {type: "ws", path: ("/" + $uuid + "-vlws")}, tls: ({enabled: true, server_name: $sni, insecure: false, utls: {enabled: true, fingerprint: "chrome"}} + (if $is_self and ($cert | length) > 0 then {certificate: [$cert]} else {} end))}')
+      local vl_ws_extra=$(jq -n --arg uuid "$uuid_vl_ws" --arg sni "$tls_sni" --argjson is_self "$is_self_signed" --arg cert "$cert_content" \
+        '{uuid: $uuid, transport: {type: "ws", path: $uuid}, tls: ({enabled: true, server_name: $sni, insecure: false, utls: {enabled: true, fingerprint: "chrome"}} + (if $is_self and ($cert | length) > 0 then {certificate: [$cert]} else {} end))}')
       add_sb_outbound "vless-ws-tls${suffix}" "vless" "$s_addr" "$port_vl_ws_tls" "$vl_ws_extra"
       
-      local cl_vl_ws_opts="  uuid: $uuid
+      local cl_vl_ws_opts="  uuid: $uuid_vl_ws
   network: ws
   tls: true
   servername: $tls_sni
 $cl_tls_common
   ws-opts:
-    path: \"/${uuid}-vlws\"
+    path: \"/${uuid_vl_ws}\"
     headers:
       Host: $tls_sni"
       add_clash_proxy "vless-ws-tls${suffix}" "vless" "$s_addr" "$port_vl_ws_tls" "$cl_vl_ws_opts"
@@ -1832,17 +1854,17 @@ $cl_tls_common
       local suffix=""
       [[ "$server_ipcl" = "dual" ]] && suffix="-${s_type^^}"
       
-      local vl_hu_extra=$(jq -n --arg uuid "$uuid" --arg sni "$tls_sni" --argjson is_self "$is_self_signed" --arg cert "$cert_content" \
-        '{uuid: $uuid, transport: {type: "httpupgrade", path: ("/" + $uuid + "-vlhu")}, tls: ({enabled: true, server_name: $sni, insecure: false, utls: {enabled: true, fingerprint: "chrome"}} + (if $is_self and ($cert | length) > 0 then {certificate: [$cert]} else {} end))}')
+      local vl_hu_extra=$(jq -n --arg uuid "$uuid_vl_hu" --arg sni "$tls_sni" --argjson is_self "$is_self_signed" --arg cert "$cert_content" \
+        '{uuid: $uuid, transport: {type: "httpupgrade", path: $uuid}, tls: ({enabled: true, server_name: $sni, insecure: false, utls: {enabled: true, fingerprint: "chrome"}} + (if $is_self and ($cert | length) > 0 then {certificate: [$cert]} else {} end))}')
       add_sb_outbound "vless-hu-tls${suffix}" "vless" "$s_addr" "$port_vl_hu_tls" "$vl_hu_extra"
       
-      local cl_vl_hu_opts="  uuid: $uuid
+      local cl_vl_hu_opts="  uuid: $uuid_vl_hu
   network: httpupgrade
   tls: true
   servername: $tls_sni
 $cl_tls_common
   httpupgrade-opts:
-    path: \"/${uuid}-vlhu\"
+    path: \"/${uuid_vl_hu}\"
     headers:
       Host: $tls_sni"
       add_clash_proxy "vless-hu-tls${suffix}" "vless" "$s_addr" "$port_vl_hu_tls" "$cl_vl_hu_opts"
@@ -1858,17 +1880,17 @@ $cl_tls_common
       local suffix=""
       [[ "$server_ipcl" = "dual" ]] && suffix="-${s_type^^}"
       
-      local vm_ws_extra=$(jq -n --arg uuid "$uuid" \
-        '{uuid: $uuid, security: "auto", packet_encoding: "packetaddr", transport: {type: "ws", path: ("/" + $uuid + "-vmws")}}')
+      local vm_ws_extra=$(jq -n --arg uuid "$uuid_vm_ws" \
+        '{uuid: $uuid, security: "auto", packet_encoding: "packetaddr", transport: {type: "ws", path: $uuid}}')
       add_sb_outbound "vmess-ws${suffix}" "vmess" "$s_addr" "$port_vm_ws" "$vm_ws_extra"
       
-      local cl_vm_ws_opts="  uuid: $uuid
+      local cl_vm_ws_opts="  uuid: $uuid_vm_ws
   alterId: 0
   cipher: auto
   network: ws
   tls: false
   ws-opts:
-    path: \"/${uuid}-vmws\"
+    path: \"/${uuid_vm_ws}\"
     headers:
       Host: $tls_sni"
       add_clash_proxy "vmess-ws${suffix}" "vmess" "$s_addr" "$port_vm_ws" "$cl_vm_ws_opts"
@@ -1884,11 +1906,11 @@ $cl_tls_common
       local suffix=""
       [[ "$server_ipcl" = "dual" ]] && suffix="-${s_type^^}"
       
-      local vm_ws_tls_extra=$(jq -n --arg uuid "$uuid" --arg sni "$tls_sni" --argjson is_self "$is_self_signed" --arg cert "$cert_content" \
-        '{uuid: $uuid, security: "auto", packet_encoding: "packetaddr", transport: {type: "ws", path: ("/" + $uuid + "-vmwstls")}, tls: ({enabled: true, server_name: $sni, insecure: false, utls: {enabled: true, fingerprint: "chrome"}} + (if $is_self and ($cert | length) > 0 then {certificate: [$cert]} else {} end))}')
+      local vm_ws_tls_extra=$(jq -n --arg uuid "$uuid_vm_ws_tls" --arg sni "$tls_sni" --argjson is_self "$is_self_signed" --arg cert "$cert_content" \
+        '{uuid: $uuid, security: "auto", packet_encoding: "packetaddr", transport: {type: "ws", path: $uuid}, tls: ({enabled: true, server_name: $sni, insecure: false, utls: {enabled: true, fingerprint: "chrome"}} + (if $is_self and ($cert | length) > 0 then {certificate: [$cert]} else {} end))}')
       add_sb_outbound "vmess-ws-tls${suffix}" "vmess" "$s_addr" "$port_vm_ws_tls" "$vm_ws_tls_extra"
       
-      local cl_vm_ws_tls_opts="  uuid: $uuid
+      local cl_vm_ws_tls_opts="  uuid: $uuid_vm_ws_tls
   alterId: 0
   cipher: auto
   network: ws
@@ -1896,7 +1918,7 @@ $cl_tls_common
   servername: $tls_sni
 $cl_tls_common
   ws-opts:
-    path: \"/${uuid}-vmwstls\"
+    path: \"/${uuid_vm_ws_tls}\"
     headers:
       Host: $tls_sni"
       add_clash_proxy "vmess-ws-tls${suffix}" "vmess" "$s_addr" "$port_vm_ws_tls" "$cl_vm_ws_tls_opts"
@@ -1912,11 +1934,11 @@ $cl_tls_common
       local suffix=""
       [[ "$server_ipcl" = "dual" ]] && suffix="-${s_type^^}"
       
-      local vm_hu_tls_extra=$(jq -n --arg uuid "$uuid" --arg sni "$tls_sni" --argjson is_self "$is_self_signed" --arg cert "$cert_content" \
-        '{uuid: $uuid, security: "auto", packet_encoding: "packetaddr", transport: {type: "httpupgrade", path: ("/" + $uuid + "-vmhu")}, tls: ({enabled: true, server_name: $sni, insecure: false, utls: {enabled: true, fingerprint: "chrome"}} + (if $is_self and ($cert | length) > 0 then {certificate: [$cert]} else {} end))}')
+      local vm_hu_tls_extra=$(jq -n --arg uuid "$uuid_vm_hu_tls" --arg sni "$tls_sni" --argjson is_self "$is_self_signed" --arg cert "$cert_content" \
+        '{uuid: $uuid, security: "auto", packet_encoding: "packetaddr", transport: {type: "httpupgrade", path: $uuid}, tls: ({enabled: true, server_name: $sni, insecure: false, utls: {enabled: true, fingerprint: "chrome"}} + (if $is_self and ($cert | length) > 0 then {certificate: [$cert]} else {} end))}')
       add_sb_outbound "vmess-hu-tls${suffix}" "vmess" "$s_addr" "$port_vm_hu_tls" "$vm_hu_tls_extra"
       
-      local cl_vm_hu_tls_opts="  uuid: $uuid
+      local cl_vm_hu_tls_opts="  uuid: $uuid_vm_hu_tls
   alterId: 0
   cipher: auto
   network: httpupgrade
@@ -1924,7 +1946,7 @@ $cl_tls_common
   servername: $tls_sni
 $cl_tls_common
   httpupgrade-opts:
-    path: \"/${uuid}-vmhu\"
+    path: \"/${uuid_vm_hu_tls}\"
     headers:
       Host: $tls_sni"
       add_clash_proxy "vmess-hu-tls${suffix}" "vmess" "$s_addr" "$port_vm_hu_tls" "$cl_vm_hu_tls_opts"
@@ -1940,11 +1962,11 @@ $cl_tls_common
       local suffix=""
       [[ "$server_ipcl" = "dual" ]] && suffix="-${s_type^^}"
       
-      local tr_tls_extra=$(jq -n --arg uuid "$uuid" --arg sni "$tls_sni" --argjson is_self "$is_self_signed" --arg cert "$cert_content" \
+      local tr_tls_extra=$(jq -n --arg uuid "$uuid_tr_tls" --arg sni "$tls_sni" --argjson is_self "$is_self_signed" --arg cert "$cert_content" \
         '{password: $uuid, tls: ({enabled: true, server_name: $sni, insecure: false, utls: {enabled: true, fingerprint: "chrome"}} + (if $is_self and ($cert | length) > 0 then {certificate: [$cert]} else {} end))}')
       add_sb_outbound "trojan-tls${suffix}" "trojan" "$s_addr" "$port_tr_tls" "$tr_tls_extra"
       
-      local cl_tr_tls_opts="  password: $uuid
+      local cl_tr_tls_opts="  password: $uuid_tr_tls
   network: tcp
   tls: true
   servername: $tls_sni
@@ -1962,17 +1984,17 @@ $cl_tls_common"
       local suffix=""
       [[ "$server_ipcl" = "dual" ]] && suffix="-${s_type^^}"
       
-      local tr_ws_extra=$(jq -n --arg uuid "$uuid" --arg sni "$tls_sni" --argjson is_self "$is_self_signed" --arg cert "$cert_content" \
-        '{password: $uuid, transport: {type: "ws", path: ("/" + $uuid + "-trws")}, tls: ({enabled: true, server_name: $sni, insecure: false, utls: {enabled: true, fingerprint: "chrome"}} + (if $is_self and ($cert | length) > 0 then {certificate: [$cert]} else {} end))}')
+      local tr_ws_extra=$(jq -n --arg uuid "$uuid_tr_ws_tls" --arg sni "$tls_sni" --argjson is_self "$is_self_signed" --arg cert "$cert_content" \
+        '{password: $uuid, transport: {type: "ws", path: $uuid}, tls: ({enabled: true, server_name: $sni, insecure: false, utls: {enabled: true, fingerprint: "chrome"}} + (if $is_self and ($cert | length) > 0 then {certificate: [$cert]} else {} end))}')
       add_sb_outbound "trojan-ws-tls${suffix}" "trojan" "$s_addr" "$port_tr_ws_tls" "$tr_ws_extra"
       
-      local cl_tr_ws_opts="  password: $uuid
+      local cl_tr_ws_opts="  password: $uuid_tr_ws_tls
   network: ws
   tls: true
   servername: $tls_sni
 $cl_tls_common
   ws-opts:
-    path: \"/${uuid}-trws\"
+    path: \"/${uuid_tr_ws_tls}\"
     headers:
       Host: $tls_sni"
       add_clash_proxy "trojan-ws-tls${suffix}" "trojan" "$s_addr" "$port_tr_ws_tls" "$cl_tr_ws_opts"
@@ -1988,17 +2010,17 @@ $cl_tls_common
       local suffix=""
       [[ "$server_ipcl" = "dual" ]] && suffix="-${s_type^^}"
       
-      local tr_hu_extra=$(jq -n --arg uuid "$uuid" --arg sni "$tls_sni" --argjson is_self "$is_self_signed" --arg cert "$cert_content" \
-        '{password: $uuid, transport: {type: "httpupgrade", path: ("/" + $uuid + "-trhu")}, tls: ({enabled: true, server_name: $sni, insecure: false, utls: {enabled: true, fingerprint: "chrome"}} + (if $is_self and ($cert | length) > 0 then {certificate: [$cert]} else {} end))}')
+      local tr_hu_extra=$(jq -n --arg uuid "$uuid_tr_hu_tls" --arg sni "$tls_sni" --argjson is_self "$is_self_signed" --arg cert "$cert_content" \
+        '{password: $uuid, transport: {type: "httpupgrade", path: $uuid}, tls: ({enabled: true, server_name: $sni, insecure: false, utls: {enabled: true, fingerprint: "chrome"}} + (if $is_self and ($cert | length) > 0 then {certificate: [$cert]} else {} end))}')
       add_sb_outbound "trojan-hu-tls${suffix}" "trojan" "$s_addr" "$port_tr_hu_tls" "$tr_hu_extra"
       
-      local cl_tr_hu_opts="  password: $uuid
+      local cl_tr_hu_opts="  password: $uuid_tr_hu_tls
   network: httpupgrade
   tls: true
   servername: $tls_sni
 $cl_tls_common
   httpupgrade-opts:
-    path: \"/${uuid}-trhu\"
+    path: \"/${uuid_tr_hu_tls}\"
     headers:
       Host: $tls_sni"
       add_clash_proxy "trojan-hu-tls${suffix}" "trojan" "$s_addr" "$port_tr_hu_tls" "$cl_tr_hu_opts"
@@ -2038,11 +2060,11 @@ $cl_tls_common
       
       local hy2_tls_obj=$(jq -n --arg name "$hy2_name" --argjson is_self "$is_self_signed" --arg cert "$cert_content" \
         '{enabled: true, server_name: $name, insecure: false, alpn: ["h3"]} + (if $is_self and ($cert | length) > 0 then { certificate: [$cert] } else {} end)')
-      local hy2_extra=$(jq -n --arg password "$uuid" --argjson tls "$hy2_tls_obj" --argjson extra_ports "$ports_array" \
+      local hy2_extra=$(jq -n --arg password "$uuid_hy2" --argjson tls "$hy2_tls_obj" --argjson extra_ports "$ports_array" \
         '{password: $password, tls: $tls} + (if ($extra_ports | length) > 0 then { server_ports: $extra_ports } else {} end)')
       add_sb_outbound "hysteria2${suffix}" "hysteria2" "$s_addr" "$port_hy2" "$hy2_extra"
       
-      local cl_hy2_opts="  password: $uuid
+      local cl_hy2_opts="  password: $uuid_hy2
   alpn:
     - h3
   sni: $hy2_name
@@ -2072,12 +2094,12 @@ $cl_tls_common"
       
       local tu5_tls_obj=$(jq -n --arg name "$tu5_name" --argjson is_self "$is_self_signed" --arg cert "$cert_content" \
         '{enabled: true, server_name: $name, insecure: false, alpn: ["h3"]} + (if $is_self and ($cert | length) > 0 then { certificate: [$cert] } else {} end)')
-      local tu_extra=$(jq -n --arg uuid "$uuid" --argjson tls "$tu5_tls_obj" \
+      local tu_extra=$(jq -n --arg uuid "$uuid_tu" --argjson tls "$tu5_tls_obj" \
         '{uuid: $uuid, password: $uuid, congestion_control: "bbr", udp_relay_mode: "native", udp_over_stream: false, zero_rtt_handshake: false, heartbeat: "10s", tls: $tls}')
       add_sb_outbound "tuic5${suffix}" "tuic" "$s_addr" "$port_tu" "$tu_extra"
       
-      local cl_tu_opts="  uuid: $uuid
-  password: $uuid
+      local cl_tu_opts="  uuid: $uuid_tu
+  password: $uuid_tu
   alpn: [h3]
   disable-sni: $is_self_signed
   reduce-rtt: true
@@ -2100,22 +2122,22 @@ $cl_tls_common"
       
       local an_tls_obj=$(jq -n --arg name "$an_name" --argjson is_self "$is_self_signed" --arg cert "$cert_content" \
         '{enabled: true, server_name: $name, insecure: false} + (if $is_self and ($cert | length) > 0 then { certificate: [$cert] } else {} end)')
-      local an_extra=$(jq -n --arg password "$uuid" --argjson tls "$an_tls_obj" \
+      local an_extra=$(jq -n --arg password "$uuid_an" --argjson tls "$an_tls_obj" \
         '{password: $password, idle_session_check_interval: "30s", idle_session_timeout: "30s", min_idle_session: 5, tls: $tls}')
       add_sb_outbound "anytls${suffix}" "anytls" "$s_addr" "$port_an" "$an_extra"
     done
   fi
 
   # 14. Cloudflare Argo Tunnels
-  local argo_path="${uuid}-vmws"
+  local argo_path="${uuid_vm_ws}"
   if [[ -n "$port_vm_ws" ]]; then
     if ps -ef 2>/dev/null | grep -q '[c]loudflared.*run'; then
       local argogd=$(cat "$SBFOLDER/sbargoym.log" 2>/dev/null)
-      local argo_fixed_extra=$(jq -n --arg uuid "$uuid" --arg host "$argogd" --arg path "$argo_path" \
+      local argo_fixed_extra=$(jq -n --arg uuid "$uuid_vm_ws" --arg host "$argogd" --arg path "$argo_path" \
         '{uuid: $uuid, security: "auto", packet_encoding: "packetaddr", transport: {type: "ws", path: $path, headers: {Host: $host}}, tls: {enabled: true, server_name: $host, insecure: false, utls: {enabled: true, fingerprint: "chrome"}}}')
       add_sb_outbound "vmess-tls-argo固定-$hostname" "vmess" "$vmadd_argo" "443" "$argo_fixed_extra"
       
-      local cl_argo_fixed_opts="  uuid: $uuid
+      local cl_argo_fixed_opts="  uuid: $uuid_vm_ws
   alterId: 0
   cipher: auto
   network: ws
@@ -2130,11 +2152,11 @@ $cl_tls_common"
     
     if ps -ef 2>/dev/null | grep -q "[l]ocalhost:$port_vm_ws"; then
       local argo_domain=$(cat "$SBFOLDER/argo.log" 2>/dev/null | grep -a trycloudflare.com | awk 'NR==2{print}' | awk -F// '{print $2}' | awk '{print $1}')
-      local argo_temp_extra=$(jq -n --arg uuid "$uuid" --arg host "$argo_domain" --arg path "$argo_path" \
+      local argo_temp_extra=$(jq -n --arg uuid "$uuid_vm_ws" --arg host "$argo_domain" --arg path "$argo_path" \
         '{uuid: $uuid, security: "auto", packet_encoding: "packetaddr", transport: {type: "ws", path: $path, headers: {Host: $host}}, tls: {enabled: true, server_name: $host, insecure: false, utls: {enabled: true, fingerprint: "chrome"}}}')
       add_sb_outbound "vmess-tls-argo临时-$hostname" "vmess" "$vmadd_argo" "443" "$argo_temp_extra"
       
-      local cl_argo_temp_opts="  uuid: $uuid
+      local cl_argo_temp_opts="  uuid: $uuid_vm_ws
   alterId: 0
   cipher: auto
   network: ws
@@ -2800,42 +2822,109 @@ changeport() {
 changeuuid() {
   echo
   local clean_json=$(strip_json_comments "$SBFOLDER/sb.json")
-  olduuid=$(echo "$clean_json" | jq -r '(.inbounds[] | select(.users != null and .users[0].uuid != null) | .users[0].uuid) // (.inbounds[] | select(.users != null and .users[0].password != null) | .users[0].password) // empty' | head -n 1)
+  uuid_vl_re=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "vless-reality-sb") | .users[0].uuid // empty' 2>/dev/null | head -n 1)
+  uuid_vl_ws=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "vless-ws-tls-sb") | .users[0].uuid // empty' 2>/dev/null | head -n 1)
+  uuid_vl_hu=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "vless-hu-tls-sb") | .users[0].uuid // empty' 2>/dev/null | head -n 1)
+  uuid_vm_ws=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "vmess-ws-sb") | .users[0].uuid // empty' 2>/dev/null | head -n 1)
+  uuid_vm_ws_tls=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "vmess-ws-tls-sb") | .users[0].uuid // empty' 2>/dev/null | head -n 1)
+  uuid_vm_hu_tls=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "vmess-hu-tls-sb") | .users[0].uuid // empty' 2>/dev/null | head -n 1)
+  uuid_tr_tls=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "trojan-tls-sb") | .users[0].password // empty' 2>/dev/null | head -n 1)
+  uuid_tr_ws_tls=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "trojan-ws-tls-sb") | .users[0].password // empty' 2>/dev/null | head -n 1)
+  uuid_tr_hu_tls=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "trojan-hu-tls-sb") | .users[0].password // empty' 2>/dev/null | head -n 1)
+  uuid_hy2=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "hy2-sb") | .users[0].password // empty' 2>/dev/null | head -n 1)
+  uuid_tu=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "tuic5-sb") | .users[0].uuid // empty' 2>/dev/null | head -n 1)
+  uuid_an=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "anytls-sb") | .users[0].password // empty' 2>/dev/null | head -n 1)
+
+  green "当前各已安装协议独立的uuid (密码)："
+  [[ -n "$uuid_vl_re" ]] && green "  VLESS-Reality: $uuid_vl_re"
+  [[ -n "$uuid_vl_ws" ]] && green "  VLESS-WS-TLS:  $uuid_vl_ws"
+  [[ -n "$uuid_vl_hu" ]] && green "  VLESS-HU-TLS:  $uuid_vl_hu"
+  [[ -n "$uuid_vm_ws" ]] && green "  VMess-WS:      $uuid_vm_ws"
+  [[ -n "$uuid_vm_ws_tls" ]] && green "  VMess-WS-TLS:  $uuid_vm_ws_tls"
+  [[ -n "$uuid_vm_hu_tls" ]] && green "  VMess-HU-TLS:  $uuid_vm_hu_tls"
+  [[ -n "$uuid_tr_tls" ]] && green "  Trojan-TLS:    $uuid_tr_tls"
+  [[ -n "$uuid_tr_ws_tls" ]] && green "  Trojan-WS-TLS: $uuid_tr_ws_tls"
+  [[ -n "$uuid_tr_hu_tls" ]] && green "  Trojan-HU-TLS: $uuid_tr_hu_tls"
+  [[ -n "$uuid_hy2" ]] && green "  Hysteria 2:    $uuid_hy2"
+  [[ -n "$uuid_tu" ]] && green "  Tuic-v5:       $uuid_tu"
+  [[ -n "$uuid_an" ]] && green "  AnyTLS:        $uuid_an"
+
   oldvmpath=$(echo "$clean_json" | jq -r '(.inbounds[] | select(.tag == "vmess-ws-sb") | .transport.path) // empty')
-  
-  if [[ -n "$olduuid" ]]; then
-    green "全协议的uuid (密码)：$olduuid"
-  else
-    green "全协议的uuid (密码)：未设置"
-  fi
   if [[ -n "$oldvmpath" ]]; then
     green "Vmess-WS的path路径：$oldvmpath"
   fi
   echo
-  yellow "1：自定义全协议的uuid (密码)"
+  yellow "1：自定义/随机重置各协议的uuid (密码)"
   if [[ -n "$oldvmpath" ]]; then
     yellow "2：自定义Vmess-WS的path路径"
   fi
   yellow "0：返回上层"
   readp "请选择【0-2】：" menu
   if [ "$menu" = "1" ]; then
-    readp "输入uuid，必须 is uuid 格式，不懂就回车 (重置并随机生成uuid)：" menu
+    readp "输入自定义uuid (回车表示随机生成各协议独立uuid)：" menu
     if [ -z "$menu" ]; then
-      uuid=$("$SBFOLDER/sing-box" generate uuid)
+      uuid_vl_re=$("$SBFOLDER/sing-box" generate uuid)
+      uuid_vl_ws=$("$SBFOLDER/sing-box" generate uuid)
+      uuid_vl_hu=$("$SBFOLDER/sing-box" generate uuid)
+      uuid_vm_ws=$("$SBFOLDER/sing-box" generate uuid)
+      uuid_vm_ws_tls=$("$SBFOLDER/sing-box" generate uuid)
+      uuid_vm_hu_tls=$("$SBFOLDER/sing-box" generate uuid)
+      uuid_tr_tls=$("$SBFOLDER/sing-box" generate uuid)
+      uuid_tr_ws_tls=$("$SBFOLDER/sing-box" generate uuid)
+      uuid_tr_hu_tls=$("$SBFOLDER/sing-box" generate uuid)
+      uuid_hy2=$("$SBFOLDER/sing-box" generate uuid)
+      uuid_tu=$("$SBFOLDER/sing-box" generate uuid)
+      uuid_an=$("$SBFOLDER/sing-box" generate uuid)
     else
-      uuid=$menu
+      uuid_vl_re=$menu
+      uuid_vl_ws=$menu
+      uuid_vl_hu=$menu
+      uuid_vm_ws=$menu
+      uuid_vm_ws_tls=$menu
+      uuid_vm_hu_tls=$menu
+      uuid_tr_tls=$menu
+      uuid_tr_ws_tls=$menu
+      uuid_tr_hu_tls=$menu
+      uuid_hy2=$menu
+      uuid_tu=$menu
+      uuid_an=$menu
     fi
     for file in $SBFILES; do
       if [ -f "$file" ]; then
-        jq --arg old "$olduuid" --arg new "$uuid" '
-          (.. | select(strings) | select(contains($old))) |= sub($old; $new)
-        ' "$file" > /tmp/tmp.json && mv /tmp/tmp.json "$file"
+        if [[ $(basename "$file") == "sb.json" ]]; then
+          jq \
+            --arg vl_re "$uuid_vl_re" \
+            --arg vl_ws "$uuid_vl_ws" \
+            --arg vl_hu "$uuid_vl_hu" \
+            --arg vm_ws "$uuid_vm_ws" \
+            --arg vm_ws_tls "$uuid_vm_ws_tls" \
+            --arg vm_hu_tls "$uuid_vm_hu_tls" \
+            --arg tr_tls "$uuid_tr_tls" \
+            --arg tr_ws_tls "$uuid_tr_ws_tls" \
+            --arg tr_hu_tls "$uuid_tr_hu_tls" \
+            --arg hy2 "$uuid_hy2" \
+            --arg tu "$uuid_tu" \
+            --arg an "$uuid_an" \
+            '.inbounds[] |= (
+              if .tag == "vless-reality-sb" then .users[0].uuid = $vl_re
+              elif .tag == "vless-ws-tls-sb" then .users[0].uuid = $vl_ws | .transport.path = $vl_ws
+              elif .tag == "vless-hu-tls-sb" then .users[0].uuid = $vl_hu | .transport.path = $vl_hu
+              elif .tag == "vmess-ws-sb" then .users[0].uuid = $vm_ws | .transport.path = $vm_ws
+              elif .tag == "vmess-ws-tls-sb" then .users[0].uuid = $vm_ws_tls | .transport.path = $vm_ws_tls
+              elif .tag == "vmess-hu-tls-sb" then .users[0].uuid = $vm_hu_tls | .transport.path = $vm_hu_tls
+              elif .tag == "trojan-tls-sb" then .users[0].password = $tr_tls
+              elif .tag == "trojan-ws-tls-sb" then .users[0].password = $tr_ws_tls | .transport.path = $tr_ws_tls
+              elif .tag == "trojan-hu-tls-sb" then .users[0].password = $tr_hu_tls | .transport.path = $tr_hu_tls
+              elif .tag == "hy2-sb" then .users[0].password = $hy2
+              elif .tag == "tuic5-sb" then .users[0].uuid = $tu | .users[0].password = $tu
+              elif .tag == "anytls-sb" then .users[0].password = $an
+              else . end
+            )' "$file" > /tmp/tmp.json && mv /tmp/tmp.json "$file"
+        fi
       fi
     done
     restartsb && sbshare > /dev/null 2>&1
-    blue "已确认uuid (密码)：${uuid}" 
-    local nextvmpath=$(strip_json_comments "$SBFOLDER/sb.json" | jq -r '(.inbounds[] | select(.tag == "vmess-ws-sb") | .transport.path) // empty')
-    [[ -n "$nextvmpath" ]] && blue "已确认Vmess-WS的path路径：$nextvmpath"
+    blue "已确认各协议的uuid (密码)已更新完成！"
   elif [ "$menu" = "2" ]; then
     if [[ -z "$oldvmpath" ]]; then
       red "Vmess-WS协议未安装，无法修改其Path路径！" && sleep 2 && changeuuid
@@ -4671,28 +4760,28 @@ showprotocol() {
     print_protocol_line "VLESS-Reality" "$port_vl_re" "Reality伪装域名: $vl_name"
   fi
   if [[ -n "$port_vl_ws_tls" ]]; then
-    print_protocol_line "VLESS-WS-TLS" "$port_vl_ws_tls" "证书形式:$hy2_zs  路径: /${uuid}-vlws"
+    print_protocol_line "VLESS-WS-TLS" "$port_vl_ws_tls" "证书形式:$hy2_zs  路径: /${uuid_vl_ws}"
   fi
   if [[ -n "$port_vl_hu_tls" ]]; then
-    print_protocol_line "VLESS-HU-TLS" "$port_vl_hu_tls" "证书形式:$hy2_zs  路径: /${uuid}-vlhu"
+    print_protocol_line "VLESS-HU-TLS" "$port_vl_hu_tls" "证书形式:$hy2_zs  路径: /${uuid_vl_hu}"
   fi
   if [[ -n "$port_vm_ws" ]]; then
-    print_protocol_line "VMess-WS" "$port_vm_ws" "不开启 TLS  路径: /${uuid}-vmws  Argo状态:$argoym"
+    print_protocol_line "VMess-WS" "$port_vm_ws" "不开启 TLS  路径: /${uuid_vm_ws}  Argo状态:$argoym"
   fi
   if [[ -n "$port_vm_ws_tls" ]]; then
-    print_protocol_line "VMess-WS-TLS" "$port_vm_ws_tls" "证书形式:$hy2_zs  路径: /${uuid}-vmwstls"
+    print_protocol_line "VMess-WS-TLS" "$port_vm_ws_tls" "证书形式:$hy2_zs  路径: /${uuid_vm_ws_tls}"
   fi
   if [[ -n "$port_vm_hu_tls" ]]; then
-    print_protocol_line "VMess-HU-TLS" "$port_vm_hu_tls" "证书形式:$hy2_zs  路径: /${uuid}-vmhu"
+    print_protocol_line "VMess-HU-TLS" "$port_vm_hu_tls" "证书形式:$hy2_zs  路径: /${uuid_vm_hu_tls}"
   fi
   if [[ -n "$port_tr_tls" ]]; then
     print_protocol_line "Trojan-TLS" "$port_tr_tls" "证书形式:$hy2_zs"
   fi
   if [[ -n "$port_tr_ws_tls" ]]; then
-    print_protocol_line "Trojan-WS-TLS" "$port_tr_ws_tls" "证书形式:$hy2_zs  路径: /${uuid}-trws"
+    print_protocol_line "Trojan-WS-TLS" "$port_tr_ws_tls" "证书形式:$hy2_zs  路径: /${uuid_tr_ws_tls}"
   fi
   if [[ -n "$port_tr_hu_tls" ]]; then
-    print_protocol_line "Trojan-HU-TLS" "$port_tr_hu_tls" "证书形式:$hy2_zs  路径: /${uuid}-trhu"
+    print_protocol_line "Trojan-HU-TLS" "$port_tr_hu_tls" "证书形式:$hy2_zs  路径: /${uuid_tr_hu_tls}"
   fi
   if [[ -n "$port_ss" ]]; then
     print_protocol_line "Shadowsocks" "$port_ss" "加密: 2022-blake3-aes-128-gcm"
