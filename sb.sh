@@ -486,6 +486,14 @@ insport() {
     [[ "$use_hy2" = "true" ]] && port_hy2=$(get_random_free_port)
     [[ "$use_tu" = "true" ]] && port_tu=$(get_random_free_port)
     [[ "$use_an" = "true" ]] && port_an=$(get_random_free_port)
+    [[ "$use_vm_tcp" = "true" ]] && port_vm_tcp=$(get_random_free_port)
+    [[ "$use_vm_http" = "true" ]] && port_vm_http=$(get_random_free_port)
+    [[ "$use_vm_quic" = "true" ]] && port_vm_quic=$(get_random_free_port)
+    [[ "$use_vm_h2_tls" = "true" ]] && port_vm_h2_tls=$(get_random_free_port)
+    [[ "$use_vl_h2_tls" = "true" ]] && port_vl_h2_tls=$(get_random_free_port)
+    [[ "$use_tr_h2_tls" = "true" ]] && port_tr_h2_tls=$(get_random_free_port)
+    [[ "$use_vl_h2_re" = "true" ]] && port_vl_h2_re=$(get_random_free_port)
+    [[ "$use_socks" = "true" ]] && port_socks=$(get_random_free_port)
   else
     [[ "$use_vl_re" = "true" ]] && custom_port_prompt "VLESS-Reality" "port_vl_re"
     [[ "$use_vl_ws_tls" = "true" ]] && custom_port_prompt "VLESS-WS-TLS" "port_vl_ws_tls"
@@ -500,6 +508,14 @@ insport() {
     [[ "$use_hy2" = "true" ]] && custom_port_prompt "Hysteria 2" "port_hy2"
     [[ "$use_tu" = "true" ]] && custom_port_prompt "Tuic-v5" "port_tu"
     [[ "$use_an" = "true" ]] && custom_port_prompt "AnyTLS" "port_an"
+    [[ "$use_vm_tcp" = "true" ]] && custom_port_prompt "VMess-TCP" "port_vm_tcp"
+    [[ "$use_vm_http" = "true" ]] && custom_port_prompt "VMess-HTTP" "port_vm_http"
+    [[ "$use_vm_quic" = "true" ]] && custom_port_prompt "VMess-QUIC" "port_vm_quic"
+    [[ "$use_vm_h2_tls" = "true" ]] && custom_port_prompt "VMess-H2-TLS" "port_vm_h2_tls"
+    [[ "$use_vl_h2_tls" = "true" ]] && custom_port_prompt "VLESS-H2-TLS" "port_vl_h2_tls"
+    [[ "$use_tr_h2_tls" = "true" ]] && custom_port_prompt "Trojan-H2-TLS" "port_tr_h2_tls"
+    [[ "$use_vl_h2_re" = "true" ]] && custom_port_prompt "VLESS-HTTP2-REALITY" "port_vl_h2_re"
+    [[ "$use_socks" = "true" ]] && custom_port_prompt "Socks" "port_socks"
   fi
   
   echo
@@ -517,6 +533,14 @@ insport() {
   [[ "$use_hy2" = "true" ]] && blue "Hysteria-2端口：$port_hy2"
   [[ "$use_tu" = "true" ]] && blue "Tuic-v5端口：$port_tu"
   [[ "$use_an" = "true" ]] && blue "Anytls端口：$port_an"
+  [[ "$use_vm_tcp" = "true" ]] && blue "VMess-TCP端口：$port_vm_tcp"
+  [[ "$use_vm_http" = "true" ]] && blue "VMess-HTTP端口：$port_vm_http"
+  [[ "$use_vm_quic" = "true" ]] && blue "VMess-QUIC端口：$port_vm_quic"
+  [[ "$use_vm_h2_tls" = "true" ]] && blue "VMess-H2-TLS端口：$port_vm_h2_tls"
+  [[ "$use_vl_h2_tls" = "true" ]] && blue "VLESS-H2-TLS端口：$port_vl_h2_tls"
+  [[ "$use_tr_h2_tls" = "true" ]] && blue "Trojan-H2-TLS端口：$port_tr_h2_tls"
+  [[ "$use_vl_h2_re" = "true" ]] && blue "VLESS-HTTP2-REALITY端口：$port_vl_h2_re"
+  [[ "$use_socks" = "true" ]] && blue "Socks端口：$port_socks"
   
   red "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
   green "四、自动生成各个协议独立的uuid (密码)"
@@ -532,10 +556,20 @@ insport() {
   uuid_hy2=$("$SBFOLDER/sing-box" generate uuid)
   uuid_tu=$("$SBFOLDER/sing-box" generate uuid)
   uuid_an=$("$SBFOLDER/sing-box" generate uuid)
+  uuid_vm_tcp=$("$SBFOLDER/sing-box" generate uuid)
+  uuid_vm_http=$("$SBFOLDER/sing-box" generate uuid)
+  uuid_vm_quic=$("$SBFOLDER/sing-box" generate uuid)
+  uuid_vm_h2_tls=$("$SBFOLDER/sing-box" generate uuid)
+  uuid_vl_h2=$("$SBFOLDER/sing-box" generate uuid)
+  uuid_tr_h2_tls=$("$SBFOLDER/sing-box" generate uuid)
+  uuid_vl_h2_re=$("$SBFOLDER/sing-box" generate uuid)
+  socks_username="233boy"
+  socks_password=$("$SBFOLDER/sing-box" generate uuid)
   blue "已确认各个协议独立的uuid (密码)已自动生成"
+  
   if [[ "$use_ss" = "true" ]]; then
-    ss_password=$("$SBFOLDER/sing-box" generate rand 16 --base64)
-    blue "已确认Shadowsocks密码(SS-2022)：${ss_password}"
+    blue "已确认Shadowsocks加密方式：${ss_method}"
+    blue "已确认Shadowsocks密码/密钥：${ss_password}"
   fi
 }
 
@@ -762,7 +796,7 @@ inssbjsonser() {
     "tag": "shadowsocks-sb",
     "listen": "::",
     "listen_port": '"${port_ss:-8388}"',
-    "method": "2022-blake3-aes-128-gcm",
+    "method": "'"${ss_method:-2022-blake3-aes-128-gcm}"'",
     "password": "'"${ss_password}"'"
   }'
 
@@ -824,6 +858,184 @@ inssbjsonser() {
       "certificate_path": "'"${certificatec}"'",
       "key_path": "'"${certificatep}"'"
     }
+  }'
+
+  # VMess-TCP
+  local vm_tcp_inb='{
+    "type": "vmess",
+    "tag": "vmess-tcp-sb",
+    "listen": "::",
+    "listen_port": '"${port_vm_tcp:-8080}"',
+    "users": [
+      {
+        "uuid": "'"${uuid_vm_tcp}"'",
+        "alterId": 0
+      }
+    ],
+    "tls": {
+      "enabled": false
+    }
+  }'
+
+  # VMess-HTTP
+  local vm_http_inb='{
+    "type": "vmess",
+    "tag": "vmess-http-sb",
+    "listen": "::",
+    "listen_port": '"${port_vm_http:-8081}"',
+    "users": [
+      {
+        "uuid": "'"${uuid_vm_http}"'",
+        "alterId": 0
+      }
+    ],
+    "transport": {
+      "type": "http"
+    },
+    "tls": {
+      "enabled": false
+    }
+  }'
+
+  # VMess-QUIC
+  local vm_quic_inb='{
+    "type": "vmess",
+    "tag": "vmess-quic-sb",
+    "listen": "::",
+    "listen_port": '"${port_vm_quic:-443}"',
+    "users": [
+      {
+        "uuid": "'"${uuid_vm_quic}"'",
+        "alterId": 0
+      }
+    ],
+    "transport": {
+      "type": "quic"
+    },
+    "tls": {
+      "enabled": true,
+      "alpn": ["h3"],
+      "certificate_path": "'"${certificatec}"'",
+      "key_path": "'"${certificatep}"'"
+    }
+  }'
+
+  # VMess-H2-TLS
+  local vm_h2_tls_inb='{
+    "type": "vmess",
+    "tag": "vmess-h2-tls-sb",
+    "listen": "::",
+    "listen_port": '"${port_vm_h2_tls:-443}"',
+    "users": [
+      {
+        "uuid": "'"${uuid_vm_h2_tls}"'",
+        "alterId": 0
+      }
+    ],
+    "transport": {
+      "type": "http",
+      "host": ["'"${ym_domain}"'"],
+      "path": "'"${uuid_vm_h2_tls}"'"
+    },
+    "tls": {
+      "enabled": true,
+      "server_name": "'"${ym_domain}"'",
+      "certificate_path": "'"${certificatec}"'",
+      "key_path": "'"${certificatep}"'"
+    }
+  }'
+
+  # VLESS-H2-TLS
+  local vl_h2_tls_inb='{
+    "type": "vless",
+    "tag": "vless-h2-tls-sb",
+    "listen": "::",
+    "listen_port": '"${port_vl_h2_tls:-443}"',
+    "users": [
+      {
+        "uuid": "'"${uuid_vl_h2}"'"
+      }
+    ],
+    "transport": {
+      "type": "http",
+      "host": ["'"${ym_domain}"'"],
+      "path": "'"${uuid_vl_h2}"'"
+    },
+    "tls": {
+      "enabled": true,
+      "server_name": "'"${ym_domain}"'",
+      "certificate_path": "'"${certificatec}"'",
+      "key_path": "'"${certificatep}"'"
+    }
+  }'
+
+  # Trojan-H2-TLS
+  local tr_h2_tls_inb='{
+    "type": "trojan",
+    "tag": "trojan-h2-tls-sb",
+    "listen": "::",
+    "listen_port": '"${port_tr_h2_tls:-443}"',
+    "users": [
+      {
+        "password": "'"${uuid_tr_h2_tls}"'"
+      }
+    ],
+    "transport": {
+      "type": "http",
+      "host": ["'"${ym_domain}"'"],
+      "path": "'"${uuid_tr_h2_tls}"'"
+    },
+    "tls": {
+      "enabled": true,
+      "server_name": "'"${ym_domain}"'",
+      "certificate_path": "'"${certificatec}"'",
+      "key_path": "'"${certificatep}"'"
+    }
+  }'
+
+  # VLESS-HTTP2-REALITY
+  local vl_h2_re_inb='{
+    "type": "vless",
+    "tag": "vless-h2-reality-sb",
+    "listen": "::",
+    "listen_port": '"${port_vl_h2_re:-443}"',
+    "users": [
+      {
+        "uuid": "'"${uuid_vl_h2_re}"'"
+      }
+    ],
+    "transport": {
+      "type": "http",
+      "host": ["'"${ym_vl_re:-apple.com}"'"],
+      "path": "'"${uuid_vl_h2_re}"'"
+    },
+    "tls": {
+      "enabled": true,
+      "server_name": "'"${ym_vl_re:-apple.com}"'",
+      "reality": {
+        "enabled": true,
+        "handshake": {
+          "server": "'"${ym_vl_re:-apple.com}"'",
+          "server_port": 443
+        },
+        "private_key": "'"${private_key}"'",
+        "short_id": ["'"${short_id}"'"]
+      }
+    }
+  }'
+
+  # Socks
+  local socks_inb='{
+    "type": "socks",
+    "tag": "socks-sb",
+    "listen": "::",
+    "listen_port": '"${port_socks:-1080}"',
+    "users": [
+      {
+        "username": "'"${socks_username:-233boy}"'",
+        "password": "'"${socks_password}"'"
+      }
+    ]
   }'
 
   # Base 1.10 json
@@ -1026,6 +1238,14 @@ inssbjsonser() {
   : ${use_hy2:=false}
   : ${use_tu:=false}
   : ${use_an:=false}
+  : ${use_vm_tcp:=false}
+  : ${use_vm_http:=false}
+  : ${use_vm_quic:=false}
+  : ${use_vm_h2_tls:=false}
+  : ${use_vl_h2_tls:=false}
+  : ${use_tr_h2_tls:=false}
+  : ${use_vl_h2_re:=false}
+  : ${use_socks:=false}
 
   # Dynamically add selected inbounds to both templates
   if [[ "$use_vl_re" == "true" ]]; then
@@ -1080,6 +1300,38 @@ inssbjsonser() {
     config_json_10=$(echo "$config_json_10" | jq --argjson inb "$an_inb" '.inbounds += [$inb]')
     config_json_11=$(echo "$config_json_11" | jq --argjson inb "$an_inb" '.inbounds += [$inb]')
   fi
+  if [[ "$use_vm_tcp" == "true" ]]; then
+    config_json_10=$(echo "$config_json_10" | jq --argjson inb "$vm_tcp_inb" '.inbounds += [$inb]')
+    config_json_11=$(echo "$config_json_11" | jq --argjson inb "$vm_tcp_inb" '.inbounds += [$inb]')
+  fi
+  if [[ "$use_vm_http" == "true" ]]; then
+    config_json_10=$(echo "$config_json_10" | jq --argjson inb "$vm_http_inb" '.inbounds += [$inb]')
+    config_json_11=$(echo "$config_json_11" | jq --argjson inb "$vm_http_inb" '.inbounds += [$inb]')
+  fi
+  if [[ "$use_vm_quic" == "true" ]]; then
+    config_json_10=$(echo "$config_json_10" | jq --argjson inb "$vm_quic_inb" '.inbounds += [$inb]')
+    config_json_11=$(echo "$config_json_11" | jq --argjson inb "$vm_quic_inb" '.inbounds += [$inb]')
+  fi
+  if [[ "$use_vm_h2_tls" == "true" ]]; then
+    config_json_10=$(echo "$config_json_10" | jq --argjson inb "$vm_h2_tls_inb" '.inbounds += [$inb]')
+    config_json_11=$(echo "$config_json_11" | jq --argjson inb "$vm_h2_tls_inb" '.inbounds += [$inb]')
+  fi
+  if [[ "$use_vl_h2_tls" == "true" ]]; then
+    config_json_10=$(echo "$config_json_10" | jq --argjson inb "$vl_h2_tls_inb" '.inbounds += [$inb]')
+    config_json_11=$(echo "$config_json_11" | jq --argjson inb "$vl_h2_tls_inb" '.inbounds += [$inb]')
+  fi
+  if [[ "$use_tr_h2_tls" == "true" ]]; then
+    config_json_10=$(echo "$config_json_10" | jq --argjson inb "$tr_h2_tls_inb" '.inbounds += [$inb]')
+    config_json_11=$(echo "$config_json_11" | jq --argjson inb "$tr_h2_tls_inb" '.inbounds += [$inb]')
+  fi
+  if [[ "$use_vl_h2_re" == "true" ]]; then
+    config_json_10=$(echo "$config_json_10" | jq --argjson inb "$vl_h2_re_inb" '.inbounds += [$inb]')
+    config_json_11=$(echo "$config_json_11" | jq --argjson inb "$vl_h2_re_inb" '.inbounds += [$inb]')
+  fi
+  if [[ "$use_socks" == "true" ]]; then
+    config_json_10=$(echo "$config_json_10" | jq --argjson inb "$socks_inb" '.inbounds += [$inb]')
+    config_json_11=$(echo "$config_json_11" | jq --argjson inb "$socks_inb" '.inbounds += [$inb]')
+  fi
 
   echo "$config_json_10" > "$SBFOLDER/sb10.json"
   echo "$config_json_11" > "$SBFOLDER/sb11.json"
@@ -1089,6 +1341,7 @@ inssbjsonser() {
   else
     cp "$SBFOLDER/sb11.json" "$SBFOLDER/sb.json"
   fi
+  sync_configs_from_sb_json
 }
 
 # --- Service Management (Systemd & OpenRC) ---
@@ -1097,7 +1350,7 @@ sbservice() {
     echo '#!/sbin/openrc-run
 description="sing-box service"
 command="/etc/s-box/sing-box"
-command_args="run -c /etc/s-box/sb.json"
+command_args="run -c /etc/s-box/config.json -C /etc/s-box/conf/"
 command_background=true
 pidfile="/var/run/sing-box.pid"' > /etc/init.d/sing-box
     chmod +x /etc/init.d/sing-box
@@ -1112,7 +1365,7 @@ User=root
 WorkingDirectory=/root
 CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE CAP_NET_RAW
 AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE CAP_NET_RAW
-ExecStart=/etc/s-box/sing-box run -c /etc/s-box/sb.json
+ExecStart=/etc/s-box/sing-box run -c /etc/s-box/config.json -C /etc/s-box/conf/
 ExecReload=/bin/kill -HUP \$MAINPID
 Restart=on-failure
 RestartSec=10
@@ -1193,7 +1446,56 @@ wgcfgo() {
 
 # Strip comments helper
 strip_json_comments() {
-  sed 's://.*::g' "$1"
+  local file="$1"
+  if [[ "$file" == *"/sb.json" ]]; then
+    if [ -f "$SBFOLDER/config.json" ]; then
+      local combined_json=$(cat "$SBFOLDER/config.json" | sed 's://.*::g')
+      if [ -d "$SBFOLDER/conf" ]; then
+        for f in "$SBFOLDER/conf"/*.json; do
+          if [ -f "$f" ]; then
+            local f_json=$(cat "$f" | sed 's://.*::g')
+            combined_json=$(jq --argjson f_json "$f_json" '.inbounds += ($f_json.inbounds // [])' <<< "$combined_json" 2>/dev/null || echo "$combined_json")
+          fi
+        done
+      fi
+      echo "$combined_json" > "$SBFOLDER/sb.json"
+      echo "$combined_json"
+      return
+    fi
+  fi
+  if [ -f "$file" ]; then
+    sed 's://.*::g' "$file"
+  else
+    echo "{}"
+  fi
+}
+
+sync_configs_from_sb_json() {
+  if [ -f "$SBFOLDER/sb.json" ]; then
+    local clean_json=$(sed 's://.*::g' "$SBFOLDER/sb.json")
+    if [[ -n "$clean_json" ]]; then
+      mkdir -p "$SBFOLDER/conf"
+      rm -f "$SBFOLDER/conf"/*.json
+      
+      local num_inbounds=$(echo "$clean_json" | jq '.inbounds | length' 2>/dev/null)
+      if [[ -n "$num_inbounds" && "$num_inbounds" -gt 0 ]]; then
+        for ((i=0; i<num_inbounds; i++)); do
+          local inb=$(echo "$clean_json" | jq ".inbounds[$i]" 2>/dev/null)
+          local tag=$(echo "$inb" | jq -r '.tag // empty' 2>/dev/null)
+          if [[ -n "$tag" ]]; then
+            echo "{\"inbounds\": [$inb]}" > "$SBFOLDER/conf/${tag}.json"
+          fi
+        done
+      fi
+      
+      local base_config=$(echo "$clean_json" | jq '.inbounds = []' 2>/dev/null)
+      if [[ -n "$base_config" ]]; then
+        echo "$base_config" > "$SBFOLDER/config.json"
+        echo "$base_config" > "$SBFOLDER/config10.json"
+        echo "$base_config" > "$SBFOLDER/config11.json"
+      fi
+    fi
+  fi
 }
 
 result_vl_vm_hy_tu() {
@@ -1225,6 +1527,14 @@ result_vl_vm_hy_tu() {
   uuid_hy2=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "hy2-sb") | .users[0].password // empty' 2>/dev/null | head -n 1)
   uuid_tu=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "tuic5-sb") | .users[0].uuid // empty' 2>/dev/null | head -n 1)
   uuid_an=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "anytls-sb") | .users[0].password // empty' 2>/dev/null | head -n 1)
+  uuid_vm_tcp=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "vmess-tcp-sb") | .users[0].uuid // empty' 2>/dev/null | head -n 1)
+  uuid_vm_http=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "vmess-http-sb") | .users[0].uuid // empty' 2>/dev/null | head -n 1)
+  uuid_vm_quic=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "vmess-quic-sb") | .users[0].uuid // empty' 2>/dev/null | head -n 1)
+  uuid_vm_h2_tls=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "vmess-h2-tls-sb") | .users[0].uuid // empty' 2>/dev/null | head -n 1)
+  uuid_vl_h2=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "vless-h2-tls-sb") | .users[0].uuid // empty' 2>/dev/null | head -n 1)
+  uuid_tr_h2_tls=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "trojan-h2-tls-sb") | .users[0].password // empty' 2>/dev/null | head -n 1)
+  uuid_vl_h2_re=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "vless-h2-reality-sb") | .users[0].uuid // empty' 2>/dev/null | head -n 1)
+  socks_password=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "socks-sb") | .users[0].password // empty' 2>/dev/null | head -n 1)
   
   port_vl_re=$(query_inbound_port "vless-reality-sb")
   port_vl_ws_tls=$(query_inbound_port "vless-ws-tls-sb")
@@ -1239,14 +1549,23 @@ result_vl_vm_hy_tu() {
   port_hy2=$(query_inbound_port "hy2-sb")
   port_tu=$(query_inbound_port "tuic5-sb")
   port_an=$(query_inbound_port "anytls-sb")
+  port_vm_tcp=$(query_inbound_port "vmess-tcp-sb")
+  port_vm_http=$(query_inbound_port "vmess-http-sb")
+  port_vm_quic=$(query_inbound_port "vmess-quic-sb")
+  port_vm_h2_tls=$(query_inbound_port "vmess-h2-tls-sb")
+  port_vl_h2_tls=$(query_inbound_port "vless-h2-tls-sb")
+  port_tr_h2_tls=$(query_inbound_port "trojan-h2-tls-sb")
+  port_vl_h2_re=$(query_inbound_port "vless-h2-reality-sb")
+  port_socks=$(query_inbound_port "socks-sb")
 
   # Reality keys
-  vl_name=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "vless-reality-sb") | .tls.server_name // empty' 2>/dev/null | head -n 1)
+  vl_name=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "vless-reality-sb" or .tag == "vless-h2-reality-sb") | .tls.server_name // empty' 2>/dev/null | head -n 1)
   public_key=$(cat "$SBFOLDER/public.key" 2>/dev/null)
-  short_id=$(echo "$clean_json" | jq -r '(.inbounds[] | select(.tag == "vless-reality-sb") | .tls.reality.short_id[0]) // empty' 2>/dev/null | head -n 1)
+  short_id=$(echo "$clean_json" | jq -r '(.inbounds[] | select(.tag == "vless-reality-sb" or .tag == "vless-h2-reality-sb") | .tls.reality.short_id[0]) // empty' 2>/dev/null | head -n 1)
   
   # Shadowsocks credentials
   ss_password=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "shadowsocks-sb") | .password // empty' 2>/dev/null | head -n 1)
+  ss_method=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "shadowsocks-sb") | .method // empty' 2>/dev/null | head -n 1)
 
   # Check certificate mode
   ym=$(cat /root/ygkkkca/ca.log 2>/dev/null)
@@ -1688,7 +2007,7 @@ resshadowsocks() {
   echo
   white "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
   server_ip=$(cat "$SBFOLDER/server_ip.log" 2>/dev/null)
-  local b64_cred=$(echo -n "2022-blake3-aes-128-gcm:$ss_password" | base64 -w 0)
+  local b64_cred=$(echo -n "${ss_method:-2022-blake3-aes-128-gcm}:$ss_password" | base64 -w 0)
   
   if [[ "$server_ip" = "dual" ]]; then
     local v4_addr=$(cat "$SBFOLDER/v4.log" 2>/dev/null)
@@ -1709,6 +2028,106 @@ resshadowsocks() {
     echo -e "${yellow}$ss_link${plain}\n"
     print_qr "$ss_link"
   fi
+}
+
+resvmess_tcp() {
+  [[ -z "$port_vm_tcp" ]] && return 0
+  echo
+  white "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+  server_ip=$(cat "$SBFOLDER/server_ip.log" 2>/dev/null)
+  local vm_tcp_link="vmess://$(echo '{"add":"'$server_ip'","aid":"0","host":"","id":"'$uuid_vm_tcp'","net":"tcp","path":"","port":"'$port_vm_tcp'","ps":"vm-tcp-'$hostname'","tls":"","sni":"","type":"none","v":"2"}' | base64 -w 0)"
+  echo "$vm_tcp_link" > "$SBFOLDER/vm_tcp.txt"
+  red "🚀【 VMess-TCP 】节点信息如下：" && sleep 2
+  echo -e "${yellow}$vm_tcp_link${plain}\n"
+  print_qr "$vm_tcp_link"
+}
+
+resvmess_http() {
+  [[ -z "$port_vm_http" ]] && return 0
+  echo
+  white "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+  server_ip=$(cat "$SBFOLDER/server_ip.log" 2>/dev/null)
+  local vm_http_link="vmess://$(echo '{"add":"'$server_ip'","aid":"0","host":"","id":"'$uuid_vm_http'","net":"tcp","path":"","port":"'$port_vm_http'","ps":"vm-http-'$hostname'","tls":"","sni":"","type":"http","v":"2"}' | base64 -w 0)"
+  echo "$vm_http_link" > "$SBFOLDER/vm_http.txt"
+  red "🚀【 VMess-HTTP 】节点信息如下：" && sleep 2
+  echo -e "${yellow}$vm_http_link${plain}\n"
+  print_qr "$vm_http_link"
+}
+
+resvmess_quic() {
+  [[ -z "$port_vm_quic" ]] && return 0
+  echo
+  white "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+  server_ip=$(cat "$SBFOLDER/server_ip.log" 2>/dev/null)
+  local vm_quic_link="vmess://$(echo '{"add":"'$server_ip'","aid":"0","host":"","id":"'$uuid_vm_quic'","net":"quic","path":"","port":"'$port_vm_quic'","ps":"vm-quic-'$hostname'","tls":"tls","sni":"'$tls_sni'","alpn":"h3","type":"none","v":"2"}' | base64 -w 0)"
+  echo "$vm_quic_link" > "$SBFOLDER/vm_quic.txt"
+  red "🚀【 VMess-QUIC 】节点信息如下：" && sleep 2
+  echo -e "${yellow}$vm_quic_link${plain}\n"
+  print_qr "$vm_quic_link"
+}
+
+resvmess_h2_tls() {
+  [[ -z "$port_vm_h2_tls" ]] && return 0
+  echo
+  white "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+  server_ip=$(cat "$SBFOLDER/server_ip.log" 2>/dev/null)
+  local vm_h2_link="vmess://$(echo '{"add":"'$server_ip'","aid":"0","host":"'$ym_domain'","id":"'$uuid_vm_h2_tls'","net":"h2","path":"'$uuid_vm_h2_tls'","port":"'$port_vm_h2_tls'","ps":"vm-h2-tls-'$hostname'","tls":"tls","sni":"'$ym_domain'","type":"none","v":"2"}' | base64 -w 0)"
+  echo "$vm_h2_link" > "$SBFOLDER/vm_h2_tls.txt"
+  red "🚀【 VMess-H2-TLS 】节点信息如下：" && sleep 2
+  echo -e "${yellow}$vm_h2_link${plain}\n"
+  print_qr "$vm_h2_link"
+}
+
+resvless_h2_tls() {
+  [[ -z "$port_vl_h2_tls" ]] && return 0
+  echo
+  white "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+  server_ip=$(cat "$SBFOLDER/server_ip.log" 2>/dev/null)
+  local vl_tls_params="insecure=0&allowInsecure=0"
+  if [[ "$is_self_signed" = "true" ]]; then
+    vl_tls_params+="&pinnedPeerCertSha256=$SHA256"
+  fi
+  local vl_h2_link="vless://$uuid_vl_h2@$server_ip:$port_vl_h2_tls?encryption=none&security=tls&sni=$ym_domain&type=h2&host=$ym_domain&path=%2F${uuid_vl_h2}&${vl_tls_params}#vl-h2-tls-$hostname"
+  echo "$vl_h2_link" > "$SBFOLDER/vl_h2_tls.txt"
+  red "🚀【 VLESS-H2-TLS 】节点信息如下：" && sleep 2
+  echo -e "${yellow}$vl_h2_link${plain}\n"
+  print_qr "$vl_h2_link"
+}
+
+restrojan_h2_tls() {
+  [[ -z "$port_tr_h2_tls" ]] && return 0
+  echo
+  white "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+  server_ip=$(cat "$SBFOLDER/server_ip.log" 2>/dev/null)
+  local tr_h2_link="trojan://$uuid_tr_h2_tls@$server_ip:$port_tr_h2_tls?security=tls&sni=$ym_domain&type=h2&host=$ym_domain&path=%2F${uuid_tr_h2_tls}#tr-h2-tls-$hostname"
+  echo "$tr_h2_link" > "$SBFOLDER/tr_h2_tls.txt"
+  red "🚀【 Trojan-H2-TLS 】节点信息如下：" && sleep 2
+  echo -e "${yellow}$tr_h2_link${plain}\n"
+  print_qr "$tr_h2_link"
+}
+
+resvless_h2_re() {
+  [[ -z "$port_vl_h2_re" ]] && return 0
+  echo
+  white "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+  server_ip=$(cat "$SBFOLDER/server_ip.log" 2>/dev/null)
+  local vl_h2_re_link="vless://$uuid_vl_h2_re@$server_ip:$port_vl_h2_re?encryption=none&security=reality&sni=$vl_name&fp=chrome&pbk=$public_key&sid=$short_id&type=h2&path=%2F${uuid_vl_h2_re}#vl-h2-reality-$hostname"
+  echo "$vl_h2_re_link" > "$SBFOLDER/vl_h2_reality.txt"
+  red "🚀【 VLESS-HTTP2-REALITY 】节点信息如下：" && sleep 2
+  echo -e "${yellow}$vl_h2_re_link${plain}\n"
+  print_qr "$vl_h2_re_link"
+}
+
+ressocks() {
+  [[ -z "$port_socks" ]] && return 0
+  echo
+  white "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+  server_ip=$(cat "$SBFOLDER/server_ip.log" 2>/dev/null)
+  local socks_link="socks://$socks_username:$socks_password@$server_ip:$port_socks#socks-$hostname"
+  echo "$socks_link" > "$SBFOLDER/socks.txt"
+  red "🚀【 Socks5 】代理信息如下：" && sleep 2
+  echo -e "${yellow}$socks_link${plain}\n"
+  print_qr "$socks_link"
 }
 
 sb_client() {
@@ -2079,11 +2498,11 @@ $cl_tls_common
       local suffix=""
       [[ "$server_ipcl" = "dual" ]] && suffix="-${s_type^^}"
       
-      local ss_extra=$(jq -n --arg pass "$ss_password" \
-        '{method: "2022-blake3-aes-128-gcm", password: $pass}')
+      local ss_extra=$(jq -n --arg pass "$ss_password" --arg method "${ss_method:-2022-blake3-aes-128-gcm}" \
+        '{method: $method, password: $pass}')
       add_sb_outbound "shadowsocks${suffix}" "shadowsocks" "$s_addr" "$port_ss" "$ss_extra"
       
-      local cl_ss_opts="  cipher: 2022-blake3-aes-128-gcm
+      local cl_ss_opts="  cipher: ${ss_method:-2022-blake3-aes-128-gcm}
   password: $ss_password"
       add_clash_proxy "shadowsocks${suffix}" "ss" "$s_addr" "$port_ss" "$cl_ss_opts"
     done
@@ -2168,6 +2587,184 @@ $cl_tls_common"
       local an_extra=$(jq -n --arg password "$uuid_an" --argjson tls "$an_tls_obj" \
         '{password: $password, idle_session_check_interval: "30s", idle_session_timeout: "30s", min_idle_session: 5, tls: $tls}')
       add_sb_outbound "anytls${suffix}" "anytls" "$s_addr" "$port_an" "$an_extra"
+    done
+  fi
+
+  # VMess-TCP
+  if [[ -n "$port_vm_tcp" ]]; then
+    local servers_list=$(resolve_servers "$port_vm_tcp" "$server_ipcl")
+    for s_info in $servers_list; do
+      local s_type=$(echo "$s_info" | cut -d'|' -f1)
+      local s_addr=$(echo "$s_info" | cut -d'|' -f2)
+      local suffix=""
+      [[ "$server_ipcl" = "dual" ]] && suffix="-${s_type^^}"
+      local vm_tcp_extra=$(jq -n --arg uuid "$uuid_vm_tcp" '{uuid: $uuid, security: "auto", packet_encoding: "packetaddr"}')
+      add_sb_outbound "vmess-tcp${suffix}" "vmess" "$s_addr" "$port_vm_tcp" "$vm_tcp_extra"
+      local cl_vm_tcp_opts="  uuid: $uuid_vm_tcp
+  alterId: 0
+  cipher: auto
+  network: tcp
+  tls: false"
+      add_clash_proxy "vmess-tcp${suffix}" "vmess" "$s_addr" "$port_vm_tcp" "$cl_vm_tcp_opts"
+    done
+  fi
+
+  # VMess-HTTP
+  if [[ -n "$port_vm_http" ]]; then
+    local servers_list=$(resolve_servers "$port_vm_http" "$server_ipcl")
+    for s_info in $servers_list; do
+      local s_type=$(echo "$s_info" | cut -d'|' -f1)
+      local s_addr=$(echo "$s_info" | cut -d'|' -f2)
+      local suffix=""
+      [[ "$server_ipcl" = "dual" ]] && suffix="-${s_type^^}"
+      local vm_http_extra=$(jq -n --arg uuid "$uuid_vm_http" '{uuid: $uuid, security: "auto", packet_encoding: "packetaddr", transport: {type: "http"}}')
+      add_sb_outbound "vmess-http${suffix}" "vmess" "$s_addr" "$port_vm_http" "$vm_http_extra"
+      local cl_vm_http_opts="  uuid: $uuid_vm_http
+  alterId: 0
+  cipher: auto
+  network: http
+  tls: false"
+      add_clash_proxy "vmess-http${suffix}" "vmess" "$s_addr" "$port_vm_http" "$cl_vm_http_opts"
+    done
+  fi
+
+  # VMess-QUIC
+  if [[ -n "$port_vm_quic" ]]; then
+    local servers_list=$(resolve_servers "$port_vm_quic" "$tls_sni")
+    for s_info in $servers_list; do
+      local s_type=$(echo "$s_info" | cut -d'|' -f1)
+      local s_addr=$(echo "$s_info" | cut -d'|' -f2)
+      local suffix=""
+      [[ "$server_ipcl" = "dual" ]] && suffix="-${s_type^^}"
+      local vm_quic_extra=$(jq -n --arg uuid "$uuid_vm_quic" --arg sni "$tls_sni" --argjson is_self "$is_self_signed" --arg cert "$cert_content" \
+        '{uuid: $uuid, security: "auto", packet_encoding: "packetaddr", transport: {type: "quic"}, tls: ({enabled: true, server_name: $sni, insecure: false, alpn: ["h3"]} + (if $is_self and ($cert | length) > 0 then {certificate: [$cert]} else {} end))}')
+      add_sb_outbound "vmess-quic${suffix}" "vmess" "$s_addr" "$port_vm_quic" "$vm_quic_extra"
+      local cl_vm_quic_opts="  uuid: $uuid_vm_quic
+  alterId: 0
+  cipher: auto
+  network: quic
+  tls: true
+  servername: $tls_sni
+$cl_tls_common"
+      add_clash_proxy "vmess-quic${suffix}" "vmess" "$s_addr" "$port_vm_quic" "$cl_vm_quic_opts"
+    done
+  fi
+
+  # VMess-H2-TLS
+  if [[ -n "$port_vm_h2_tls" ]]; then
+    local servers_list=$(resolve_servers "$port_vm_h2_tls" "$ym_domain")
+    for s_info in $servers_list; do
+      local s_type=$(echo "$s_info" | cut -d'|' -f1)
+      local s_addr=$(echo "$s_info" | cut -d'|' -f2)
+      local suffix=""
+      [[ "$server_ipcl" = "dual" ]] && suffix="-${s_type^^}"
+      local vm_h2_extra=$(jq -n --arg uuid "$uuid_vm_h2_tls" --arg sni "$ym_domain" --argjson is_self "$is_self_signed" --arg cert "$cert_content" \
+        '{uuid: $uuid, security: "auto", packet_encoding: "packetaddr", transport: {type: "http", host: [$sni], path: $uuid}, tls: ({enabled: true, server_name: $sni, insecure: false} + (if $is_self and ($cert | length) > 0 then {certificate: [$cert]} else {} end))}')
+      add_sb_outbound "vmess-h2-tls${suffix}" "vmess" "$s_addr" "$port_vm_h2_tls" "$vm_h2_extra"
+      local cl_vm_h2_opts="  uuid: $uuid_vm_h2_tls
+  alterId: 0
+  cipher: auto
+  network: h2
+  tls: true
+  servername: $ym_domain
+$cl_tls_common
+  h2-opts:
+    host:
+      - $ym_domain
+    path: /$uuid_vm_h2_tls"
+      add_clash_proxy "vmess-h2-tls${suffix}" "vmess" "$s_addr" "$port_vm_h2_tls" "$cl_vm_h2_opts"
+    done
+  fi
+
+  # VLESS-H2-TLS
+  if [[ -n "$port_vl_h2_tls" ]]; then
+    local servers_list=$(resolve_servers "$port_vl_h2_tls" "$ym_domain")
+    for s_info in $servers_list; do
+      local s_type=$(echo "$s_info" | cut -d'|' -f1)
+      local s_addr=$(echo "$s_info" | cut -d'|' -f2)
+      local suffix=""
+      [[ "$server_ipcl" = "dual" ]] && suffix="-${s_type^^}"
+      local vl_h2_extra=$(jq -n --arg uuid "$uuid_vl_h2" --arg sni "$ym_domain" --argjson is_self "$is_self_signed" --arg cert "$cert_content" \
+        '{uuid: $uuid, transport: {type: "http", host: [$sni], path: $uuid}, tls: ({enabled: true, server_name: $sni, insecure: false} + (if $is_self and ($cert | length) > 0 then {certificate: [$cert]} else {} end))}')
+      add_sb_outbound "vless-h2-tls${suffix}" "vless" "$s_addr" "$port_vl_h2_tls" "$vl_h2_extra"
+      local cl_vl_h2_opts="  uuid: $uuid_vl_h2
+  network: h2
+  tls: true
+  servername: $ym_domain
+$cl_tls_common
+  h2-opts:
+    host:
+      - $ym_domain
+    path: /$uuid_vl_h2"
+      add_clash_proxy "vless-h2-tls${suffix}" "vless" "$s_addr" "$port_vl_h2_tls" "$cl_vl_h2_opts"
+    done
+  fi
+
+  # Trojan-H2-TLS
+  if [[ -n "$port_tr_h2_tls" ]]; then
+    local servers_list=$(resolve_servers "$port_tr_h2_tls" "$ym_domain")
+    for s_info in $servers_list; do
+      local s_type=$(echo "$s_info" | cut -d'|' -f1)
+      local s_addr=$(echo "$s_info" | cut -d'|' -f2)
+      local suffix=""
+      [[ "$server_ipcl" = "dual" ]] && suffix="-${s_type^^}"
+      local tr_h2_extra=$(jq -n --arg password "$uuid_tr_h2_tls" --arg sni "$ym_domain" --argjson is_self "$is_self_signed" --arg cert "$cert_content" \
+        '{password: $password, transport: {type: "http", host: [$sni], path: $password}, tls: ({enabled: true, server_name: $sni, insecure: false} + (if $is_self and ($cert | length) > 0 then {certificate: [$cert]} else {} end))}')
+      add_sb_outbound "trojan-h2-tls${suffix}" "trojan" "$s_addr" "$port_tr_h2_tls" "$tr_h2_extra"
+      local cl_tr_h2_opts="  password: $uuid_tr_h2_tls
+  network: h2
+  tls: true
+  servername: $ym_domain
+$cl_tls_common
+  h2-opts:
+    host:
+      - $ym_domain
+    path: /$uuid_tr_h2_tls"
+      add_clash_proxy "trojan-h2-tls${suffix}" "trojan" "$s_addr" "$port_tr_h2_tls" "$cl_tr_h2_opts"
+    done
+  fi
+
+  # VLESS-HTTP2-REALITY
+  if [[ -n "$port_vl_h2_re" ]]; then
+    local servers_list=$(resolve_servers "$port_vl_h2_re" "$server_ipcl")
+    for s_info in $servers_list; do
+      local s_type=$(echo "$s_info" | cut -d'|' -f1)
+      local s_addr=$(echo "$s_info" | cut -d'|' -f2)
+      local suffix=""
+      [[ "$server_ipcl" = "dual" ]] && suffix="-${s_type^^}"
+      local vl_h2_re_extra=$(jq -n --arg uuid "$uuid_vl_h2_re" --arg name "$vl_name" --arg pbk "$public_key" --arg sid "$short_id" \
+        '{uuid: $uuid, transport: {type: "http", host: [$name], path: $uuid}, tls: {enabled: true, server_name: $name, utls: {enabled: true, fingerprint: "chrome"}, reality: {enabled: true, public_key: $pbk, short_id: $sid}}}')
+      add_sb_outbound "vless-h2-reality${suffix}" "vless" "$s_addr" "$port_vl_h2_re" "$vl_h2_re_extra"
+      local cl_vl_h2_re_opts="  uuid: $uuid_vl_h2_re
+  network: h2
+  tls: true
+  servername: $vl_name
+  reality-opts:
+    public-key: $public_key
+    short-id: $short_id
+  client-fingerprint: chrome
+  h2-opts:
+    host:
+      - $vl_name
+    path: /$uuid_vl_h2_re"
+      add_clash_proxy "vless-h2-reality${suffix}" "vless" "$s_addr" "$port_vl_h2_re" "$cl_vl_h2_re_opts"
+    done
+  fi
+
+  # Socks
+  if [[ -n "$port_socks" ]]; then
+    local servers_list=$(resolve_servers "$port_socks" "$server_ipcl")
+    for s_info in $servers_list; do
+      local s_type=$(echo "$s_info" | cut -d'|' -f1)
+      local s_addr=$(echo "$s_info" | cut -d'|' -f2)
+      local suffix=""
+      [[ "$server_ipcl" = "dual" ]] && suffix="-${s_type^^}"
+      local socks_extra=$(jq -n --arg user "${socks_username:-233boy}" --arg pass "$socks_password" \
+        '{version: "5", username: $user, password: $pass}')
+      add_sb_outbound "socks${suffix}" "socks" "$s_addr" "$port_socks" "$socks_extra"
+      local cl_socks_opts="  username: ${socks_username:-233boy}
+  password: $socks_password"
+      add_clash_proxy "socks${suffix}" "socks" "$s_addr" "$port_socks" "$cl_socks_opts"
     done
   fi
 
@@ -2290,7 +2887,7 @@ EOF
 }
 
 sbshare() {
-  rm -rf "$SBFOLDER"/{jhdy,vl_reality,vl_ws_tls,vl_hu_tls,vm_ws_argols,vm_ws_argogd,vm_ws,vm_ws_tls,vm_hu_tls,hy2,tuic5,an,tr_tls,tr_ws_tls,tr_hu_tls,ss}.txt
+  rm -rf "$SBFOLDER"/{jhdy,vl_reality,vl_ws_tls,vl_hu_tls,vm_ws_argols,vm_ws_argogd,vm_ws,vm_ws_tls,vm_hu_tls,hy2,tuic5,an,tr_tls,tr_ws_tls,tr_hu_tls,ss,vm_tcp,vm_http,vm_quic,vm_h2_tls,vl_h2_tls,tr_h2_tls,vl_h2_reality,socks}.txt
   
   local show_qr_code=false
   if [ -t 1 ]; then
@@ -2319,6 +2916,14 @@ sbshare() {
   fi
   restrojan
   resshadowsocks
+  resvmess_tcp
+  resvmess_http
+  resvmess_quic
+  resvmess_h2_tls
+  resvless_h2_tls
+  restrojan_h2_tls
+  resvless_h2_re
+  ressocks
   
   cat "$SBFOLDER/vl_reality.txt" 2>/dev/null >> "$SBFOLDER/jhdy.txt"
   cat "$SBFOLDER/vl_ws_tls.txt" 2>/dev/null >> "$SBFOLDER/jhdy.txt"
@@ -2335,6 +2940,14 @@ sbshare() {
   cat "$SBFOLDER/tr_ws_tls.txt" 2>/dev/null >> "$SBFOLDER/jhdy.txt"
   cat "$SBFOLDER/tr_hu_tls.txt" 2>/dev/null >> "$SBFOLDER/jhdy.txt"
   cat "$SBFOLDER/ss.txt" 2>/dev/null >> "$SBFOLDER/jhdy.txt"
+  cat "$SBFOLDER/vm_tcp.txt" 2>/dev/null >> "$SBFOLDER/jhdy.txt"
+  cat "$SBFOLDER/vm_http.txt" 2>/dev/null >> "$SBFOLDER/jhdy.txt"
+  cat "$SBFOLDER/vm_quic.txt" 2>/dev/null >> "$SBFOLDER/jhdy.txt"
+  cat "$SBFOLDER/vm_h2_tls.txt" 2>/dev/null >> "$SBFOLDER/jhdy.txt"
+  cat "$SBFOLDER/vl_h2_tls.txt" 2>/dev/null >> "$SBFOLDER/jhdy.txt"
+  cat "$SBFOLDER/tr_h2_tls.txt" 2>/dev/null >> "$SBFOLDER/jhdy.txt"
+  cat "$SBFOLDER/vl_h2_reality.txt" 2>/dev/null >> "$SBFOLDER/jhdy.txt"
+  cat "$SBFOLDER/socks.txt" 2>/dev/null >> "$SBFOLDER/jhdy.txt"
   
   v2sub=$(cat "$SBFOLDER/jhdy.txt" 2>/dev/null)
   echo "$v2sub" > "$SBFOLDER/jhsub.txt"
@@ -2698,6 +3311,14 @@ changeport() {
   if [[ "$sbnh" != "1.10" ]] && [[ -n "$port_an" ]]; then
     green "13：AnyTLS协议 ${yellow}端口:$port_an${plain}"
   fi
+  [[ -n "$port_vm_tcp" ]] && green "14：VMess-TCP协议 ${yellow}端口:$port_vm_tcp${plain}"
+  [[ -n "$port_vm_http" ]] && green "15：VMess-HTTP协议 ${yellow}端口:$port_vm_http${plain}"
+  [[ -n "$port_vm_quic" ]] && green "16：VMess-QUIC协议 ${yellow}端口:$port_vm_quic${plain}"
+  [[ -n "$port_vm_h2_tls" ]] && green "17：VMess-H2-TLS协议 ${yellow}端口:$port_vm_h2_tls${plain}"
+  [[ -n "$port_vl_h2_tls" ]] && green "18：VLESS-H2-TLS协议 ${yellow}端口:$port_vl_h2_tls${plain}"
+  [[ -n "$port_tr_h2_tls" ]] && green "19：Trojan-H2-TLS协议 ${yellow}端口:$port_tr_h2_tls${plain}"
+  [[ -n "$port_vl_h2_re" ]] && green "20：VLESS-HTTP2-REALITY协议 ${yellow}端口:$port_vl_h2_re${plain}"
+  [[ -n "$port_socks" ]] && green "21：Socks协议 ${yellow}端口:$port_socks${plain}"
   green " 0：返回上层"
   readp "请选择要变更端口的协议：" menu
   
@@ -2855,6 +3476,62 @@ changeport() {
         sb
       fi
       ;;
+    14)
+      [[ -z "$port_vm_tcp" ]] && red "协议未安装！" && sleep 2 && changeport && return
+      local p=$(prompt_new_port "VMess-TCP" "$port_vm_tcp")
+      update_inbound_port "vmess-tcp-sb" "$p"
+      restartsb && sbshare > /dev/null 2>&1
+      blue "VMess-TCP端口已变更为 $p"
+      ;;
+    15)
+      [[ -z "$port_vm_http" ]] && red "协议未安装！" && sleep 2 && changeport && return
+      local p=$(prompt_new_port "VMess-HTTP" "$port_vm_http")
+      update_inbound_port "vmess-http-sb" "$p"
+      restartsb && sbshare > /dev/null 2>&1
+      blue "VMess-HTTP端口已变更为 $p"
+      ;;
+    16)
+      [[ -z "$port_vm_quic" ]] && red "协议未安装！" && sleep 2 && changeport && return
+      local p=$(prompt_new_port "VMess-QUIC" "$port_vm_quic")
+      update_inbound_port "vmess-quic-sb" "$p"
+      restartsb && sbshare > /dev/null 2>&1
+      blue "VMess-QUIC端口已变更为 $p"
+      ;;
+    17)
+      [[ -z "$port_vm_h2_tls" ]] && red "协议未安装！" && sleep 2 && changeport && return
+      local p=$(prompt_new_port "VMess-H2-TLS" "$port_vm_h2_tls")
+      update_inbound_port "vmess-h2-tls-sb" "$p"
+      restartsb && sbshare > /dev/null 2>&1
+      blue "VMess-H2-TLS端口已变更为 $p"
+      ;;
+    18)
+      [[ -z "$port_vl_h2_tls" ]] && red "协议未安装！" && sleep 2 && changeport && return
+      local p=$(prompt_new_port "VLESS-H2-TLS" "$port_vl_h2_tls")
+      update_inbound_port "vless-h2-tls-sb" "$p"
+      restartsb && sbshare > /dev/null 2>&1
+      blue "VLESS-H2-TLS端口已变更为 $p"
+      ;;
+    19)
+      [[ -z "$port_tr_h2_tls" ]] && red "协议未安装！" && sleep 2 && changeport && return
+      local p=$(prompt_new_port "Trojan-H2-TLS" "$port_tr_h2_tls")
+      update_inbound_port "trojan-h2-tls-sb" "$p"
+      restartsb && sbshare > /dev/null 2>&1
+      blue "Trojan-H2-TLS端口已变更为 $p"
+      ;;
+    20)
+      [[ -z "$port_vl_h2_re" ]] && red "协议未安装！" && sleep 2 && changeport && return
+      local p=$(prompt_new_port "VLESS-HTTP2-REALITY" "$port_vl_h2_re")
+      update_inbound_port "vless-h2-reality-sb" "$p"
+      restartsb && sbshare > /dev/null 2>&1
+      blue "VLESS-HTTP2-REALITY端口已变更为 $p"
+      ;;
+    21)
+      [[ -z "$port_socks" ]] && red "协议未安装！" && sleep 2 && changeport && return
+      local p=$(prompt_new_port "Socks" "$port_socks")
+      update_inbound_port "socks-sb" "$p"
+      restartsb && sbshare > /dev/null 2>&1
+      blue "Socks端口已变更为 $p"
+      ;;
     *)
       sb
       ;;
@@ -2877,6 +3554,14 @@ changeuuid() {
   uuid_hy2=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "hy2-sb") | .users[0].password // empty' 2>/dev/null | head -n 1)
   uuid_tu=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "tuic5-sb") | .users[0].uuid // empty' 2>/dev/null | head -n 1)
   uuid_an=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "anytls-sb") | .users[0].password // empty' 2>/dev/null | head -n 1)
+  uuid_vm_tcp=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "vmess-tcp-sb") | .users[0].uuid // empty' 2>/dev/null | head -n 1)
+  uuid_vm_http=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "vmess-http-sb") | .users[0].uuid // empty' 2>/dev/null | head -n 1)
+  uuid_vm_quic=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "vmess-quic-sb") | .users[0].uuid // empty' 2>/dev/null | head -n 1)
+  uuid_vm_h2_tls=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "vmess-h2-tls-sb") | .users[0].uuid // empty' 2>/dev/null | head -n 1)
+  uuid_vl_h2=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "vless-h2-tls-sb") | .users[0].uuid // empty' 2>/dev/null | head -n 1)
+  uuid_tr_h2_tls=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "trojan-h2-tls-sb") | .users[0].password // empty' 2>/dev/null | head -n 1)
+  uuid_vl_h2_re=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "vless-h2-reality-sb") | .users[0].uuid // empty' 2>/dev/null | head -n 1)
+  socks_password=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "socks-sb") | .users[0].password // empty' 2>/dev/null | head -n 1)
 
   green "当前各已安装协议独立的uuid (密码)："
   [[ -n "$uuid_vl_re" ]] && green "  VLESS-Reality: $uuid_vl_re"
@@ -2891,6 +3576,14 @@ changeuuid() {
   [[ -n "$uuid_hy2" ]] && green "  Hysteria 2:    $uuid_hy2"
   [[ -n "$uuid_tu" ]] && green "  Tuic-v5:       $uuid_tu"
   [[ -n "$uuid_an" ]] && green "  AnyTLS:        $uuid_an"
+  [[ -n "$uuid_vm_tcp" ]] && green "  VMess-TCP:     $uuid_vm_tcp"
+  [[ -n "$uuid_vm_http" ]] && green "  VMess-HTTP:    $uuid_vm_http"
+  [[ -n "$uuid_vm_quic" ]] && green "  VMess-QUIC:    $uuid_vm_quic"
+  [[ -n "$uuid_vm_h2_tls" ]] && green "  VMess-H2-TLS:  $uuid_vm_h2_tls"
+  [[ -n "$uuid_vl_h2" ]] && green "  VLESS-H2-TLS:  $uuid_vl_h2"
+  [[ -n "$uuid_tr_h2_tls" ]] && green "  Trojan-H2-TLS: $uuid_tr_h2_tls"
+  [[ -n "$uuid_vl_h2_re" ]] && green "  VLESS-H2-Re:   $uuid_vl_h2_re"
+  [[ -n "$socks_password" ]] && green "  Socks-Pass:    $socks_password"
 
   oldvmpath=$(echo "$clean_json" | jq -r '(.inbounds[] | select(.tag == "vmess-ws-sb") | .transport.path) // empty')
   if [[ -n "$oldvmpath" ]]; then
@@ -2918,6 +3611,14 @@ changeuuid() {
       uuid_hy2=$("$SBFOLDER/sing-box" generate uuid)
       uuid_tu=$("$SBFOLDER/sing-box" generate uuid)
       uuid_an=$("$SBFOLDER/sing-box" generate uuid)
+      uuid_vm_tcp=$("$SBFOLDER/sing-box" generate uuid)
+      uuid_vm_http=$("$SBFOLDER/sing-box" generate uuid)
+      uuid_vm_quic=$("$SBFOLDER/sing-box" generate uuid)
+      uuid_vm_h2_tls=$("$SBFOLDER/sing-box" generate uuid)
+      uuid_vl_h2=$("$SBFOLDER/sing-box" generate uuid)
+      uuid_tr_h2_tls=$("$SBFOLDER/sing-box" generate uuid)
+      uuid_vl_h2_re=$("$SBFOLDER/sing-box" generate uuid)
+      socks_password=$("$SBFOLDER/sing-box" generate uuid)
     else
       uuid_vl_re=$menu
       uuid_vl_ws=$menu
@@ -2931,6 +3632,14 @@ changeuuid() {
       uuid_hy2=$menu
       uuid_tu=$menu
       uuid_an=$menu
+      uuid_vm_tcp=$menu
+      uuid_vm_http=$menu
+      uuid_vm_quic=$menu
+      uuid_vm_h2_tls=$menu
+      uuid_vl_h2=$menu
+      uuid_tr_h2_tls=$menu
+      uuid_vl_h2_re=$menu
+      socks_password=$menu
     fi
     for file in $SBFILES; do
       if [ -f "$file" ]; then
@@ -2948,6 +3657,14 @@ changeuuid() {
             --arg hy2 "$uuid_hy2" \
             --arg tu "$uuid_tu" \
             --arg an "$uuid_an" \
+            --arg vm_tcp "$uuid_vm_tcp" \
+            --arg vm_http "$uuid_vm_http" \
+            --arg vm_quic "$uuid_vm_quic" \
+            --arg vm_h2 "$uuid_vm_h2_tls" \
+            --arg vl_h2 "$uuid_vl_h2" \
+            --arg tr_h2 "$uuid_tr_h2_tls" \
+            --arg vl_h2_re "$uuid_vl_h2_re" \
+            --arg socks_p "$socks_password" \
             '.inbounds[] |= (
               if .tag == "vless-reality-sb" then .users[0].uuid = $vl_re
               elif .tag == "vless-ws-tls-sb" then .users[0].uuid = $vl_ws | .transport.path = $vl_ws
@@ -2961,6 +3678,14 @@ changeuuid() {
               elif .tag == "hy2-sb" then .users[0].password = $hy2
               elif .tag == "tuic5-sb" then .users[0].uuid = $tu | .users[0].password = $tu
               elif .tag == "anytls-sb" then .users[0].password = $an
+              elif .tag == "vmess-tcp-sb" then .users[0].uuid = $vm_tcp
+              elif .tag == "vmess-http-sb" then .users[0].uuid = $vm_http
+              elif .tag == "vmess-quic-sb" then .users[0].uuid = $vm_quic
+              elif .tag == "vmess-h2-tls-sb" then .users[0].uuid = $vm_h2 | .transport.path = $vm_h2
+              elif .tag == "vless-h2-tls-sb" then .users[0].uuid = $vl_h2 | .transport.path = $vl_h2
+              elif .tag == "trojan-h2-tls-sb" then .users[0].password = $tr_h2 | .transport.path = $tr_h2
+              elif .tag == "vless-h2-reality-sb" then .users[0].uuid = $vl_h2_re | .transport.path = $vl_h2_re
+              elif .tag == "socks-sb" then .users[0].password = $socks_p
               else . end
             )' "$file" > /tmp/tmp.json && mv /tmp/tmp.json "$file"
         fi
@@ -3533,6 +4258,7 @@ changef() {
 }
 
 restartsb() {
+  sync_configs_from_sb_json
   if command -v apk >/dev/null 2>&1; then
     rc-service sing-box restart
   else
@@ -4827,7 +5553,7 @@ showprotocol() {
     print_protocol_line "Trojan-HU-TLS" "$port_tr_hu_tls" "证书形式:$hy2_zs  路径: /${uuid_tr_hu_tls}"
   fi
   if [[ -n "$port_ss" ]]; then
-    print_protocol_line "Shadowsocks" "$port_ss" "加密: 2022-blake3-aes-128-gcm"
+    print_protocol_line "Shadowsocks" "$port_ss" "加密: ${ss_method:-2022-blake3-aes-128-gcm}"
   fi
   if [[ -n "$port_hy2" ]]; then
     print_protocol_line "Hysteria 2" "$port_hy2" "证书形式:$hy2_zs  转发多端口: $hy2zfport"
@@ -4837,6 +5563,30 @@ showprotocol() {
   fi
   if [[ "$sbnh" != "1.10" && -n "$port_an" ]]; then
     print_protocol_line "Anytls" "$port_an" "证书形式:$hy2_zs"
+  fi
+  if [[ -n "$port_vm_tcp" ]]; then
+    print_protocol_line "VMess-TCP" "$port_vm_tcp" "不开启 TLS"
+  fi
+  if [[ -n "$port_vm_http" ]]; then
+    print_protocol_line "VMess-HTTP" "$port_vm_http" "不开启 TLS (HTTP伪装)"
+  fi
+  if [[ -n "$port_vm_quic" ]]; then
+    print_protocol_line "VMess-QUIC" "$port_vm_quic" "证书形式:$hy2_zs"
+  fi
+  if [[ -n "$port_vm_h2_tls" ]]; then
+    print_protocol_line "VMess-H2-TLS" "$port_vm_h2_tls" "证书形式:$hy2_zs  路径: /${uuid_vm_h2_tls}"
+  fi
+  if [[ -n "$port_vl_h2_tls" ]]; then
+    print_protocol_line "VLESS-H2-TLS" "$port_vl_h2_tls" "证书形式:$hy2_zs  路径: /${uuid_vl_h2}"
+  fi
+  if [[ -n "$port_tr_h2_tls" ]]; then
+    print_protocol_line "Trojan-H2-TLS" "$port_tr_h2_tls" "证书形式:$hy2_zs  路径: /${uuid_tr_h2_tls}"
+  fi
+  if [[ -n "$port_vl_h2_re" ]]; then
+    print_protocol_line "VLESS-H2-Re" "$port_vl_h2_re" "Reality伪装域名: $vl_name  路径: /${uuid_vl_h2_re}"
+  fi
+  if [[ -n "$port_socks" ]]; then
+    print_protocol_line "Socks" "$port_socks" "用户: ${socks_username:-233boy}"
   fi
 
   if [ "$argoym" = "已开启" ]; then
@@ -4889,10 +5639,18 @@ instsllsingbox() {
   use_tr_tls=false       # 7: Trojan-TLS
   use_tr_ws_tls=false    # 8: Trojan-WS-TLS
   use_tr_hu_tls=false    # 9: Trojan-HTTPUpgrade-TLS
-  use_ss=false           # 10: Shadowsocks (SS-2022)
+  use_ss=false           # 10: Shadowsocks
   use_hy2=false          # 11: Hysteria 2
   use_tu=false           # 12: Tuic-v5
   use_an=false           # 13: AnyTLS
+  use_vm_tcp=false       # 14: VMess-TCP
+  use_vm_http=false      # 15: VMess-HTTP
+  use_vm_quic=false      # 16: VMess-QUIC
+  use_vm_h2_tls=false    # 17: VMess-H2-TLS
+  use_vl_h2_tls=false    # 18: VLESS-H2-TLS
+  use_tr_h2_tls=false    # 19: Trojan-H2-TLS
+  use_vl_h2_re=false     # 20: VLESS-HTTP2-REALITY
+  use_socks=false        # 21: Socks
 
   echo
   green "请选择需要安装的协议组合 (回车默认安装 1 5 11 12，或输入数字并用空格分隔，如 1 10 11)"
@@ -4900,22 +5658,30 @@ instsllsingbox() {
   yellow " 1：VLESS-Reality (Vision + TCP)"
   yellow " 2：VLESS-WS-TLS (VLESS over WebSocket + TLS)"
   yellow " 3：VLESS-HTTPUpgrade-TLS (VLESS over HTTPUpgrade + TLS)"
+  yellow "18：VLESS-H2-TLS (VLESS over HTTP/2 + TLS)"
+  yellow "20：VLESS-HTTP2-REALITY (VLESS over HTTP/2 + REALITY)"
   green "--- VMess 组合 ---"
   yellow " 4：VMess-WS (VMess over WebSocket，不启用 TLS)"
   yellow " 5：VMess-WS-TLS (VMess over WebSocket + TLS)"
   yellow " 6：VMess-HTTPUpgrade-TLS (VMess over HTTPUpgrade + TLS)"
+  yellow "14：VMess-TCP (VMess over TCP，不启用 TLS)"
+  yellow "15：VMess-HTTP (VMess over HTTP，不启用 TLS)"
+  yellow "16：VMess-QUIC (VMess over QUIC，启用 TLS)"
+  yellow "17：VMess-H2-TLS (VMess over HTTP/2 + TLS)"
   green "--- Trojan 组合 ---"
   yellow " 7：Trojan-TLS (Trojan over TCP + TLS)"
   yellow " 8：Trojan-WS-TLS (Trojan over WebSocket + TLS)"
   yellow " 9：Trojan-HTTPUpgrade-TLS (Trojan over HTTPUpgrade + TLS)"
+  yellow "19：Trojan-H2-TLS (Trojan over HTTP/2 + TLS)"
   green "--- 其他经典/高速协议 ---"
-  yellow "10：Shadowsocks (Shadowsocks-2022 加密)"
+  yellow "10：Shadowsocks (Shadowsocks 多种加密)"
   yellow "11：Hysteria 2 (QUIC/UDP)"
   yellow "12：Tuic-v5 (QUIC/UDP)"
   if [[ "$sbnh" != "1.10" ]]; then
     yellow "13：AnyTLS"
   fi
-  readp "请选择【1-13】：" select_proto
+  yellow "21：Socks (Socks5 代理服务)"
+  readp "请选择【1-21】：" select_proto
   if [[ -z "$select_proto" ]]; then
     use_vl_re=true
     use_vm_ws_tls=true
@@ -4939,6 +5705,14 @@ instsllsingbox() {
         11) use_hy2=true ;;
         12) use_tu=true ;;
         13) [[ "$sbnh" != "1.10" ]] && use_an=true ;;
+        14) use_vm_tcp=true ;;
+        15) use_vm_http=true ;;
+        16) use_vm_quic=true ;;
+        17) use_vm_h2_tls=true ;;
+        18) use_vl_h2_tls=true ;;
+        19) use_tr_h2_tls=true ;;
+        20) use_vl_h2_re=true ;;
+        21) use_socks=true ;;
       esac
     done
   fi
@@ -4947,13 +5721,44 @@ instsllsingbox() {
   if [[ "$use_vl_re" = "false" && "$use_vl_ws_tls" = "false" && "$use_vl_hu_tls" = "false" && \
         "$use_vm_ws" = "false" && "$use_vm_ws_tls" = "false" && "$use_vm_hu_tls" = "false" && \
         "$use_tr_tls" = "false" && "$use_tr_ws_tls" = "false" && "$use_tr_hu_tls" = "false" && \
-        "$use_ss" = "false" && "$use_hy2" = "false" && "$use_tu" = "false" && "$use_an" = "false" ]]; then
+        "$use_ss" = "false" && "$use_hy2" = "false" && "$use_tu" = "false" && "$use_an" = "false" && \
+        "$use_vm_tcp" = "false" && "$use_vm_http" = "false" && "$use_vm_quic" = "false" && \
+        "$use_vm_h2_tls" = "false" && "$use_vl_h2_tls" = "false" && "$use_tr_h2_tls" = "false" && \
+        "$use_vl_h2_re" = "false" && "$use_socks" = "false" ]]; then
     yellow "未选择任何协议，默认启用 VLESS-Reality 和 Hysteria 2"
     use_vl_re=true
     use_hy2=true
   fi
 
-  if [[ "$use_vl_re" = "true" ]]; then
+  if [[ "$use_ss" = "true" ]]; then
+    echo
+    green "请选择 Shadowsocks 加密方法："
+    yellow "1：2022-blake3-aes-128-gcm (默认)"
+    yellow "2：2022-blake3-aes-256-gcm"
+    yellow "3：2022-blake3-chacha20-poly1305"
+    yellow "4：aes-128-gcm"
+    yellow "5：aes-256-gcm"
+    yellow "6：chacha20-ietf-poly1305"
+    yellow "7：xchacha20-ietf-poly1305"
+    readp "请选择【1-7】：" ss_method_choice
+    case "$ss_method_choice" in
+      2) ss_method="2022-blake3-aes-256-gcm" ;;
+      3) ss_method="2022-blake3-chacha20-poly1305" ;;
+      4) ss_method="aes-128-gcm" ;;
+      5) ss_method="aes-256-gcm" ;;
+      6) ss_method="chacha20-ietf-poly1305" ;;
+      7) ss_method="xchacha20-ietf-poly1305" ;;
+      *) ss_method="2022-blake3-aes-128-gcm" ;;
+    esac
+    
+    if [[ "$ss_method" == *"256"* || "$ss_method" == *"chacha20"* ]]; then
+      ss_password=$("$SBFOLDER/sing-box" generate rand 32 --base64)
+    else
+      ss_password=$("$SBFOLDER/sing-box" generate rand 16 --base64)
+    fi
+  fi
+
+  if [[ "$use_vl_re" = "true" || "$use_vl_h2_re" = "true" ]]; then
     # Reality public/private keys
     reality_keys=$("$SBFOLDER/sing-box" generate reality-keypair)
     private_key=$(echo "$reality_keys" | awk '/PrivateKey/{print $NF}' | tr -d '"')
@@ -4966,7 +5771,9 @@ instsllsingbox() {
   if [[ "$use_vl_ws_tls" = "true" || "$use_vl_hu_tls" = "true" || \
         "$use_vm_ws_tls" = "true" || "$use_vm_hu_tls" = "true" || \
         "$use_tr_tls" = "true" || "$use_tr_ws_tls" = "true" || "$use_tr_hu_tls" = "true" || \
-        "$use_hy2" = "true" || "$use_tu" = "true" || "$use_an" = "true" ]]; then
+        "$use_hy2" = "true" || "$use_tu" = "true" || "$use_an" = "true" || \
+        "$use_vm_quic" = "true" || "$use_vm_h2_tls" = "true" || \
+        "$use_vl_h2_tls" = "true" || "$use_tr_h2_tls" = "true" ]]; then
     inscertificate
   fi
   insport
