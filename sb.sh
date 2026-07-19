@@ -1432,6 +1432,23 @@ inssbjsonser() {
     config_json_11=$(echo "$config_json_11" | jq --argjson inb "$socks_inb" '.inbounds += [$inb]')
   fi
 
+  # Post-process config_json_10 and config_json_11 to preserve custom certificate paths
+  local local_proto_tags=("vless-reality-sb" "vless-ws-tls-sb" "vless-hu-tls-sb" "vless-h2-tls-sb" "vless-h2-reality-sb" "vmess-ws-sb" "vmess-ws-tls-sb" "vmess-hu-tls-sb" "vmess-tcp-sb" "vmess-http-sb" "vmess-quic-sb" "vmess-h2-tls-sb" "trojan-tls-sb" "trojan-ws-tls-sb" "trojan-hu-tls-sb" "trojan-h2-tls-sb" "shadowsocks-sb" "hy2-sb" "tuic5-sb" "anytls-sb" "socks-sb")
+  local tag
+  for tag in "${local_proto_tags[@]}"; do
+    local f_conf="$SBFOLDER/conf/${tag}.json"
+    if [[ -f "$f_conf" ]]; then
+      local cpath=$(jq -r '.inbounds[0].tls.certificate_path // empty' "$f_conf")
+      local kpath=$(jq -r '.inbounds[0].tls.key_path // empty' "$f_conf")
+      if [[ -n "$cpath" && "$cpath" != "null" ]]; then
+        config_json_10=$(echo "$config_json_10" | jq --arg tag "$tag" --arg cert "$cpath" --arg key "$kpath" \
+          '(.inbounds[] | select(.tag == $tag) | .tls) |= (.certificate_path = $cert | .key_path = $key)')
+        config_json_11=$(echo "$config_json_11" | jq --arg tag "$tag" --arg cert "$cpath" --arg key "$kpath" \
+          '(.inbounds[] | select(.tag == $tag) | .tls) |= (.certificate_path = $cert | .key_path = $key)')
+      fi
+    fi
+  done
+
   echo "$config_json_10" > "$SBFOLDER/sb10.json"
   echo "$config_json_11" > "$SBFOLDER/sb11.json"
 
@@ -1462,110 +1479,98 @@ get_free_acme_port() {
 write_caddyfile() {
   local clean_json=$(strip_json_comments "$SBFOLDER/sb.json")
   
-  local port_vl_ws=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "vless-ws-tls-sb") | .listen_port // empty' 2>/dev/null | head -n 1)
-  local port_vl_hu=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "vless-hu-tls-sb") | .listen_port // empty' 2>/dev/null | head -n 1)
-  local port_vl_h2=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "vless-h2-tls-sb") | .listen_port // empty' 2>/dev/null | head -n 1)
-  local port_vm_ws_tls=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "vmess-ws-tls-sb") | .listen_port // empty' 2>/dev/null | head -n 1)
-  local port_vm_hu_tls=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "vmess-hu-tls-sb") | .listen_port // empty' 2>/dev/null | head -n 1)
-  local port_vm_h2_tls=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "vmess-h2-tls-sb") | .listen_port // empty' 2>/dev/null | head -n 1)
-  local port_tr_ws_tls=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "trojan-ws-tls-sb") | .listen_port // empty' 2>/dev/null | head -n 1)
-  local port_tr_hu_tls=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "trojan-hu-tls-sb") | .listen_port // empty' 2>/dev/null | head -n 1)
-  local port_tr_h2_tls=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "trojan-h2-tls-sb") | .listen_port // empty' 2>/dev/null | head -n 1)
-
-  local path_vl_ws=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "vless-ws-tls-sb") | .users[0].uuid // empty' 2>/dev/null | head -n 1)
-  local path_vl_hu=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "vless-hu-tls-sb") | .users[0].uuid // empty' 2>/dev/null | head -n 1)
-  local path_vl_h2=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "vless-h2-tls-sb") | .users[0].uuid // empty' 2>/dev/null | head -n 1)
-  local path_vm_ws_tls=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "vmess-ws-tls-sb") | .users[0].uuid // empty' 2>/dev/null | head -n 1)
-  local path_vm_hu_tls=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "vmess-hu-tls-sb") | .users[0].uuid // empty' 2>/dev/null | head -n 1)
-  local path_vm_h2_tls=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "vmess-h2-tls-sb") | .users[0].uuid // empty' 2>/dev/null | head -n 1)
-  local path_tr_ws_tls=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "trojan-ws-tls-sb") | .users[0].password // empty' 2>/dev/null | head -n 1)
-  local path_tr_hu_tls=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "trojan-hu-tls-sb") | .users[0].password // empty' 2>/dev/null | head -n 1)
-  local path_tr_h2_tls=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "trojan-h2-tls-sb") | .users[0].password // empty' 2>/dev/null | head -n 1)
-
-  local cert_type=$(cat /etc/s-box/cert_type.log 2>/dev/null || echo "self")
   local server_ip=$(cat "$SBFOLDER/server_ip.log" 2>/dev/null || curl -s4 ip.sb)
   local ym_domain=$(cat /root/ygkkkca/ca.log 2>/dev/null)
   local acme_port=$(cat /etc/s-box/acme_port.log 2>/dev/null || echo "9999")
-  
-  local site_addr=":443"
-  local tls_directive=""
-  local global_options="admin off"
-  
-  if [[ "$cert_type" == "domain" && -n "$ym_domain" ]]; then
-    site_addr="$ym_domain:443"
-    tls_directive="tls /etc/s-box/cert.pem /etc/s-box/private.key"
-    global_options="admin off"
-  elif [[ "$cert_type" == "ip" && -n "$server_ip" ]]; then
-    site_addr="$server_ip:443"
-    tls_directive="tls /etc/s-box/cert.pem /etc/s-box/private.key"
-    global_options="admin off
-  auto_https off"
-  else
-    site_addr=":443"
-    tls_directive="tls /etc/s-box/cert.pem /etc/s-box/private.key"
-    global_options="admin off
-  auto_https off"
-  fi
+  local global_cert_type=$(cat /etc/s-box/cert_type.log 2>/dev/null || echo "self")
 
+  # Define Caddy-proxied protocol tags, ports, and paths
+  local caddy_tags=("vless-ws-tls-sb" "vless-hu-tls-sb" "vless-h2-tls-sb" "vmess-ws-tls-sb" "vmess-hu-tls-sb" "vmess-h2-tls-sb" "trojan-ws-tls-sb" "trojan-hu-tls-sb" "trojan-h2-tls-sb")
+  
+  # Group lists
+  local group_self_proxies=""
+  local group_ip_proxies=""
+  local group_domain_proxies=""
+
+  local tag
+  for tag in "${caddy_tags[@]}"; do
+    local port=$(echo "$clean_json" | jq -r ".inbounds[] | select(.tag == \"$tag\") | .listen_port // empty" 2>/dev/null | head -n 1)
+    local path=""
+    if [[ "$tag" =~ "trojan" ]]; then
+      path=$(echo "$clean_json" | jq -r ".inbounds[] | select(.tag == \"$tag\") | .users[0].password // empty" 2>/dev/null | head -n 1)
+    else
+      path=$(echo "$clean_json" | jq -r ".inbounds[] | select(.tag == \"$tag\") | .users[0].uuid // empty" 2>/dev/null | head -n 1)
+    fi
+
+    if [[ -n "$port" && -n "$path" ]]; then
+      # Get certificate type for this protocol
+      local p_cert=$(grep -w "^${tag}:" /etc/s-box/proto_certs.log 2>/dev/null | cut -d: -f2)
+      [[ -z "$p_cert" ]] && p_cert="$global_cert_type"
+
+      local proxy_directive=""
+      if [[ "$tag" =~ "-h2-tls" ]]; then
+        proxy_directive="  reverse_proxy /$path https://127.0.0.1:$port {
+    transport http {
+      tls_insecure_skip_verify
+    }
+  }"
+      else
+        proxy_directive="  reverse_proxy /$path 127.0.0.1:$port"
+      fi
+
+      if [[ "$p_cert" == "self" ]]; then
+        group_self_proxies="${group_self_proxies}${proxy_directive}
+"
+      elif [[ "$p_cert" == "ip" ]]; then
+        group_ip_proxies="${group_ip_proxies}${proxy_directive}
+"
+      elif [[ "$p_cert" == "domain" ]]; then
+        group_domain_proxies="${group_domain_proxies}${proxy_directive}
+"
+      fi
+    fi
+  done
+
+  # Now write the Caddyfile!
   mkdir -p /etc/caddy
   cat > /etc/caddy/Caddyfile <<EOF
 {
-  $global_options
+  admin off
 }
+EOF
 
-$site_addr {
-  $tls_directive
+  # 1. Self-signed block
+  if [[ -n "$group_self_proxies" ]]; then
+    cat >> /etc/caddy/Caddyfile <<EOF
+
+:443 {
+  tls /etc/s-box/self_cert.pem /etc/s-box/self_private.key
   reverse_proxy /.well-known/acme-challenge/* 127.0.0.1:$acme_port
-EOF
-
-  if [[ -n "$port_vl_ws" && -n "$path_vl_ws" ]]; then
-    echo "  reverse_proxy /$path_vl_ws 127.0.0.1:$port_vl_ws" >> /etc/caddy/Caddyfile
-  fi
-  if [[ -n "$port_vl_hu" && -n "$path_vl_hu" ]]; then
-    echo "  reverse_proxy /$path_vl_hu 127.0.0.1:$port_vl_hu" >> /etc/caddy/Caddyfile
-  fi
-  if [[ -n "$port_vm_ws_tls" && -n "$path_vm_ws_tls" ]]; then
-    echo "  reverse_proxy /$path_vm_ws_tls 127.0.0.1:$port_vm_ws_tls" >> /etc/caddy/Caddyfile
-  fi
-  if [[ -n "$port_vm_hu_tls" && -n "$path_vm_hu_tls" ]]; then
-    echo "  reverse_proxy /$path_vm_hu_tls 127.0.0.1:$port_vm_hu_tls" >> /etc/caddy/Caddyfile
-  fi
-  if [[ -n "$port_tr_ws_tls" && -n "$path_tr_ws_tls" ]]; then
-    echo "  reverse_proxy /$path_tr_ws_tls 127.0.0.1:$port_tr_ws_tls" >> /etc/caddy/Caddyfile
-  fi
-  if [[ -n "$port_tr_hu_tls" && -n "$path_tr_hu_tls" ]]; then
-    echo "  reverse_proxy /$path_tr_hu_tls 127.0.0.1:$port_tr_hu_tls" >> /etc/caddy/Caddyfile
-  fi
-
-  if [[ -n "$port_vl_h2" && -n "$path_vl_h2" ]]; then
-    cat >> /etc/caddy/Caddyfile <<EOF
-  reverse_proxy /$path_vl_h2 https://127.0.0.1:$port_vl_h2 {
-    transport http {
-      tls_insecure_skip_verify
-    }
-  }
-EOF
-  fi
-  if [[ -n "$port_vm_h2_tls" && -n "$path_vm_h2_tls" ]]; then
-    cat >> /etc/caddy/Caddyfile <<EOF
-  reverse_proxy /$path_vm_h2_tls https://127.0.0.1:$port_vm_h2_tls {
-    transport http {
-      tls_insecure_skip_verify
-    }
-  }
-EOF
-  fi
-  if [[ -n "$port_tr_h2_tls" && -n "$path_tr_h2_tls" ]]; then
-    cat >> /etc/caddy/Caddyfile <<EOF
-  reverse_proxy /$path_tr_h2_tls https://127.0.0.1:$port_tr_h2_tls {
-    transport http {
-      tls_insecure_skip_verify
-    }
-  }
+$group_self_proxies}
 EOF
   fi
 
-  echo "}" >> /etc/caddy/Caddyfile
+  # 2. IP block
+  if [[ -n "$group_ip_proxies" && -n "$server_ip" ]]; then
+    cat >> /etc/caddy/Caddyfile <<EOF
+
+$server_ip:443 {
+  tls /etc/s-box/ip_cert.pem /etc/s-box/ip_private.key
+  reverse_proxy /.well-known/acme-challenge/* 127.0.0.1:$acme_port
+$group_ip_proxies}
+EOF
+  fi
+
+  # 3. Domain block
+  if [[ -n "$group_domain_proxies" && -n "$ym_domain" ]]; then
+    cat >> /etc/caddy/Caddyfile <<EOF
+
+$ym_domain:443 {
+  tls /etc/s-box/domain_cert.pem /etc/s-box/domain_private.key
+  reverse_proxy /.well-known/acme-challenge/* 127.0.0.1:$acme_port
+$group_domain_proxies}
+EOF
+  fi
 }
 
 setup_caddy_cert() {
@@ -4911,6 +4916,14 @@ modify_protocol_config() {
     is_socks=true
   fi
 
+  local need_ssl=false
+  if [[ "$sel_var" == "vl_ws_tls" || "$sel_var" == "vl_hu_tls" || "$sel_var" == "vl_h2_tls" || \
+        "$sel_var" == "vm_ws_tls" || "$sel_var" == "vm_hu_tls" || "$sel_var" == "vm_h2_tls" || \
+        "$sel_var" == "tr_tls" || "$sel_var" == "tr_ws_tls" || "$sel_var" == "tr_hu_tls" || \
+        "$sel_var" == "tr_h2_tls" || "$sel_var" == "hy2" || "$sel_var" == "tu" || "$sel_var" == "an" ]]; then
+    need_ssl=true
+  fi
+
   echo
   green "请选择要更改的配置项："
   local opt_num=1
@@ -4962,6 +4975,12 @@ modify_protocol_config() {
     opt_num=$((opt_num+1))
     echo "${opt_num}：更改密码 (Password)"
     map_opts+=("socks_password")
+    opt_num=$((opt_num+1))
+  fi
+
+  if $need_ssl; then
+    echo "${opt_num}：更改绑定的 SSL 证书类型 (自签/IP/域名)"
+    map_opts+=("change_ssl_type")
     opt_num=$((opt_num+1))
   fi
 
@@ -5142,6 +5161,69 @@ modify_protocol_config() {
       jq --arg p "$new_pwd" '.inbounds[0].users[0].password = $p' "$file_path" > /tmp/tmp.json && mv /tmp/tmp.json "$file_path"
       config_changed=true
       blue "Socks密码修改完成"
+      ;;
+
+    change_ssl_type)
+      local has_self=false
+      local has_ip=false
+      local has_domain=false
+      
+      [[ -s "/etc/s-box/self_cert.pem" && -s "/etc/s-box/self_private.key" ]] && has_self=true
+      [[ -s "/etc/s-box/ip_cert.pem" && -s "/etc/s-box/ip_private.key" ]] && has_ip=true
+      [[ -s "/etc/s-box/domain_cert.pem" && -s "/etc/s-box/domain_private.key" ]] && has_domain=true
+      
+      if ! $has_self && ! $has_ip && ! $has_domain; then
+        red "当前设备未部署任何 SSL 证书，请先去证书管理部署证书！" && sleep 2
+        return
+      fi
+      
+      echo
+      green "可供选用的已部署证书如下："
+      local cert_num=1
+      local cert_map=()
+      if $has_self; then
+        echo "${cert_num}：自签证书 (www.bing.com)"
+        cert_map+=("self")
+        cert_num=$((cert_num+1))
+      fi
+      if $has_ip; then
+        local ip_val=$(cat "$SBFOLDER/server_ip.log" 2>/dev/null || curl -s4 ip.sb)
+        echo "${cert_num}：纯 IP 证书 (IP: $ip_val)"
+        cert_map+=("ip")
+        cert_num=$((cert_num+1))
+      fi
+      if $has_domain; then
+        local dm_val=$(cat /root/ygkkkca/ca.log 2>/dev/null)
+        echo "${cert_num}：域名证书 (域名: ${dm_val:-未知})"
+        cert_map+=("domain")
+        cert_num=$((cert_num+1))
+      fi
+      echo "0：取消修改"
+      readp "请选择【0-$((cert_num-1))】：" choice_cert
+      if [[ -z "$choice_cert" || "$choice_cert" == "0" ]]; then
+        return
+      fi
+      
+      local chosen_cert_type="${cert_map[$((choice_cert-1))]}"
+      
+      if [[ "$sel_var" == "vl_ws_tls" || "$sel_var" == "vl_hu_tls" || "$sel_var" == "vl_h2_tls" || \
+            "$sel_var" == "vm_ws_tls" || "$sel_var" == "vm_hu_tls" || "$sel_var" == "vm_h2_tls" || \
+            "$sel_var" == "tr_ws_tls" || "$sel_var" == "tr_hu_tls" || "$sel_var" == "tr_h2_tls" ]]; then
+        touch /etc/s-box/proto_certs.log
+        sed -i "/^${sel_tag}:/d" /etc/s-box/proto_certs.log
+        echo "${sel_tag}:${chosen_cert_type}" >> /etc/s-box/proto_certs.log
+      fi
+      
+      if [[ "$sel_var" == "tr_tls" || "$sel_var" == "hy2" || "$sel_var" == "tu" || "$sel_var" == "an" || "$sel_var" == "tr_h2_tls" ]]; then
+        local cpath="/etc/s-box/${chosen_cert_type}_cert.pem"
+        local kpath="/etc/s-box/${chosen_cert_type}_private.key"
+        jq --arg cert "$cpath" --arg key "$kpath" \
+           '.inbounds[0].tls.certificate_path = $cert | .inbounds[0].tls.key_path = $key' \
+           "$file_path" > /tmp/tmp.json && mv /tmp/tmp.json "$file_path"
+      fi
+      
+      config_changed=true
+      blue "该协议所绑定的 SSL 证书类型已成功切换为: $chosen_cert_type"
       ;;
   esac
 
