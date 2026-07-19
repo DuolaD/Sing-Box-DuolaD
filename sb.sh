@@ -4560,8 +4560,9 @@ changeym() {
   green "3：新增协议"
   green "4：删除协议"
   green "5：修改现有协议配置"
+  green "6：SSL 证书设置"
   green "0：返回上层"
-  readp "请选择【0-5】：" menu
+  readp "请选择【0-6】：" menu
   
   if [ "$menu" = "1" ]; then
     if [[ -z "$port_vl_re" ]]; then
@@ -4614,9 +4615,215 @@ changeym() {
   elif [ "$menu" = "5" ]; then
     modify_protocol_config
     changeym
+  elif [ "$menu" = "6" ]; then
+    ssl_certificate_settings
+    changeym
   else
     sb
   fi
+}
+
+config_apply_cert() {
+  local target_type="$1"
+  echo "$target_type" > /etc/s-box/cert_type.log
+  
+  if [[ "$target_type" == "self" ]]; then
+    cp -f /etc/s-box/self_cert.pem /etc/s-box/cert.pem
+    cp -f /etc/s-box/self_private.key /etc/s-box/private.key
+  elif [[ "$target_type" == "ip" ]]; then
+    cp -f /etc/s-box/ip_cert.pem /etc/s-box/cert.pem
+    cp -f /etc/s-box/ip_private.key /etc/s-box/private.key
+  elif [[ "$target_type" == "domain" ]]; then
+    cp -f /etc/s-box/domain_cert.pem /etc/s-box/cert.pem
+    cp -f /etc/s-box/domain_private.key /etc/s-box/private.key
+  fi
+  
+  cp -f /etc/s-box/cert.pem "$SBFOLDER/cert.pem" 2>/dev/null
+  cp -f /etc/s-box/private.key "$SBFOLDER/private.key" 2>/dev/null
+  
+  write_caddyfile
+  restartsb
+  sbshare > /dev/null 2>&1
+  blue "已成功切换并应用生效证书为：$target_type"
+  sleep 2
+}
+
+ssl_certificate_settings() {
+  echo
+  green "SSL 证书管理设置："
+  echo
+  
+  local has_self=false
+  local has_ip=false
+  local has_domain=false
+  
+  if [[ -s "/etc/s-box/self_cert.pem" && -s "/etc/s-box/self_private.key" ]]; then
+    has_self=true
+  fi
+  
+  if [[ -s "/etc/s-box/cert.pem" && -s "/etc/s-box/private.key" ]]; then
+    local cert_type_log=$(cat /etc/s-box/cert_type.log 2>/dev/null || echo "self")
+    if [[ "$cert_type_log" == "self" ]]; then
+      if ! $has_self; then
+        cp -f /etc/s-box/cert.pem /etc/s-box/self_cert.pem
+        cp -f /etc/s-box/private.key /etc/s-box/self_private.key
+        has_self=true
+      fi
+    elif [[ "$cert_type_log" == "ip" ]]; then
+      if ! $has_ip; then
+        cp -f /etc/s-box/cert.pem /etc/s-box/ip_cert.pem
+        cp -f /etc/s-box/private.key /etc/s-box/ip_private.key
+        has_ip=true
+      fi
+    elif [[ "$cert_type_log" == "domain" ]]; then
+      if ! $has_domain; then
+        cp -f /etc/s-box/cert.pem /etc/s-box/domain_cert.pem
+        cp -f /etc/s-box/private.key /etc/s-box/domain_private.key
+        has_domain=true
+      fi
+    fi
+  fi
+  
+  if [[ -s "/root/ygkkkca/cert.crt" && -s "/root/ygkkkca/private.key" ]]; then
+    if ! $has_domain; then
+      cp -f /root/ygkkkca/cert.crt /etc/s-box/domain_cert.pem
+      cp -f /root/ygkkkca/private.key /etc/s-box/domain_private.key
+      has_domain=true
+    fi
+  fi
+
+  if [[ -s "/etc/s-box/ip_cert.pem" && -s "/etc/s-box/ip_private.key" ]]; then
+    has_ip=true
+  fi
+  if [[ -s "/etc/s-box/domain_cert.pem" && -s "/etc/s-box/domain_private.key" ]]; then
+    has_domain=true
+  fi
+
+  local active_type="未知"
+  if [[ -f "/etc/s-box/cert_type.log" ]]; then
+    local ctype=$(cat /etc/s-box/cert_type.log)
+    if [[ "$ctype" == "self" ]]; then
+      active_type="自签证书"
+    elif [[ "$ctype" == "ip" ]]; then
+      active_type="纯 IP 证书"
+    elif [[ "$ctype" == "domain" ]]; then
+      active_type="域名证书"
+    fi
+  fi
+
+  echo -e "当前设备已部署的证书状况："
+  if $has_self; then
+    echo -e " - ${green}自签证书${plain}: ${green}已部署${plain} (伪装域名: www.bing.com)"
+  else
+    echo -e " - ${green}自签证书${plain}: ${yellow}未部署${plain}"
+  fi
+  
+  if $has_ip; then
+    local ip_val=$(cat "$SBFOLDER/server_ip.log" 2>/dev/null || curl -s4 ip.sb)
+    echo -e " - ${green}纯 IP 证书${plain}: ${green}已部署${plain} (IP: $ip_val)"
+  else
+    echo -e " - ${green}纯 IP 证书${plain}: ${yellow}未部署${plain}"
+  fi
+  
+  if $has_domain; then
+    local dm_val=$(cat /root/ygkkkca/ca.log 2>/dev/null)
+    echo -e " - ${green}域名证书${plain}: ${green}已部署${plain} (域名: ${dm_val:-未知})"
+  else
+    echo -e " - ${green}域名证书${plain}: ${yellow}未部署${plain}"
+  fi
+  echo -e "当前正在生效选用的证书类型: ${cyan}$active_type${plain}"
+  echo
+
+  echo "1：部署/更新 自签证书"
+  echo "2：部署/更新 纯 IP 证书"
+  echo "3：部署/更新 域名证书"
+  echo "4：选用已部署的 自签证书"
+  echo "5：选用已部署的 纯 IP 证书"
+  echo "6：选用已部署的 域名证书"
+  echo "0：返回上层"
+  readp "请选择【0-6】：" cert_opt
+  
+  if [[ -z "$cert_opt" || "$cert_opt" == "0" ]]; then
+    return
+  fi
+  
+  case "$cert_opt" in
+    1)
+      cert_type="self"
+      setup_caddy_cert
+      cp -f /etc/s-box/cert.pem /etc/s-box/self_cert.pem
+      cp -f /etc/s-box/private.key /etc/s-box/self_private.key
+      config_apply_cert "self"
+      ;;
+    2)
+      cert_type="ip"
+      setup_caddy_cert
+      if [[ "$cert_type" == "ip" ]]; then
+        cp -f /etc/s-box/cert.pem /etc/s-box/ip_cert.pem
+        cp -f /etc/s-box/private.key /etc/s-box/ip_private.key
+        config_apply_cert "ip"
+      fi
+      ;;
+    3)
+      cert_type="domain"
+      ym_domain=""
+      while true; do
+        readp "请输入解析至当前 VPS 的域名：" ym_domain
+        if [[ -z "$ym_domain" ]]; then
+          red "域名不能为空，请重新输入！"
+        else
+          local resolved_ip=$(dig +short "$ym_domain" 2>/dev/null || nslookup "$ym_domain" 2>/dev/null | awk '/Address:/ {print $2}' | tail -n 1)
+          if [[ -z "$resolved_ip" ]]; then
+            resolved_ip=$(ping -c 1 -W 2 "$ym_domain" 2>/dev/null | head -n 1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+')
+          fi
+          local vps_ip=$(curl -s4 ip.sb || curl -s6 ip.sb)
+          if [[ "$resolved_ip" != "$vps_ip" ]]; then
+            yellow "警告：域名解析IP ($resolved_ip) 与本机IP ($vps_ip) 不符！"
+            readp "是否强行继续申请？[y/N] (默认不继续) ：" force_req
+            if [[ "$force_req" =~ ^[Yy]$ ]]; then
+              break
+            else
+              return
+            fi
+          else
+            break
+          fi
+        fi
+      done
+      echo "$ym_domain" > /root/ygkkkca/ca.log
+      setup_caddy_cert
+      if [[ "$cert_type" == "domain" ]]; then
+        cp -f /etc/s-box/cert.pem /etc/s-box/domain_cert.pem
+        cp -f /etc/s-box/private.key /etc/s-box/domain_private.key
+        config_apply_cert "domain"
+      fi
+      ;;
+    4)
+      if ! $has_self; then
+        red "未部署自签证书，请先选择选项1进行部署！" && sleep 2 && ssl_certificate_settings
+        return
+      fi
+      config_apply_cert "self"
+      ;;
+    5)
+      if ! $has_ip; then
+        red "未部署纯 IP 证书，请先选择选项2进行部署！" && sleep 2 && ssl_certificate_settings
+        return
+      fi
+      config_apply_cert "ip"
+      ;;
+    6)
+      if ! $has_domain; then
+        red "未部署域名证书，请先选择选项3进行部署！" && sleep 2 && ssl_certificate_settings
+        return
+      fi
+      config_apply_cert "domain"
+      ;;
+    *)
+      red "选择无效！" && sleep 2 && ssl_certificate_settings
+      return
+      ;;
+  esac
 }
 
 modify_protocol_config() {
