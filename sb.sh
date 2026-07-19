@@ -4559,8 +4559,9 @@ changeym() {
   green "2：切换所有协议的证书类型 (当前为: ${yellow}$cert_mode${plain}，将 $switch_hint)"
   green "3：新增协议"
   green "4：删除协议"
+  green "5：修改现有协议配置"
   green "0：返回上层"
-  readp "请选择【0-4】：" menu
+  readp "请选择【0-5】：" menu
   
   if [ "$menu" = "1" ]; then
     if [[ -z "$port_vl_re" ]]; then
@@ -4610,9 +4611,366 @@ changeym() {
   elif [ "$menu" = "4" ]; then
     delete_protocol
     changeym
+  elif [ "$menu" = "5" ]; then
+    modify_protocol_config
+    changeym
   else
     sb
   fi
+}
+
+modify_protocol_config() {
+  result_vl_vm_hy_tu
+  local clean_json=$(strip_json_comments "$SBFOLDER/sb.json")
+
+  local proto_names=("VLESS-Reality" "VLESS-WS-TLS" "VLESS-HTTPUpgrade-TLS" "VLESS-H2-TLS" "VLESS-HTTP2-REALITY" "VMess-WS" "VMess-WS-TLS" "VMess-HTTPUpgrade-TLS" "VMess-TCP" "VMess-HTTP" "VMess-QUIC" "VMess-H2-TLS" "Trojan-TLS" "Trojan-WS-TLS" "Trojan-HTTPUpgrade-TLS" "Trojan-H2-TLS" "Shadowsocks" "Hysteria 2" "Tuic-v5" "AnyTLS" "Socks")
+  local proto_tags=("vless-reality-sb" "vless-ws-tls-sb" "vless-hu-tls-sb" "vless-h2-tls-sb" "vless-h2-reality-sb" "vmess-ws-sb" "vmess-ws-tls-sb" "vmess-hu-tls-sb" "vmess-tcp-sb" "vmess-http-sb" "vmess-quic-sb" "vmess-h2-tls-sb" "trojan-tls-sb" "trojan-ws-tls-sb" "trojan-hu-tls-sb" "trojan-h2-tls-sb" "shadowsocks-sb" "hy2-sb" "tuic5-sb" "anytls-sb" "socks-sb")
+  local proto_vars=("vl_re" "vl_ws_tls" "vl_hu_tls" "vl_h2_tls" "vl_h2_re" "vm_ws" "vm_ws_tls" "vm_hu_tls" "vm_tcp" "vm_http" "vm_quic" "vm_h2_tls" "tr_tls" "tr_ws_tls" "tr_hu_tls" "tr_h2_tls" "ss" "hy2" "tu" "an" "socks")
+
+  local active_names=()
+  local active_tags=()
+  local active_vars=()
+  
+  local i
+  for ((i=0; i<${#proto_names[@]}; i++)); do
+    local tag="${proto_tags[$i]}"
+    local var="${proto_vars[$i]}"
+    if [[ -f "$SBFOLDER/conf/${tag}.json" ]]; then
+      active_names+=("${proto_names[$i]}")
+      active_tags+=("$tag")
+      active_vars+=("$var")
+    fi
+  done
+
+  if [[ ${#active_names[@]} -eq 0 ]]; then
+    red "当前没有安装任何协议，无法修改配置！" && sleep 2
+    return
+  fi
+
+  echo
+  green "请选择要修改配置的协议："
+  for ((i=0; i<${#active_names[@]}; i++)); do
+    echo -e "$((i+1))：${active_names[$i]}"
+  done
+  echo "0：返回上层"
+  readp "请选择【0-${#active_names[@]}】：" choice
+  if [[ -z "$choice" || "$choice" == "0" ]]; then
+    return
+  fi
+
+  if [[ "$choice" -lt 1 || "$choice" -gt ${#active_names[@]} ]]; then
+    red "选择无效！" && sleep 2 && modify_protocol_config
+    return
+  fi
+
+  local sel_idx=$((choice-1))
+  local sel_name="${active_names[$sel_idx]}"
+  local sel_tag="${active_tags[$sel_idx]}"
+  local sel_var="${active_vars[$sel_idx]}"
+  local file_path="$SBFOLDER/conf/${sel_tag}.json"
+
+  local has_uuid=false
+  local has_password=false
+  local has_path=false
+  local has_reality=false
+  local is_ss=false
+  local is_socks=false
+
+  if [[ "$sel_var" == "vl_re" || "$sel_var" == "vl_h2_re" ]]; then
+    has_uuid=true
+    has_reality=true
+  elif [[ "$sel_var" == "vl_ws_tls" || "$sel_var" == "vl_hu_tls" || "$sel_var" == "vl_h2_tls" || \
+          "$sel_var" == "vm_ws" || "$sel_var" == "vm_ws_tls" || "$sel_var" == "vm_hu_tls" || \
+          "$sel_var" == "vm_tcp" || "$sel_var" == "vm_http" || "$sel_var" == "vm_quic" || \
+          "$sel_var" == "vm_h2_tls" || "$sel_var" == "vl_h2_tls" || "$sel_var" == "tu" || "$sel_var" == "an" ]]; then
+    has_uuid=true
+  fi
+
+  if [[ "$sel_var" == "vl_ws_tls" || "$sel_var" == "vl_hu_tls" || "$sel_var" == "vm_ws" || \
+        "$sel_var" == "vm_ws_tls" || "$sel_var" == "vm_hu_tls" || "$sel_var" == "tr_ws_tls" || \
+        "$sel_var" == "tr_hu_tls" || "$sel_var" == "vl_h2_tls" || "$sel_var" == "vm_h2_tls" || \
+        "$sel_var" == "tr_h2_tls" || "$sel_var" == "vl_h2_re" ]]; then
+    has_path=true
+  fi
+
+  if [[ "$sel_var" == "tr_tls" || "$sel_var" == "tr_ws_tls" || "$sel_var" == "tr_hu_tls" || \
+        "$sel_var" == "tr_h2_tls" || "$sel_var" == "hy2" || "$sel_var" == "tu" || "$sel_var" == "an" ]]; then
+    has_password=true
+  fi
+
+  if [[ "$sel_var" == "ss" ]]; then
+    is_ss=true
+  elif [[ "$sel_var" == "socks" ]]; then
+    is_socks=true
+  fi
+
+  echo
+  green "请选择要更改的配置项："
+  local opt_num=1
+  local map_opts=()
+
+  echo "${opt_num}：更改端口 (Port)"
+  map_opts+=("port")
+  opt_num=$((opt_num+1))
+
+  if $has_uuid; then
+    echo "${opt_num}：更改 UUID"
+    map_opts+=("uuid")
+    opt_num=$((opt_num+1))
+  fi
+
+  if $has_password; then
+    echo "${opt_num}：更改密码 (Password)"
+    map_opts+=("password")
+    opt_num=$((opt_num+1))
+  fi
+
+  if $has_path; then
+    echo "${opt_num}：更改 Path (路径)"
+    map_opts+=("path")
+    opt_num=$((opt_num+1))
+  fi
+
+  if $has_reality; then
+    echo "${opt_num}：更改 Reality 伪装域名/SNI"
+    map_opts+=("reality_domain")
+    opt_num=$((opt_num+1))
+    echo "${opt_num}：更换 Reality 密钥对"
+    map_opts+=("reality_keys")
+    opt_num=$((opt_num+1))
+  fi
+
+  if $is_ss; then
+    echo "${opt_num}：更改密码 (Password)"
+    map_opts+=("ss_password")
+    opt_num=$((opt_num+1))
+    echo "${opt_num}：更改加密方式 (Method)"
+    map_opts+=("ss_method")
+    opt_num=$((opt_num+1))
+  fi
+
+  if $is_socks; then
+    echo "${opt_num}：更改用户名 (Username)"
+    map_opts+=("socks_username")
+    opt_num=$((opt_num+1))
+    echo "${opt_num}：更改密码 (Password)"
+    map_opts+=("socks_password")
+    opt_num=$((opt_num+1))
+  fi
+
+  echo "0：返回上层"
+  readp "请选择【0-$((opt_num-1))】：" edit_choice
+  if [[ -z "$edit_choice" || "$edit_choice" == "0" ]]; then
+    return
+  fi
+
+  if [[ "$edit_choice" -lt 1 || "$edit_choice" -ge "$opt_num" ]]; then
+    red "选择无效！" && sleep 2 && modify_protocol_config
+    return
+  fi
+
+  local selected_action="${map_opts[$((edit_choice-1))]}"
+  local config_changed=false
+
+  case "$selected_action" in
+    port)
+      local current_port=$(jq -r '.inbounds[0].listen_port // empty' "$file_path")
+      readp "请输入新端口 (当前为: ${current_port:-自动分配}, 回车自动分配随机空闲端口)：" new_port
+      
+      is_port_in_use_local() {
+        local p="$1"
+        if [[ -n $(ss -tunlp | grep -w tcp | awk '{print $5}' | sed 's/.*://g' | grep -w "$p") ]] || \
+           [[ -n $(ss -tunlp | grep -w udp | awk '{print $5}' | sed 's/.*://g' | grep -w "$p") ]]; then
+          return 0
+        fi
+        local check_tag
+        for check_tag in "${proto_tags[@]}"; do
+          if [[ "$check_tag" != "$sel_tag" ]]; then
+            local p_val=$(jq -r '.inbounds[0].listen_port // empty' "$SBFOLDER/conf/${check_tag}.json" 2>/dev/null)
+            if [[ "$p_val" == "$p" ]]; then
+              return 0
+            fi
+          fi
+        done
+        return 1
+      }
+      
+      if [[ -z "$new_port" ]]; then
+        while true; do
+          new_port=$(shuf -i 10000-65535 -n 1)
+          if ! is_port_in_use_local "$new_port"; then
+            break
+          fi
+        done
+        blue "已自动分配可用端口：$new_port"
+      else
+        if [[ "$new_port" -lt 1 || "$new_port" -gt 65535 ]]; then
+          red "端口号不合法！" && sleep 2
+          return
+        fi
+        if is_port_in_use_local "$new_port"; then
+          yellow "警告：端口 $new_port 已被占用或与其它协议冲突！"
+          readp "是否继续强制使用该端口？[y/N] (默认不使用)：" force_p
+          if [[ ! "$force_p" =~ ^[Yy]$ ]]; then
+            return
+          fi
+        fi
+      fi
+      
+      jq --argjson p "$new_port" '.inbounds[0].listen_port = $p' "$file_path" > /tmp/tmp.json && mv /tmp/tmp.json "$file_path"
+      config_changed=true
+      blue "端口修改完成，新端口为: $new_port"
+      ;;
+      
+    uuid)
+      local current_uuid=$(jq -r '.inbounds[0].users[0].uuid // empty' "$file_path")
+      readp "请输入新 UUID (当前为: $current_uuid, 回车自动生成随机 UUID)：" new_uuid
+      if [[ -z "$new_uuid" ]]; then
+        new_uuid=$(cat /proc/sys/kernel/random/uuid 2>/dev/null || cat /proc/sys/kernel/random/uuid)
+      fi
+      
+      if [[ "$sel_var" == "tu" ]]; then
+        jq --arg u "$new_uuid" '.inbounds[0].users[0].uuid = $u | .inbounds[0].users[0].password = $u' "$file_path" > /tmp/tmp.json && mv /tmp/tmp.json "$file_path"
+      else
+        jq --arg u "$new_uuid" '.inbounds[0].users[0].uuid = $u' "$file_path" > /tmp/tmp.json && mv /tmp/tmp.json "$file_path"
+      fi
+      config_changed=true
+      blue "UUID修改完成，新UUID为: $new_uuid"
+      ;;
+
+    password)
+      local current_pwd=$(jq -r '.inbounds[0].users[0].password // empty' "$file_path")
+      readp "请输入新密码 (当前为: $current_pwd, 回车自动生成随机密码)：" new_pwd
+      if [[ -z "$new_pwd" ]]; then
+        new_pwd=$(cat /proc/sys/kernel/random/uuid 2>/dev/null || cat /proc/sys/kernel/random/uuid)
+      fi
+      jq --arg p "$new_pwd" '.inbounds[0].users[0].password = $p' "$file_path" > /tmp/tmp.json && mv /tmp/tmp.json "$file_path"
+      config_changed=true
+      blue "密码修改完成，新密码为: $new_pwd"
+      ;;
+
+    path)
+      local current_path=$(jq -r '.inbounds[0].transport.path // empty' "$file_path")
+      readp "请输入新 Path 路径 (当前为: $current_path, 回车自动生成随机路径)：" new_path
+      if [[ -z "$new_path" ]]; then
+        new_path="/$(cat /proc/sys/kernel/random/uuid 2>/dev/null || cat /proc/sys/kernel/random/uuid)"
+      fi
+      [[ ! "$new_path" =~ ^/ ]] && new_path="/$new_path"
+      jq --arg p "$new_path" '.inbounds[0].transport.path = $p' "$file_path" > /tmp/tmp.json && mv /tmp/tmp.json "$file_path"
+      config_changed=true
+      blue "Path路径修改完成，新Path为: $new_path"
+      ;;
+
+    reality_domain)
+      local current_dom=$(jq -r '.inbounds[0].tls.server_name // empty' "$file_path")
+      readp "请输入新 Reality 伪装域名/SNI (当前为: $current_dom, 回车默认 apple.com)：" new_dom
+      [[ -z "$new_dom" ]] && new_dom="apple.com"
+      jq --arg d "$new_dom" '.inbounds[0].tls.server_name = $d | .inbounds[0].tls.reality.handshake.server = $d' "$file_path" > /tmp/tmp.json && mv /tmp/tmp.json "$file_path"
+      config_changed=true
+      blue "Reality伪装域名修改完成，新域名为: $new_dom"
+      ;;
+
+    reality_keys)
+      local reality_keys=$("$SBFOLDER/sing-box" generate reality-keypair)
+      local private_key=$(echo "$reality_keys" | awk '/PrivateKey/{print $NF}' | tr -d '"')
+      local public_key=$(echo "$reality_keys" | awk '/PublicKey/{print $NF}' | tr -d '"')
+      local short_id=$(openssl rand -hex 8)
+      jq --arg priv "$private_key" --arg pub "$public_key" --arg sid "$short_id" \
+         '.inbounds[0].tls.reality.private_key = $priv | .inbounds[0].tls.reality.short_id = [$sid]' \
+         "$file_path" > /tmp/tmp.json && mv /tmp/tmp.json "$file_path"
+      echo "$private_key" > "$SBFOLDER/private.key"
+      echo "$public_key" > "$SBFOLDER/public.key"
+      config_changed=true
+      blue "Reality 密钥对更换完成！"
+      yellow "私钥: $private_key"
+      yellow "公钥: $public_key"
+      ;;
+
+    ss_password)
+      local current_pwd=$(jq -r '.inbounds[0].password // empty' "$file_path")
+      readp "请输入新 Shadowsocks 密码 (当前为: $current_pwd, 回车自动生成随机密码)：" new_pwd
+      if [[ -z "$new_pwd" ]]; then
+        new_pwd=$(cat /proc/sys/kernel/random/uuid 2>/dev/null || cat /proc/sys/kernel/random/uuid)
+      fi
+      jq --arg p "$new_pwd" '.inbounds[0].password = $p' "$file_path" > /tmp/tmp.json && mv /tmp/tmp.json "$file_path"
+      config_changed=true
+      blue "Shadowsocks密码修改完成"
+      ;;
+
+    ss_method)
+      local current_method=$(jq -r '.inbounds[0].method // empty' "$file_path")
+      echo
+      green "请选择 Shadowsocks 加密方式 (当前为: $current_method)："
+      local ss_methods=("aes-128-gcm" "aes-256-gcm" "chacha20-ietf-poly1305" "xchacha20-ietf-poly1305" "2022-blake3-aes-128-gcm" "2022-blake3-aes-256-gcm" "2022-blake3-chacha20-poly1305")
+      for ((i=0; i<${#ss_methods[@]}; i++)); do
+        echo "$((i+1))：${ss_methods[$i]}"
+      done
+      readp "请选择【1-${#ss_methods[@]}】：" sm_choice
+      if [[ -n "$sm_choice" && "$sm_choice" -ge 1 && "$sm_choice" -le ${#ss_methods[@]} ]]; then
+        local new_method="${ss_methods[$((sm_choice-1))]}"
+        jq --arg m "$new_method" '.inbounds[0].method = $m' "$file_path" > /tmp/tmp.json && mv /tmp/tmp.json "$file_path"
+        config_changed=true
+        blue "Shadowsocks加密方式已变更为: $new_method"
+      else
+        red "选择无效！"
+      fi
+      ;;
+
+    socks_username)
+      local current_user=$(jq -r '.inbounds[0].users[0].username // empty' "$file_path")
+      readp "请输入新 Socks 用户名 (当前为: $current_user)：" new_user
+      if [[ -n "$new_user" ]]; then
+        jq --arg u "$new_user" '.inbounds[0].users[0].username = $u' "$file_path" > /tmp/tmp.json && mv /tmp/tmp.json "$file_path"
+        config_changed=true
+        blue "Socks用户名修改完成"
+      fi
+      ;;
+
+    socks_password)
+      local current_pwd=$(jq -r '.inbounds[0].users[0].password // empty' "$file_path")
+      readp "请输入新 Socks 密码 (当前为: $current_pwd, 回车自动生成随机密码)：" new_pwd
+      if [[ -z "$new_pwd" ]]; then
+        new_pwd=$(cat /proc/sys/kernel/random/uuid 2>/dev/null || cat /proc/sys/kernel/random/uuid)
+      fi
+      jq --arg p "$new_pwd" '.inbounds[0].users[0].password = $p' "$file_path" > /tmp/tmp.json && mv /tmp/tmp.json "$file_path"
+      config_changed=true
+      blue "Socks密码修改完成"
+      ;;
+  esac
+
+  if $config_changed; then
+    local inbounds_arr="[]"
+    local f
+    for f in "$SBFOLDER/conf"/*.json; do
+      if [[ -f "$f" ]]; then
+        local inb=$(jq '.inbounds[0]' "$f" 2>/dev/null)
+        if [[ -n "$inb" && "$inb" != "null" ]]; then
+          inbounds_arr=$(echo "$inbounds_arr" | jq --argjson inb "$inb" '. += [$inb]' 2>/dev/null)
+        fi
+      fi
+    done
+    
+    local target
+    for target in sb.json sb10.json sb11.json; do
+      if [[ -f "$SBFOLDER/$target" ]]; then
+        jq --argjson inbs "$inbounds_arr" '.inbounds = $inbs' "$SBFOLDER/$target" > "$SBFOLDER/${target}.tmp" && mv "$SBFOLDER/${target}.tmp" "$SBFOLDER/$target"
+      fi
+    done
+
+    local clean_js=$(strip_json_comments "$SBFOLDER/sb.json")
+    local base_config=$(echo "$clean_js" | jq '.inbounds = []' 2>/dev/null)
+    if [[ -n "$base_config" ]]; then
+      echo "$base_config" > "$SBFOLDER/config.json"
+      echo "$base_config" > "$SBFOLDER/config10.json"
+      echo "$base_config" > "$SBFOLDER/config11.json"
+    fi
+
+    write_caddyfile
+    restartsb
+    sbshare > /dev/null 2>&1
+    blue "\n协议配置更新完成并已成功应用！"
+  fi
+  sleep 2
 }
 
 add_protocol() {
