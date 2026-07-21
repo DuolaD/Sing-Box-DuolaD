@@ -269,10 +269,19 @@ inssb() {
 }
 
 # --- Certificate Generation & Acms.sh wrapping ---
+get_self_domain() {
+  cat /etc/s-box/self_domain.log 2>/dev/null || echo "dl.delivery.mp.microsoft.com"
+}
+
 generate_self_signed_cert() {
   local target_key="$1"
   local target_cert="$2"
-  local domain="www.bing.com"
+  local domain="$3"
+  if [[ -z "$domain" ]]; then
+    domain=$(get_self_domain)
+  fi
+  mkdir -p /etc/s-box
+  echo "$domain" > /etc/s-box/self_domain.log
   
   if ! command -v openssl &>/dev/null; then
     if command -v apt &>/dev/null; then
@@ -306,9 +315,10 @@ EOF
 }
 
 inscertificate() {
+  local cur_self_dom=$(get_self_domain)
   echo
   green "请选择 SSL 证书类型："
-  yellow "1：自签证书 (www.bing.com) (回车默认)"
+  yellow "1：自签证书 ($cur_self_dom) (回车默认)"
   yellow "2：纯 IP 证书 (由 Let's Encrypt 签发，需确保 VPS 80 端口开放且未被防火墙阻断)"
   yellow "3：域名证书 (自动 ACME 申请，自备已解析的域名)"
   readp "请选择【1-3】：" cert_menu
@@ -346,6 +356,10 @@ inscertificate() {
       ;;
     *)
       cert_type="self"
+      readp "请输入自签证书伪装域名 (回车默认使用 $cur_self_dom)：" custom_self_dom
+      local self_dom=${custom_self_dom:-$cur_self_dom}
+      mkdir -p /etc/s-box
+      echo "$self_dom" > /etc/s-box/self_domain.log
       ;;
   esac
 
@@ -661,15 +675,15 @@ inssbjsonser() {
     elif [[ -f "$SBFOLDER/cert.pem" ]]; then
       certificatec="$SBFOLDER/cert.pem"
       certificatep="$SBFOLDER/private.key"
-      ym_domain="www.bing.com"
+      ym_domain=$(get_self_domain)
     else
       certificatec="/etc/s-box/cert.pem"
       certificatep="/etc/s-box/private.key"
-      ym_domain="www.bing.com"
+      ym_domain=$(get_self_domain)
     fi
   fi
 
-  : ${ym_domain:="www.bing.com"}
+  : ${ym_domain:=$(get_self_domain)}
   : ${ym_vl_re:="apple.com"}
   : ${certificatec:="/etc/s-box/cert.pem"}
   : ${certificatep:="/etc/s-box/private.key"}
@@ -1578,14 +1592,15 @@ setup_caddy_cert() {
   mkdir -p /etc/s-box
   
   if [[ "$cert_type" == "self" ]]; then
-    blue "正在生成自签证书..."
-    generate_self_signed_cert /etc/s-box/private.key /etc/s-box/cert.pem
+    local self_dom=$(get_self_domain)
+    blue "正在生成自签证书 (伪装域名: $self_dom)..."
+    generate_self_signed_cert /etc/s-box/private.key /etc/s-box/cert.pem "$self_dom"
     cp -f /etc/s-box/private.key "$SBFOLDER/private.key" 2>/dev/null
     cp -f /etc/s-box/cert.pem "$SBFOLDER/cert.pem" 2>/dev/null
     cp -f /etc/s-box/ca.pem "$SBFOLDER/ca.pem" 2>/dev/null
     is_self_signed=true
-    tls_sni="www.bing.com"
-    ym_domain="www.bing.com"
+    tls_sni="$self_dom"
+    ym_domain="$self_dom"
     certificatec="/etc/s-box/cert.pem"
     certificatep="/etc/s-box/private.key"
   elif [[ "$cert_type" == "ip" ]]; then
@@ -2008,7 +2023,7 @@ result_vl_vm_hy_tu() {
   local cert_key_path=$(echo "$clean_json" | jq -r '(.inbounds[] | select(.tls.key_path != null) | .tls.key_path) // empty' 2>/dev/null | head -n 1)
   if [[ "$cert_key_path" = "$SBFOLDER/private.key" || "$cert_key_path" = "/etc/s-box/private.key" ]]; then
     is_self_signed=true
-    tls_sni="www.bing.com"
+    tls_sni=$(get_self_domain)
   else
     is_self_signed=false
     tls_sni=$ym
@@ -2034,19 +2049,20 @@ result_vl_vm_hy_tu() {
   # Let's map variables for sharing client helpers
   if [[ "$is_self_signed" = "true" ]]; then
     SHA256=$(cat "$SBFOLDER/SHA256.txt" 2>/dev/null)
-    hy2_name="www.bing.com"
+    local s_dom=$(get_self_domain)
+    hy2_name="$s_dom"
     sb_hy2_ip=$server_ip
     cl_hy2_ip=$server_ipcl
     ins_hy2=1
     hy2_ins=false
     
-    tu5_name="www.bing.com"
+    tu5_name="$s_dom"
     sb_tu5_ip=$server_ip
     cl_tu5_ip=$server_ipcl
     ins=1
     tu5_ins=true
 
-    an_name="www.bing.com"
+    an_name="$s_dom"
     sb_an_ip=$server_ip
     cl_an_ip=$server_ipcl
     ins_an=1
@@ -2328,7 +2344,7 @@ reshy2() {
   white "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
   local hy2_params="insecure=0&alpn=h3"
   if [[ "$is_self_signed" = "true" ]]; then
-    hy2_params="insecure=0&sni=www.bing.com&pinnedPeerCertSha256=$SHA256&alpn=h3"
+    hy2_params="insecure=0&sni=$(get_self_domain)&pinnedPeerCertSha256=$SHA256&alpn=h3"
   else
     hy2_params="sni=$hy2_name&insecure=0&alpn=h3"
   fi
@@ -2360,7 +2376,7 @@ restu5() {
   white "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
   local tu5_params="insecure=0&allowInsecure=0&allow_insecure=0&alpn=h3"
   if [[ "$is_self_signed" = "true" ]]; then
-    tu5_params="sni=www.bing.com&insecure=0&allowInsecure=0&allow_insecure=0&pinnedPeerCertSha256=$SHA256&alpn=h3"
+    tu5_params="sni=$(get_self_domain)&insecure=0&allowInsecure=0&allow_insecure=0&pinnedPeerCertSha256=$SHA256&alpn=h3"
   else
     tu5_params="sni=$tu5_name&insecure=0&allowInsecure=0&allow_insecure=0&alpn=h3"
   fi
@@ -2392,7 +2408,7 @@ resan() {
   white "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
   local an_params="sni=$an_name&allowInsecure=0&insecure=0"
   if [[ "$is_self_signed" = "true" ]]; then
-    an_params="sni=www.bing.com&allowInsecure=0&insecure=0&pinnedPeerCertSha256=$SHA256"
+    an_params="sni=$(get_self_domain)&allowInsecure=0&insecure=0&pinnedPeerCertSha256=$SHA256"
   fi
   server_ip=$(cat "$SBFOLDER/server_ip.log" 2>/dev/null)
   if [[ "$server_ip" = "dual" ]]; then
@@ -2864,7 +2880,7 @@ $extra_yaml\n\n"
       echo "single|$local_cdn"
     else
       local is_domain=false
-      if [[ "$is_self_signed" == "false" && -n "$ym_domain" && "$ym_domain" != "www.bing.com" ]]; then
+      if [[ "$is_self_signed" == "false" && -n "$ym_domain" && "$ym_domain" != "$(get_self_domain)" ]]; then
         if ! [[ "$ym_domain" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
           is_domain=true
         fi
@@ -4612,6 +4628,293 @@ config_apply_cert() {
   sleep 2
 }
 
+ssl_deploy_menu() {
+  echo
+  green "部署/更新证书："
+  echo "1：部署/更新 自签证书"
+  echo "2：部署/更新 纯 IP 证书"
+  echo "3：部署/更新 域名证书"
+  echo "0：返回上层"
+  readp "请选择【0-3】：" opt
+  case "$opt" in
+    1)
+      cert_type="self"
+      local cur_self_dom=$(get_self_domain)
+      local new_self_dom="$cur_self_dom"
+      if [[ -s "/etc/s-box/self_cert.pem" && -s "/etc/s-box/self_private.key" ]]; then
+        echo -e "当前自签证书伪装域名为: ${cyan}$cur_self_dom${plain}"
+        readp "是否需要修改自签证书伪装域名？[y/N] (默认不修改) ：" change_dom_choice
+        if [[ "$change_dom_choice" =~ ^[Yy]$ ]]; then
+          readp "请输入新的自签证书伪装域名 (回车使用 $cur_self_dom)：" input_self_dom
+          new_self_dom=${input_self_dom:-$cur_self_dom}
+        fi
+      else
+        readp "请输入自签证书伪装域名 (回车默认使用 dl.delivery.mp.microsoft.com)：" input_self_dom
+        new_self_dom=${input_self_dom:-dl.delivery.mp.microsoft.com}
+      fi
+      mkdir -p /etc/s-box
+      echo "$new_self_dom" > /etc/s-box/self_domain.log
+      
+      setup_caddy_cert
+      cp -f /etc/s-box/cert.pem /etc/s-box/self_cert.pem
+      cp -f /etc/s-box/private.key /etc/s-box/self_private.key
+      config_apply_cert "self"
+      
+      local check_self_usage=false
+      local proto_tags=("vless-ws-tls-sb" "vless-hu-tls-sb" "vless-h2-tls-sb" "vmess-ws-tls-sb" "vmess-hu-tls-sb" "vmess-h2-tls-sb" "trojan-ws-tls-sb" "trojan-hu-tls-sb" "trojan-h2-tls-sb")
+      local global_cert_type=$(cat /etc/s-box/cert_type.log 2>/dev/null || echo "self")
+      local tag
+      for tag in "${proto_tags[@]}"; do
+        if [[ -f "$SBFOLDER/conf/${tag}.json" ]]; then
+          local p_cert=$(grep -w "^${tag}:" /etc/s-box/proto_certs.log 2>/dev/null | cut -d: -f2)
+          [[ -z "$p_cert" ]] && p_cert="$global_cert_type"
+          [[ "$p_cert" == "self" ]] && check_self_usage=true
+        fi
+      done
+      local direct_tags=("trojan-tls-sb" "hy2-sb" "tuic5-sb" "anytls-sb")
+      for tag in "${direct_tags[@]}"; do
+        local f_conf="$SBFOLDER/conf/${tag}.json"
+        if [[ -f "$f_conf" ]]; then
+          local cpath=$(jq -r '.inbounds[0].tls.certificate_path // empty' "$f_conf")
+          if [[ "$cpath" == "/etc/s-box/self_cert.pem" || ("$cpath" == "/etc/s-box/cert.pem" && "$global_cert_type" == "self") ]]; then
+            check_self_usage=true
+          fi
+        fi
+      done
+      if $check_self_usage; then
+        yellow "\n提示：自签证书及其密钥指纹已更新，所有使用自签证书的协议需要重新导出并更新客户端代理配置信息才能正常连接！"
+        sleep 3
+      fi
+      ;;
+    2)
+      cert_type="ip"
+      setup_caddy_cert
+      if [[ "$cert_type" == "ip" ]]; then
+        cp -f /etc/s-box/cert.pem /etc/s-box/ip_cert.pem
+        cp -f /etc/s-box/private.key /etc/s-box/ip_private.key
+        config_apply_cert "ip"
+      fi
+      ;;
+    3)
+      cert_type="domain"
+      ym_domain=""
+      while true; do
+        readp "请输入解析至当前 VPS 的域名：" ym_domain
+        if [[ -z "$ym_domain" ]]; then
+          red "域名不能为空，请重新输入！"
+        else
+          local resolved_ip=$(dig +short "$ym_domain" 2>/dev/null || nslookup "$ym_domain" 2>/dev/null | awk '/Address:/ {print $2}' | tail -n 1)
+          if [[ -z "$resolved_ip" ]]; then
+            resolved_ip=$(ping -c 1 -W 2 "$ym_domain" 2>/dev/null | head -n 1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+')
+          fi
+          local vps_ip=$(curl -s4 ip.sb || curl -s6 ip.sb)
+          if [[ "$resolved_ip" != "$vps_ip" ]]; then
+            yellow "警告：域名解析IP ($resolved_ip) 与本机IP ($vps_ip) 不符！"
+            readp "是否强行继续申请？[y/N] (默认不继续) ：" force_req
+            if [[ "$force_req" =~ ^[Yy]$ ]]; then
+              break
+            else
+              return
+            fi
+          else
+            break
+          fi
+        fi
+      done
+      echo "$ym_domain" > /root/ygkkkca/ca.log
+      setup_caddy_cert
+      if [[ "$cert_type" == "domain" ]]; then
+        cp -f /etc/s-box/cert.pem /etc/s-box/domain_cert.pem
+        cp -f /etc/s-box/private.key /etc/s-box/domain_private.key
+        config_apply_cert "domain"
+      fi
+      ;;
+    *)
+      return
+      ;;
+  esac
+}
+
+ssl_uninstall_menu() {
+  echo
+  green "卸载证书："
+  echo "1：卸载 自签证书"
+  echo "2：卸载 纯 IP 证书"
+  echo "3：卸载 域名证书"
+  echo "0：返回上层"
+  readp "请选择【0-3】：" opt
+  
+  local target_type=""
+  local target_name=""
+  case "$opt" in
+    1) target_type="self"; target_name="自签证书" ;;
+    2) target_type="ip"; target_name="纯 IP 证书" ;;
+    3) target_type="domain"; target_name="域名证书" ;;
+    *) return ;;
+  esac
+
+  local cert_file="/etc/s-box/${target_type}_cert.pem"
+  if [[ ! -s "$cert_file" ]]; then
+    red "该证书 ($target_name) 未部署，无需卸载！" && sleep 2
+    return
+  fi
+
+  local proto_names=("VLESS-Reality" "VLESS-WS-TLS" "VLESS-HTTPUpgrade-TLS" "VLESS-H2-TLS" "VLESS-HTTP2-REALITY" "VMess-WS" "VMess-WS-TLS" "VMess-HTTPUpgrade-TLS" "VMess-TCP" "VMess-HTTP" "VMess-QUIC" "VMess-H2-TLS" "Trojan-TLS" "Trojan-WS-TLS" "Trojan-HTTPUpgrade-TLS" "Trojan-H2-TLS" "Shadowsocks" "Hysteria 2" "Tuic-v5" "AnyTLS" "Socks")
+  local proto_tags=("vless-reality-sb" "vless-ws-tls-sb" "vless-hu-tls-sb" "vless-h2-tls-sb" "vless-h2-reality-sb" "vmess-ws-sb" "vmess-ws-tls-sb" "vmess-hu-tls-sb" "vmess-tcp-sb" "vmess-http-sb" "vmess-quic-sb" "vmess-h2-tls-sb" "trojan-tls-sb" "trojan-ws-tls-sb" "trojan-hu-tls-sb" "trojan-h2-tls-sb" "shadowsocks-sb" "hy2-sb" "tuic5-sb" "anytls-sb" "socks-sb")
+
+  local global_cert_type=$(cat /etc/s-box/cert_type.log 2>/dev/null || echo "self")
+  local affected_protocols=()
+
+  local i
+  for ((i=0; i<${#proto_names[@]}; i++)); do
+    local tag="${proto_tags[$i]}"
+    local name="${proto_names[$i]}"
+    local file="$SBFOLDER/conf/${tag}.json"
+    if [[ -f "$file" ]]; then
+      local bound_cert=""
+      if [[ "$tag" == "vless-ws-tls-sb" || "$tag" == "vless-hu-tls-sb" || "$tag" == "vless-h2-tls-sb" || \
+            "$tag" == "vmess-ws-tls-sb" || "$tag" == "vmess-hu-tls-sb" || "$tag" == "vmess-h2-tls-sb" || \
+            "$tag" == "trojan-ws-tls-sb" || "$tag" == "trojan-hu-tls-sb" || "$tag" == "trojan-h2-tls-sb" ]]; then
+        bound_cert=$(grep -w "^${tag}:" /etc/s-box/proto_certs.log 2>/dev/null | cut -d: -f2)
+        [[ -z "$bound_cert" ]] && bound_cert="$global_cert_type"
+      elif [[ "$tag" == "trojan-tls-sb" || "$tag" == "hy2-sb" || "$tag" == "tuic5-sb" || "$tag" == "anytls-sb" ]]; then
+        local cpath=$(jq -r '.inbounds[0].tls.certificate_path // empty' "$file")
+        if [[ "$cpath" == "/etc/s-box/${target_type}_cert.pem" ]]; then
+          bound_cert="$target_type"
+        elif [[ "$cpath" == "/etc/s-box/cert.pem" || "$cpath" == "$SBFOLDER/cert.pem" ]]; then
+          bound_cert="$global_cert_type"
+        fi
+      fi
+
+      if [[ "$bound_cert" == "$target_type" ]]; then
+        affected_protocols+=("$name")
+      fi
+    fi
+  done
+
+  if [[ ${#affected_protocols[@]} -gt 0 ]]; then
+    red "\n无法卸载！检测到以下依赖该证书 ($target_name) 的运行中协议："
+    for name in "${affected_protocols[@]}"; do
+      yellow " - $name"
+    done
+    yellow "\n请先在【修改现有协议配置】或【切换当前全部协议依赖证书】中将这些协议切换至其它证书，再进行卸载！"
+    sleep 4
+    return
+  fi
+
+  readp "确认卸载 $target_name 吗？[y/N] (默认不卸载)：" confirm_uninst
+  if [[ ! "$confirm_uninst" =~ ^[Yy]$ ]]; then
+    return
+  fi
+
+  rm -f "/etc/s-box/${target_type}_cert.pem" "/etc/s-box/${target_type}_private.key"
+  if [[ "$target_type" == "ip" ]]; then
+    local server_ip=$(cat "$SBFOLDER/server_ip.log" 2>/dev/null || curl -s4 ip.sb)
+    if command -v ~/.acme.sh/acme.sh &>/dev/null; then
+      ~/.acme.sh/acme.sh --remove -d "$server_ip" >/dev/null 2>&1
+    fi
+  elif [[ "$target_type" == "domain" ]]; then
+    local ym_domain=$(cat /root/ygkkkca/ca.log 2>/dev/null)
+    if [[ -n "$ym_domain" ]] && command -v ~/.acme.sh/acme.sh &>/dev/null; then
+      ~/.acme.sh/acme.sh --remove -d "$ym_domain" >/dev/null 2>&1
+    fi
+  fi
+
+  blue "\n证书 $target_name 已成功卸载清理！"
+  sleep 2
+}
+
+ssl_preset_default_menu() {
+  echo
+  green "切换预设默认依赖证书："
+  yellow "说明：此选项将对后续新增的协议生效，对当前已有的协议不生效。"
+  echo
+  echo "1：后续默认使用 自签证书"
+  echo "2：后续默认使用 纯 IP 证书"
+  echo "3：后续默认使用 域名证书"
+  echo "0：返回上层"
+  readp "请选择【0-3】：" opt
+  
+  local target_type=""
+  local target_name=""
+  case "$opt" in
+    1) target_type="self"; target_name="自签证书" ;;
+    2) target_type="ip"; target_name="纯 IP 证书" ;;
+    3) target_type="domain"; target_name="域名证书" ;;
+    *) return ;;
+  esac
+
+  if [[ ! -s "/etc/s-box/${target_type}_cert.pem" || ! -s "/etc/s-box/${target_type}_private.key" ]]; then
+    red "所选证书类型 ($target_name) 未部署！请先进行部署。" && sleep 2
+    return
+  fi
+
+  readp "确认将后续新增协议的默认证书切换为 $target_name 吗？[y/N] (默认不切换)：" confirm_opt
+  if [[ ! "$confirm_opt" =~ ^[Yy]$ ]]; then
+    return
+  fi
+
+  echo "$target_type" > /etc/s-box/cert_type.log
+  blue "预设默认依赖证书已成功切换为：$target_name"
+  sleep 2
+}
+
+ssl_switch_all_protocols_menu() {
+  echo
+  green "切换当前全部协议依赖证书："
+  yellow "说明：此选项将对当前已有的所有协议生效。"
+  echo
+  echo "1：将所有现有协议证书切换至 自签证书"
+  echo "2：将所有现有协议证书切换至 纯 IP 证书"
+  echo "3：将所有现有协议证书切换至 域名证书"
+  echo "0：返回上层"
+  readp "请选择【0-3】：" opt
+
+  local target_type=""
+  local target_name=""
+  case "$opt" in
+    1) target_type="self"; target_name="自签证书" ;;
+    2) target_type="ip"; target_name="纯 IP 证书" ;;
+    3) target_type="domain"; target_name="域名证书" ;;
+    *) return ;;
+  esac
+
+  if [[ ! -s "/etc/s-box/${target_type}_cert.pem" || ! -s "/etc/s-box/${target_type}_private.key" ]]; then
+    red "所选证书类型 ($target_name) 未部署！请先进行部署。" && sleep 2
+    return
+  fi
+
+  readp "确认将所有现有协议的证书切换为 $target_name 吗？[y/N] (默认不切换)：" confirm_opt
+  if [[ ! "$confirm_opt" =~ ^[Yy]$ ]]; then
+    return
+  fi
+
+  local proto_tags=("vless-ws-tls-sb" "vless-hu-tls-sb" "vless-h2-tls-sb" "vmess-ws-tls-sb" "vmess-hu-tls-sb" "vmess-h2-tls-sb" "trojan-ws-tls-sb" "trojan-hu-tls-sb" "trojan-h2-tls-sb")
+  touch /etc/s-box/proto_certs.log
+  local tag
+  for tag in "${proto_tags[@]}"; do
+    sed -i "/^${tag}:/d" /etc/s-box/proto_certs.log
+    echo "${tag}:${target_type}" >> /etc/s-box/proto_certs.log
+  done
+
+  local direct_tags=("trojan-tls-sb" "hy2-sb" "tuic5-sb" "anytls-sb")
+  for tag in "${direct_tags[@]}"; do
+    local f_conf="$SBFOLDER/conf/${tag}.json"
+    if [[ -f "$f_conf" ]]; then
+      local cpath="/etc/s-box/${target_type}_cert.pem"
+      local kpath="/etc/s-box/${target_type}_private.key"
+      jq --arg cert "$cpath" --arg key "$kpath" \
+         '.inbounds[0].tls.certificate_path = $cert | .inbounds[0].tls.key_path = $key' \
+         "$f_conf" > /tmp/tmp.json && mv /tmp/tmp.json "$f_conf"
+    fi
+  done
+
+  config_apply_cert "$target_type"
+  blue "\n所有现有协议证书已成功切换至：$target_name"
+  yellow "提示：证书配置已变更，请重新导出并更新客户端的代理配置信息，以确保正常连接！"
+  sleep 3
+}
+
 ssl_certificate_settings() {
   echo
   green "SSL 证书管理设置："
@@ -4677,7 +4980,7 @@ ssl_certificate_settings() {
 
   echo -e "当前设备已部署的证书状况："
   if $has_self; then
-    echo -e " - ${green}自签证书${plain}: ${green}已部署${plain} (伪装域名: www.bing.com)"
+    echo -e " - ${green}自签证书${plain}: ${green}已部署${plain} (伪装域名: $(get_self_domain))"
   else
     echo -e " - ${green}自签证书${plain}: ${yellow}未部署${plain}"
   fi
@@ -4695,98 +4998,22 @@ ssl_certificate_settings() {
   else
     echo -e " - ${green}域名证书${plain}: ${yellow}未部署${plain}"
   fi
-  echo -e "当前正在生效选用的证书类型: ${cyan}$active_type${plain}"
+  echo -e "当前预设默认依赖证书类型: ${cyan}$active_type${plain}"
   echo
 
-  echo "1：部署/更新 自签证书"
-  echo "2：部署/更新 纯 IP 证书"
-  echo "3：部署/更新 域名证书"
-  echo "4：选用已部署的 自签证书"
-  echo "5：选用已部署的 纯 IP 证书"
-  echo "6：选用已部署的 域名证书"
+  echo "1：部署/更新证书"
+  echo "2：卸载证书"
+  echo "3：切换预设默认依赖证书"
+  echo "4：切换当前全部协议依赖证书"
   echo "0：返回上层"
-  readp "请选择【0-6】：" cert_opt
-  
-  if [[ -z "$cert_opt" || "$cert_opt" == "0" ]]; then
-    return
-  fi
-  
-  case "$cert_opt" in
-    1)
-      cert_type="self"
-      setup_caddy_cert
-      cp -f /etc/s-box/cert.pem /etc/s-box/self_cert.pem
-      cp -f /etc/s-box/private.key /etc/s-box/self_private.key
-      config_apply_cert "self"
-      ;;
-    2)
-      cert_type="ip"
-      setup_caddy_cert
-      if [[ "$cert_type" == "ip" ]]; then
-        cp -f /etc/s-box/cert.pem /etc/s-box/ip_cert.pem
-        cp -f /etc/s-box/private.key /etc/s-box/ip_private.key
-        config_apply_cert "ip"
-      fi
-      ;;
-    3)
-      cert_type="domain"
-      ym_domain=""
-      while true; do
-        readp "请输入解析至当前 VPS 的域名：" ym_domain
-        if [[ -z "$ym_domain" ]]; then
-          red "域名不能为空，请重新输入！"
-        else
-          local resolved_ip=$(dig +short "$ym_domain" 2>/dev/null || nslookup "$ym_domain" 2>/dev/null | awk '/Address:/ {print $2}' | tail -n 1)
-          if [[ -z "$resolved_ip" ]]; then
-            resolved_ip=$(ping -c 1 -W 2 "$ym_domain" 2>/dev/null | head -n 1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+')
-          fi
-          local vps_ip=$(curl -s4 ip.sb || curl -s6 ip.sb)
-          if [[ "$resolved_ip" != "$vps_ip" ]]; then
-            yellow "警告：域名解析IP ($resolved_ip) 与本机IP ($vps_ip) 不符！"
-            readp "是否强行继续申请？[y/N] (默认不继续) ：" force_req
-            if [[ "$force_req" =~ ^[Yy]$ ]]; then
-              break
-            else
-              return
-            fi
-          else
-            break
-          fi
-        fi
-      done
-      echo "$ym_domain" > /root/ygkkkca/ca.log
-      setup_caddy_cert
-      if [[ "$cert_type" == "domain" ]]; then
-        cp -f /etc/s-box/cert.pem /etc/s-box/domain_cert.pem
-        cp -f /etc/s-box/private.key /etc/s-box/domain_private.key
-        config_apply_cert "domain"
-      fi
-      ;;
-    4)
-      if ! $has_self; then
-        red "未部署自签证书，请先选择选项1进行部署！" && sleep 2 && ssl_certificate_settings
-        return
-      fi
-      config_apply_cert "self"
-      ;;
-    5)
-      if ! $has_ip; then
-        red "未部署纯 IP 证书，请先选择选项2进行部署！" && sleep 2 && ssl_certificate_settings
-        return
-      fi
-      config_apply_cert "ip"
-      ;;
-    6)
-      if ! $has_domain; then
-        red "未部署域名证书，请先选择选项3进行部署！" && sleep 2 && ssl_certificate_settings
-        return
-      fi
-      config_apply_cert "domain"
-      ;;
-    *)
-      red "选择无效！" && sleep 2 && ssl_certificate_settings
-      return
-      ;;
+  readp "请选择【0-4】：" main_opt
+
+  case "$main_opt" in
+    1) ssl_deploy_menu; ssl_certificate_settings ;;
+    2) ssl_uninstall_menu; ssl_certificate_settings ;;
+    3) ssl_preset_default_menu; ssl_certificate_settings ;;
+    4) ssl_switch_all_protocols_menu; ssl_certificate_settings ;;
+    *) return ;;
   esac
 }
 
@@ -5141,7 +5368,7 @@ modify_protocol_config() {
       local cert_num=1
       local cert_map=()
       if $has_self; then
-        echo "${cert_num}：自签证书 (www.bing.com)"
+        echo "${cert_num}：自签证书 ($(get_self_domain))"
         cert_map+=("self")
         cert_num=$((cert_num+1))
       fi
@@ -7663,9 +7890,10 @@ instsllsingbox() {
     fi
     
     if [[ "$use_caddy" == "true" ]]; then
+      local cur_self_dom=$(get_self_domain)
       echo
       green "请选择 SSL 证书类型："
-      yellow "1：自签证书 (www.bing.com) (回车默认)"
+      yellow "1：自签证书 ($cur_self_dom) (回车默认)"
       yellow "2：纯 IP 证书 (由 Let's Encrypt 签发，需确保 VPS 80 端口开放且未被防火墙阻断)"
       yellow "3：域名证书 (自动 ACME 申请，自备已解析的域名)"
       readp "请选择【1-3】：" cert_menu
@@ -7703,6 +7931,10 @@ instsllsingbox() {
           ;;
         *)
           cert_type="self"
+          readp "请输入自签证书伪装域名 (回车默认使用 $cur_self_dom)：" custom_self_dom
+          local self_dom=${custom_self_dom:-$cur_self_dom}
+          mkdir -p /etc/s-box
+          echo "$self_dom" > /etc/s-box/self_domain.log
           ;;
       esac
     fi
