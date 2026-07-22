@@ -1232,27 +1232,27 @@ inssbjsonser() {
         },
         {
           "outbound": "warp-IPv4-out",
-          "domain_suffix": ["yg_kkk"]
+          "domain_suffix": ["DuolaD"]
         },
         {
           "outbound": "warp-IPv6-out",
-          "domain_suffix": ["yg_kkk"]
+          "domain_suffix": ["DuolaD"]
         },
         {
           "outbound": "socks-IPv4-out",
-          "domain_suffix": ["yg_kkk"]
+          "domain_suffix": ["DuolaD"]
         },
         {
           "outbound": "socks-IPv6-out",
-          "domain_suffix": ["yg_kkk"]
+          "domain_suffix": ["DuolaD"]
         },
         {
           "outbound": "vps-outbound-v4",
-          "domain_suffix": ["yg_kkk"]
+          "domain_suffix": ["DuolaD"]
         },
         {
           "outbound": "vps-outbound-v6",
-          "domain_suffix": ["yg_kkk"]
+          "domain_suffix": ["DuolaD"]
         },
         {
           "outbound": "direct",
@@ -1313,20 +1313,20 @@ inssbjsonser() {
         },
         {
           "action": "resolve",
-          "domain_suffix": ["yg_kkk"],
+          "domain_suffix": ["DuolaD"],
           "strategy": "prefer_ipv4"
         },
         {
           "action": "resolve",
-          "domain_suffix": ["yg_kkk"],
+          "domain_suffix": ["DuolaD"],
           "strategy": "prefer_ipv6"
         },
         {
-          "domain_suffix": ["yg_kkk"],
+          "domain_suffix": ["DuolaD"],
           "outbound": "socks-out"
         },
         {
-          "domain_suffix": ["yg_kkk"],
+          "domain_suffix": ["DuolaD"],
           "outbound": "warp-out"
         },
         {
@@ -6155,8 +6155,8 @@ update_routing_rule() {
   local raw_items="$3"
   
   local json_array
-  if [[ -z "$raw_items" || "$raw_items" == "yg_kkk" ]]; then
-    json_array='["yg_kkk"]'
+  if [[ -z "$raw_items" || "$raw_items" == "DuolaD" ]]; then
+    json_array='["DuolaD"]'
   else
     json_array=$(echo "$raw_items" | jq -R 'split(" ")')
   fi
@@ -6173,9 +6173,36 @@ update_routing_rule() {
   esac
 
   # For sb10.json:
-  jq --argjson arr "$json_array" --arg rtype "$rule_type" --arg ob "$target_outbound" \
-     'if (.route.rules[] | select(.outbound == $ob)) then (.route.rules[] | select(.outbound == $ob))[$rtype] = $arr else .route.rules += [{"outbound": $ob, ($rtype): $arr}] end' \
-     "$SBFOLDER/sb10.json" > /tmp/sb10.json && mv /tmp/sb10.json "$SBFOLDER/sb10.json"
+  if [[ "$rule_type" == "geosite" ]]; then
+    if [[ "$json_array" == '["DuolaD"]' ]]; then
+      jq --arg ob "$target_outbound" '
+        (.route.rules[] | select(.outbound == $ob)) |= (del(.geosite) | del(.rule_set))
+      ' "$SBFOLDER/sb10.json" > /tmp/sb10.json && mv /tmp/sb10.json "$SBFOLDER/sb10.json"
+    else
+      jq --argjson arr "$json_array" --arg ob "$target_outbound" '
+        ($arr | map(gsub("^geosite-";"") | gsub("\\.srs$";""))) as $clean_arr
+        | ($clean_arr | map("geosite-" + .)) as $tags
+        | ($clean_arr | map({
+            "tag": ("geosite-" + .),
+            "type": "remote",
+            "format": "binary",
+            "url": ("https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo/geosite/" + . + ".srs"),
+            "download_detour": "direct"
+          })) as $new_rulesets
+        | .route.rule_set = (((.route.rule_set // []) + $new_rulesets) | unique_by(.tag))
+        | if (.route.rules[] | select(.outbound == $ob)) then
+            (.route.rules[] | select(.outbound == $ob)).geosite = $clean_arr
+            | (.route.rules[] | select(.outbound == $ob)).rule_set = $tags
+          else
+            .route.rules += [{"outbound": $ob, "geosite": $clean_arr, "rule_set": $tags}]
+          end
+      ' "$SBFOLDER/sb10.json" > /tmp/sb10.json && mv /tmp/sb10.json "$SBFOLDER/sb10.json"
+    fi
+  else
+    jq --argjson arr "$json_array" --arg rtype "$rule_type" --arg ob "$target_outbound" \
+       'if (.route.rules[] | select(.outbound == $ob)) then (.route.rules[] | select(.outbound == $ob))[$rtype] = $arr else .route.rules += [{"outbound": $ob, ($rtype): $arr}] end' \
+       "$SBFOLDER/sb10.json" > /tmp/sb10.json && mv /tmp/sb10.json "$SBFOLDER/sb10.json"
+  fi
 
   # For sb11.json:
   if [[ "$rule_type" == "domain_suffix" ]]; then
@@ -6198,6 +6225,54 @@ update_routing_rule() {
            "$SBFOLDER/sb11.json" > /tmp/sb11.json && mv /tmp/sb11.json "$SBFOLDER/sb11.json"
         ;;
     esac
+  elif [[ "$rule_type" == "geosite" ]]; then
+    if [[ "$json_array" == '["DuolaD"]' ]]; then
+      case "$route_channel" in
+        w6)
+          jq '
+            (.route.rules[] | select(.strategy == "prefer_ipv6")) |= del(.rule_set) |
+            (.route.rules[] | select(.outbound == "warp-out")) |= del(.rule_set)
+          ' "$SBFOLDER/sb11.json" > /tmp/sb11.json && mv /tmp/sb11.json "$SBFOLDER/sb11.json"
+          ;;
+        s4)
+          jq '
+            (.route.rules[] | select(.strategy == "prefer_ipv4")) |= del(.rule_set) |
+            (.route.rules[] | select(.outbound == "socks-out")) |= del(.rule_set)
+          ' "$SBFOLDER/sb11.json" > /tmp/sb11.json && mv /tmp/sb11.json "$SBFOLDER/sb11.json"
+          ;;
+        *)
+          jq --arg ob "$target_outbound" '
+            (.route.rules[] | select(.outbound == $ob)) |= del(.rule_set)
+          ' "$SBFOLDER/sb11.json" > /tmp/sb11.json && mv /tmp/sb11.json "$SBFOLDER/sb11.json"
+          ;;
+      esac
+    else
+      jq --argjson arr "$json_array" --arg ob "$target_outbound" --arg channel "$route_channel" '
+        ($arr | map(gsub("^geosite-";"") | gsub("\\.srs$";""))) as $clean_arr
+        | ($clean_arr | map("geosite-" + .)) as $tags
+        | ($clean_arr | map({
+            "tag": ("geosite-" + .),
+            "type": "remote",
+            "format": "binary",
+            "url": ("https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo/geosite/" + . + ".srs"),
+            "download_detour": "direct"
+          })) as $new_rulesets
+        | .route.rule_set = (((.route.rule_set // []) + $new_rulesets) | unique_by(.tag))
+        | if $channel == "w6" then
+            (if (.route.rules[] | select(.strategy == "prefer_ipv6")) then (.route.rules[] | select(.strategy == "prefer_ipv6")).rule_set = $tags else .route.rules += [{"strategy": "prefer_ipv6", "rule_set": $tags}] end) |
+            (if (.route.rules[] | select(.outbound == "warp-out")) then (.route.rules[] | select(.outbound == "warp-out")).rule_set = $tags else .route.rules += [{"outbound": "warp-out", "rule_set": $tags}] end)
+          elif $channel == "s4" then
+            (if (.route.rules[] | select(.strategy == "prefer_ipv4")) then (.route.rules[] | select(.strategy == "prefer_ipv4")).rule_set = $tags else .route.rules += [{"strategy": "prefer_ipv4", "rule_set": $tags}] end) |
+            (if (.route.rules[] | select(.outbound == "socks-out")) then (.route.rules[] | select(.outbound == "socks-out")).rule_set = $tags else .route.rules += [{"outbound": "socks-out", "rule_set": $tags}] end)
+          elif $channel == "ad4" then
+            (if (.route.rules[] | select(.strategy == "prefer_ipv4")) then (.route.rules[] | select(.strategy == "prefer_ipv4")).rule_set = $tags else .route.rules += [{"strategy": "prefer_ipv4", "rule_set": $tags, "outbound": $ob}] end)
+          elif $channel == "ad6" then
+            (if (.route.rules[] | select(.strategy == "prefer_ipv6")) then (.route.rules[] | select(.strategy == "prefer_ipv6")).rule_set = $tags else .route.rules += [{"strategy": "prefer_ipv6", "rule_set": $tags, "outbound": $ob}] end)
+          else
+            if (.route.rules[] | select(.outbound == $ob)) then (.route.rules[] | select(.outbound == $ob)).rule_set = $tags else .route.rules += [{"outbound": $ob, "rule_set": $tags}] end
+          end
+      ' "$SBFOLDER/sb11.json" > /tmp/sb11.json && mv /tmp/sb11.json "$SBFOLDER/sb11.json"
+    fi
   fi
   
   # Sync to active sb.json
@@ -6245,89 +6320,91 @@ sbymfl() {
   unset swg4 swd4 swd6 swg6 ssd4 ssg4 ssd6 ssg6 sad4 sag4 sad6 sag6
   
   local clean_json=$(strip_json_comments "$SBFOLDER/sb.json")
+  local extract_geo_jq='[ (.geosite // [])[]?, ((.rule_set // [])[]? | select(type=="string" and startswith("geosite-")) | sub("^geosite-";"")) ] | unique | join(" ")'
+  
   if [[ "$sbnh" == "1.10" ]]; then
     wd4=$(echo "$clean_json" | jq -r '(.route.rules[] | select(.outbound == "warp-IPv4-out") | .domain_suffix // []) | join(" ")' 2>/dev/null)
-    args_wg4=$(echo "$clean_json" | jq -r '(.route.rules[] | select(.outbound == "warp-IPv4-out") | .geosite // []) | join(" ")' 2>/dev/null)
+    args_wg4=$(echo "$clean_json" | jq -r "(.route.rules[] | select(.outbound == \"warp-IPv4-out\") | $extract_geo_jq)" 2>/dev/null)
     
     wd6=$(echo "$clean_json" | jq -r '(.route.rules[] | select(.outbound == "warp-IPv6-out") | .domain_suffix // []) | join(" ")' 2>/dev/null)
-    args_wg6=$(echo "$clean_json" | jq -r '(.route.rules[] | select(.outbound == "warp-IPv6-out") | .geosite // []) | join(" ")' 2>/dev/null)
+    args_wg6=$(echo "$clean_json" | jq -r "(.route.rules[] | select(.outbound == \"warp-IPv6-out\") | $extract_geo_jq)" 2>/dev/null)
     
     sd4=$(echo "$clean_json" | jq -r '(.route.rules[] | select(.outbound == "socks-IPv4-out") | .domain_suffix // []) | join(" ")' 2>/dev/null)
-    sg4=$(echo "$clean_json" | jq -r '(.route.rules[] | select(.outbound == "socks-IPv4-out") | .geosite // []) | join(" ")' 2>/dev/null)
+    sg4=$(echo "$clean_json" | jq -r "(.route.rules[] | select(.outbound == \"socks-IPv4-out\") | $extract_geo_jq)" 2>/dev/null)
     
     sd6=$(echo "$clean_json" | jq -r '(.route.rules[] | select(.outbound == "socks-IPv6-out") | .domain_suffix // []) | join(" ")' 2>/dev/null)
-    sg6=$(echo "$clean_json" | jq -r '(.route.rules[] | select(.outbound == "socks-IPv6-out") | .geosite // []) | join(" ")' 2>/dev/null)
+    sg6=$(echo "$clean_json" | jq -r "(.route.rules[] | select(.outbound == \"socks-IPv6-out\") | $extract_geo_jq)" 2>/dev/null)
     
     ad4=$(echo "$clean_json" | jq -r '(.route.rules[] | select(.outbound == "vps-outbound-v4") | .domain_suffix // []) | join(" ")' 2>/dev/null)
-    ag4=$(echo "$clean_json" | jq -r '(.route.rules[] | select(.outbound == "vps-outbound-v4") | .geosite // []) | join(" ")' 2>/dev/null)
+    ag4=$(echo "$clean_json" | jq -r "(.route.rules[] | select(.outbound == \"vps-outbound-v4\") | $extract_geo_jq)" 2>/dev/null)
     
     ad6=$(echo "$clean_json" | jq -r '(.route.rules[] | select(.outbound == "vps-outbound-v6") | .domain_suffix // []) | join(" ")' 2>/dev/null)
-    ag6=$(echo "$clean_json" | jq -r '(.route.rules[] | select(.outbound == "vps-outbound-v6") | .geosite // []) | join(" ")' 2>/dev/null)
+    ag6=$(echo "$clean_json" | jq -r "(.route.rules[] | select(.outbound == \"vps-outbound-v6\") | $extract_geo_jq)" 2>/dev/null)
   else
     wd4=""
     args_wg4=""
     
-    wd6=$(echo "$clean_json" | jq -r '(.route.rules[] | select(.outbound == "warp-out") | .domain_suffix // []) | join(" ")' 2>/dev/null)
-    args_wg6=""
+    wd6=$(echo "$clean_json" | jq -r '(.route.rules[] | select(.outbound == "warp-out" or .strategy == "prefer_ipv6") | .domain_suffix // []) | join(" ")' 2>/dev/null)
+    args_wg6=$(echo "$clean_json" | jq -r "(.route.rules[] | select(.outbound == \"warp-out\" or .strategy == \"prefer_ipv6\") | $extract_geo_jq)" 2>/dev/null)
     
-    sd4=$(echo "$clean_json" | jq -r '(.route.rules[] | select(.outbound == "socks-out") | .domain_suffix // []) | join(" ")' 2>/dev/null)
-    sg4=""
+    sd4=$(echo "$clean_json" | jq -r '(.route.rules[] | select(.outbound == "socks-out" or .strategy == "prefer_ipv4") | .domain_suffix // []) | join(" ")' 2>/dev/null)
+    sg4=$(echo "$clean_json" | jq -r "(.route.rules[] | select(.outbound == \"socks-out\" or .strategy == \"prefer_ipv4\") | $extract_geo_jq)" 2>/dev/null)
     
     sd6=""
     sg6=""
     
-    ad4=$(echo "$clean_json" | jq -r '(.route.rules[] | select(.strategy == "prefer_ipv4") | .domain_suffix // []) | join(" ")' 2>/dev/null)
-    ag4=""
+    ad4=$(echo "$clean_json" | jq -r '(.route.rules[] | select(.strategy == "prefer_ipv4" or .outbound == "vps-outbound-v4") | .domain_suffix // []) | join(" ")' 2>/dev/null)
+    ag4=$(echo "$clean_json" | jq -r "(.route.rules[] | select(.strategy == \"prefer_ipv4\" or .outbound == \"vps-outbound-v4\") | $extract_geo_jq)" 2>/dev/null)
     
-    ad6=$(echo "$clean_json" | jq -r '(.route.rules[] | select(.strategy == "prefer_ipv6") | .domain_suffix // []) | join(" ")' 2>/dev/null)
-    ag6=""
+    ad6=$(echo "$clean_json" | jq -r '(.route.rules[] | select(.strategy == "prefer_ipv6" or .outbound == "vps-outbound-v6") | .domain_suffix // []) | join(" ")' 2>/dev/null)
+    ag6=$(echo "$clean_json" | jq -r "(.route.rules[] | select(.strategy == \"prefer_ipv6\" or .outbound == \"vps-outbound-v6\") | $extract_geo_jq)" 2>/dev/null)
   fi
 
-  if [[ "$wd4" == "yg_kkk" && ("$args_wg4" == "yg_kkk" || -z "$args_wg4") ]]; then
+  if [[ "$wd4" == "DuolaD" && ("$args_wg4" == "DuolaD" || -z "$args_wg4") ]]; then
     wfl4="${yellow}【warp出站IPV4可用】未分流${plain}"
   else
-    [[ "$wd4" != "yg_kkk" ]] && swd4="$wd4 "
-    [[ "$args_wg4" != "yg_kkk" ]] && swg4=$args_wg4
+    [[ "$wd4" != "DuolaD" ]] && swd4="$wd4 "
+    [[ "$args_wg4" != "DuolaD" ]] && swg4=$args_wg4
     wfl4="${yellow}【warp出站IPV4可用】已分流：$swd4$swg4${plain} "
   fi
   
-  if [[ "$wd6" == "yg_kkk" && ("$args_wg6" == "yg_kkk" || -z "$args_wg6") ]]; then
+  if [[ "$wd6" == "DuolaD" && ("$args_wg6" == "DuolaD" || -z "$args_wg6") ]]; then
     wfl6="${yellow}【warp出站IPV6自测】未分流${plain}"
   else
-    [[ "$wd6" != "yg_kkk" ]] && swd6="$wd6 "
-    [[ "$args_wg6" != "yg_kkk" ]] && swg6=$args_wg6
+    [[ "$wd6" != "DuolaD" ]] && swd6="$wd6 "
+    [[ "$args_wg6" != "DuolaD" ]] && swg6=$args_wg6
     wfl6="${yellow}【warp出站IPV6自测】已分流：$swd6$swg6${plain} "
   fi
   
-  if [[ "$sd4" == "yg_kkk" && ("$sg4" == "yg_kkk" || -z "$sg4") ]]; then
+  if [[ "$sd4" == "DuolaD" && ("$sg4" == "DuolaD" || -z "$sg4") ]]; then
     sfl4="${yellow}【$warp_s4_ip】未分流${plain}"
   else
-    [[ "$sd4" != "yg_kkk" ]] && ssd4="$sd4 "
-    [[ "$sg4" != "yg_kkk" ]] && ssg4=$sg4
+    [[ "$sd4" != "DuolaD" ]] && ssd4="$sd4 "
+    [[ "$sg4" != "DuolaD" ]] && ssg4=$sg4
     sfl4="${yellow}【$warp_s4_ip】已分流：$ssd4$ssg4${plain} "
   fi
   
-  if [[ "$sd6" == "yg_kkk" && ("$sg6" == "yg_kkk" || -z "$sg6") ]]; then
+  if [[ "$sd6" == "DuolaD" && ("$sg6" == "DuolaD" || -z "$sg6") ]]; then
     sfl6="${yellow}【$warp_s6_ip】未分流${plain}"
   else
-    [[ "$sd6" != "yg_kkk" ]] && ssd6="$sd6 "
-    [[ "$sg6" != "yg_kkk" ]] && ssg6=$sg6
+    [[ "$sd6" != "DuolaD" ]] && ssd6="$sd6 "
+    [[ "$sg6" != "DuolaD" ]] && ssg6=$sg6
     sfl6="${yellow}【$warp_s6_ip】已分流：$ssd6$ssg6${plain} "
   fi
   
-  if [[ ("$ad4" == "yg_kkk" || -z "$ad4") && ("$ag4" == "yg_kkk" || -z "$ag4") ]]; then
+  if [[ ("$ad4" == "DuolaD" || -z "$ad4") && ("$ag4" == "DuolaD" || -z "$ag4") ]]; then
     adfl4="${yellow}【$vps_ipv4】未分流${plain}" 
   else
-    [[ "$ad4" != "yg_kkk" ]] && sad4="$ad4 "
-    [[ "$ag4" != "yg_kkk" ]] && sag4=$ag4
+    [[ "$ad4" != "DuolaD" ]] && sad4="$ad4 "
+    [[ "$ag4" != "DuolaD" ]] && sag4=$ag4
     adfl4="${yellow}【$vps_ipv4】已分流：$sad4$sag4${plain} "
   fi
   
-  if [[ ("$ad6" == "yg_kkk" || -z "$ad6") && ("$ag6" == "yg_kkk" || -z "$ag6") ]]; then
+  if [[ ("$ad6" == "DuolaD" || -z "$ad6") && ("$ag6" == "DuolaD" || -z "$ag6") ]]; then
     adfl6="${yellow}【$vps_ipv6】未分流${plain}" 
   else
-    [[ "$ad6" != "yg_kkk" ]] && sad6="$ad6 "
-    [[ "$ag6" != "yg_kkk" ]] && sag6=$ag6
+    [[ "$ad6" != "DuolaD" ]] && sad6="$ad6 "
+    [[ "$ag6" != "DuolaD" ]] && sag6=$ag6
     adfl6="${yellow}【$vps_ipv6】已分流：$sad6$sag6${plain} "
   fi
 }
@@ -6374,7 +6451,7 @@ changef() {
       [[ -z "$i_port" || "$i_status" != "running" ]] && continue
       local cur_rule=$(echo "$clean_json" | jq -r --arg ob "$i_tag" '(.route.rules[] | select(.outbound == $ob) | .domain_suffix // []) | join(" ")' 2>/dev/null)
       local fl_status=""
-      if [[ -z "$cur_rule" || "$cur_rule" == "yg_kkk" ]]; then
+      if [[ -z "$cur_rule" || "$cur_rule" == "DuolaD" ]]; then
         fl_status="${yellow}未分流${plain}"
       else
         fl_status="${yellow}已分流：$cur_rule${plain}"
