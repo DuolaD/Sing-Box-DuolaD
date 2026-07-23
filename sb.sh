@@ -1319,13 +1319,7 @@ inssbjsonser() {
         },
         {
           "action": "resolve",
-          "domain_suffix": ["DuolaD"],
-          "strategy": "prefer_ipv4"
-        },
-        {
-          "action": "resolve",
-          "domain_suffix": ["DuolaD"],
-          "strategy": "prefer_ipv6"
+          "strategy": "'"${ipv}"'"
         },
         {
           "domain_suffix": ["DuolaD"],
@@ -4251,7 +4245,7 @@ changeserv() {
   sbactive
   echo
   green "Sing-box配置变更选择如下:"
-  readp "1：更换Reality域名伪装地址、切换自签证书与Acme域名证书、开关TLS\n2：更换全协议UUID(密码)、Vmess-Path路径\n3：设置Argo临时隧道、固定隧道\n4：切换IPV4或IPV6的代理优先级 (仅 1.10.7 内核可用)\n5：更换Warp-wireguard出站账户\n6：设置所有Vmess节点的CDN优选地址\n0：返回上层\n请选择【0-6】：" menu
+  readp "1：更换Reality域名伪装地址、切换自签证书与Acme域名证书、开关TLS\n2：更换全协议UUID(密码)、Vmess-Path路径\n3：设置Argo临时隧道、固定隧道\n4：切换IPV4或IPV6的代理优先级 (支持1.10+全系列内核)\n5：更换Warp-wireguard出站账户\n6：设置所有Vmess节点的CDN优选地址\n0：返回上层\n请选择【0-6】：" menu
   case "$menu" in
     1) changeym ;;
     2) changeuuid ;;
@@ -4800,31 +4794,40 @@ changeuuid() {
   fi
 }
 
-# --- Change IP Priority (Only for 1.10.7) ---
+# --- Change IP Priority (For 1.10+ all versions) ---
 changeip() {
-  if [[ "$sbnh" == "1.10" ]]; then
-    v4v6
-    chip() {
-      jq --arg strat "$rrpip" '.outbounds[0].domain_strategy = $strat' "$SBFOLDER/sb10.json" > /tmp/sb10.json && mv /tmp/sb10.json "$SBFOLDER/sb10.json"
-      cp "$SBFOLDER/sb10.json" "$SBFOLDER/sb.json"
-      restartsb
-    }
-    readp "1. IPV4优先\n2. IPV6优先\n3. 仅IPV4\n4. 仅IPV6\n请选择：" choose
-    if [[ $choose == "1" && -n $v4 ]]; then
-      rrpip="prefer_ipv4" && chip && v4_6="IPV4优先($v4)"
-    elif [[ $choose == "2" && -n $v6 ]]; then
-      rrpip="prefer_ipv6" && chip && v4_6="IPV6优先($v6)"
-    elif [[ $choose == "3" && -n $v4 ]]; then
-      rrpip="ipv4_only" && chip && v4_6="仅IPV4($v4)"
-    elif [[ $choose == "4" && -n $v6 ]]; then
-      rrpip="ipv6_only" && chip && v4_6="仅IPV6($v6)"
-    else 
-      red "当前不存在你选择的IPV4/IPV6地址，或者输入错误" && changeip
+  v4v6
+  chip() {
+    if [ -f "$SBFOLDER/sb10.json" ]; then
+      jq --arg strat "$rrpip" '(.outbounds[] | select(.type == "direct")).domain_strategy = $strat' "$SBFOLDER/sb10.json" > /tmp/sb10.json && mv /tmp/sb10.json "$SBFOLDER/sb10.json"
     fi
-    blue "当前已更换的IP优先级：${v4_6}" && sb
-  else
-    red "仅支持1.10.7内核可用" && exit
+    if [ -f "$SBFOLDER/sb11.json" ]; then
+      jq --arg strat "$rrpip" '
+        (.outbounds[]) |= del(.domain_strategy) |
+        if (.route.rules | map(select(.action == "resolve")) | length) > 0 then
+          .route.rules |= map(if .action == "resolve" then .strategy = $strat | del(.domain_suffix) else . end)
+        else
+          .route.rules = [{"action": "resolve", "strategy": $strat}] + .route.rules
+        end
+      ' "$SBFOLDER/sb11.json" > /tmp/sb11.json && mv /tmp/sb11.json "$SBFOLDER/sb11.json"
+    fi
+    [[ "$sbnh" == "1.10" ]] && num=10 || num=11
+    cp "$SBFOLDER/sb${num}.json" "$SBFOLDER/sb.json" 2>/dev/null
+    restartsb
+  }
+  readp "1. IPV4优先\n2. IPV6优先\n3. 仅IPV4\n4. 仅IPV6\n请选择：" choose
+  if [[ $choose == "1" && -n $v4 ]]; then
+    rrpip="prefer_ipv4" && chip && v4_6="IPV4优先($v4)"
+  elif [[ $choose == "2" && -n $v6 ]]; then
+    rrpip="prefer_ipv6" && chip && v4_6="IPV6优先($v6)"
+  elif [[ $choose == "3" && -n $v4 ]]; then
+    rrpip="ipv4_only" && chip && v4_6="仅IPV4($v4)"
+  elif [[ $choose == "4" && -n $v6 ]]; then
+    rrpip="ipv6_only" && chip && v4_6="仅IPV6($v6)"
+  else 
+    red "当前不存在你选择的IPV4/IPV6地址，或者输入错误" && changeip
   fi
+  blue "当前已更换的IP优先级：${v4_6}" && sb
 }
 
 # --- Change Warp Wireguard settings ---
@@ -6528,6 +6531,12 @@ update_routing_rule() {
   # For sb11.json:
   if [[ "$rule_type" == "domain_suffix" ]]; then
     case "$route_channel" in
+      w4)
+        jq --argjson arr "$json_array" \
+           '(.route.rules[] | select(.strategy == "prefer_ipv4")).domain_suffix = $arr |
+            (.route.rules[] | select(.outbound == "warp-out")).domain_suffix = $arr' \
+           "$SBFOLDER/sb11.json" > /tmp/sb11.json && mv /tmp/sb11.json "$SBFOLDER/sb11.json"
+        ;;
       w6)
         jq --argjson arr "$json_array" \
            '(.route.rules[] | select(.strategy == "prefer_ipv6")).domain_suffix = $arr |
@@ -6540,6 +6549,12 @@ update_routing_rule() {
             (.route.rules[] | select(.outbound == "socks-out")).domain_suffix = $arr' \
            "$SBFOLDER/sb11.json" > /tmp/sb11.json && mv /tmp/sb11.json "$SBFOLDER/sb11.json"
         ;;
+      s6)
+        jq --argjson arr "$json_array" \
+           '(.route.rules[] | select(.strategy == "prefer_ipv6")).domain_suffix = $arr |
+            (.route.rules[] | select(.outbound == "socks-out")).domain_suffix = $arr' \
+           "$SBFOLDER/sb11.json" > /tmp/sb11.json && mv /tmp/sb11.json "$SBFOLDER/sb11.json"
+        ;;
       *)
         jq --argjson arr "$json_array" --arg ob "$target_outbound" \
            'if any(.route.rules[]; .outbound == $ob) then (.route.rules[] | select(.outbound == $ob)).domain_suffix = $arr else .route.rules += [{"domain_suffix": $arr, "outbound": $ob}] end' \
@@ -6549,6 +6564,12 @@ update_routing_rule() {
   elif [[ "$rule_type" == "geosite" ]]; then
     if [[ "$json_array" == '["DuolaD"]' ]]; then
       case "$route_channel" in
+        w4)
+          jq '
+            (.route.rules[] | select(.strategy == "prefer_ipv4")) |= del(.rule_set) |
+            (.route.rules[] | select(.outbound == "warp-out")) |= del(.rule_set)
+          ' "$SBFOLDER/sb11.json" > /tmp/sb11.json && mv /tmp/sb11.json "$SBFOLDER/sb11.json"
+          ;;
         w6)
           jq '
             (.route.rules[] | select(.strategy == "prefer_ipv6")) |= del(.rule_set) |
@@ -6558,6 +6579,12 @@ update_routing_rule() {
         s4)
           jq '
             (.route.rules[] | select(.strategy == "prefer_ipv4")) |= del(.rule_set) |
+            (.route.rules[] | select(.outbound == "socks-out")) |= del(.rule_set)
+          ' "$SBFOLDER/sb11.json" > /tmp/sb11.json && mv /tmp/sb11.json "$SBFOLDER/sb11.json"
+          ;;
+        s6)
+          jq '
+            (.route.rules[] | select(.strategy == "prefer_ipv6")) |= del(.rule_set) |
             (.route.rules[] | select(.outbound == "socks-out")) |= del(.rule_set)
           ' "$SBFOLDER/sb11.json" > /tmp/sb11.json && mv /tmp/sb11.json "$SBFOLDER/sb11.json"
           ;;
@@ -6579,11 +6606,17 @@ update_routing_rule() {
             "download_detour": "direct"
           })) as $new_rulesets
         | .route.rule_set = (((.route.rule_set // []) + $new_rulesets) | unique_by(.tag))
-        | if $channel == "w6" then
+        | if $channel == "w4" then
+            (if any(.route.rules[]; .strategy == "prefer_ipv4") then (.route.rules[] | select(.strategy == "prefer_ipv4")).rule_set = $tags else .route.rules += [{"strategy": "prefer_ipv4", "rule_set": $tags}] end) |
+            (if any(.route.rules[]; .outbound == "warp-out") then (.route.rules[] | select(.outbound == "warp-out")).rule_set = $tags else .route.rules += [{"outbound": "warp-out", "rule_set": $tags}] end)
+          elif $channel == "w6" then
             (if any(.route.rules[]; .strategy == "prefer_ipv6") then (.route.rules[] | select(.strategy == "prefer_ipv6")).rule_set = $tags else .route.rules += [{"strategy": "prefer_ipv6", "rule_set": $tags}] end) |
             (if any(.route.rules[]; .outbound == "warp-out") then (.route.rules[] | select(.outbound == "warp-out")).rule_set = $tags else .route.rules += [{"outbound": "warp-out", "rule_set": $tags}] end)
           elif $channel == "s4" then
             (if any(.route.rules[]; .strategy == "prefer_ipv4") then (.route.rules[] | select(.strategy == "prefer_ipv4")).rule_set = $tags else .route.rules += [{"strategy": "prefer_ipv4", "rule_set": $tags}] end) |
+            (if any(.route.rules[]; .outbound == "socks-out") then (.route.rules[] | select(.outbound == "socks-out")).rule_set = $tags else .route.rules += [{"outbound": "socks-out", "rule_set": $tags}] end)
+          elif $channel == "s6" then
+            (if any(.route.rules[]; .strategy == "prefer_ipv6") then (.route.rules[] | select(.strategy == "prefer_ipv6")).rule_set = $tags else .route.rules += [{"strategy": "prefer_ipv6", "rule_set": $tags}] end) |
             (if any(.route.rules[]; .outbound == "socks-out") then (.route.rules[] | select(.outbound == "socks-out")).rule_set = $tags else .route.rules += [{"outbound": "socks-out", "rule_set": $tags}] end)
           elif $channel == "ad4" then
             (if any(.route.rules[]; .outbound == "vps-outbound-v4") then (.route.rules[] | select(.outbound == "vps-outbound-v4")).rule_set = $tags else .route.rules += [{"outbound": "vps-outbound-v4", "rule_set": $tags}] end)
@@ -6663,8 +6696,8 @@ sbymfl() {
     ad6=$(echo "$clean_json" | jq -r "[ .route.rules[] | select(.outbound == \"vps-outbound-v6\") | $extract_dom_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
     ag6=$(echo "$clean_json" | jq -r "[ .route.rules[] | select(.outbound == \"vps-outbound-v6\") | $extract_geo_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
   else
-    wd4=""
-    args_wg4=""
+    wd4=$(echo "$clean_json" | jq -r "[ .route.rules[] | select(.outbound == \"warp-out\" or .strategy == \"prefer_ipv4\") | $extract_dom_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
+    args_wg4=$(echo "$clean_json" | jq -r "[ .route.rules[] | select(.outbound == \"warp-out\" or .strategy == \"prefer_ipv4\") | $extract_geo_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
     
     wd6=$(echo "$clean_json" | jq -r "[ .route.rules[] | select(.outbound == \"warp-out\" or .strategy == \"prefer_ipv6\") | $extract_dom_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
     args_wg6=$(echo "$clean_json" | jq -r "[ .route.rules[] | select(.outbound == \"warp-out\" or .strategy == \"prefer_ipv6\") | $extract_geo_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
@@ -6672,8 +6705,8 @@ sbymfl() {
     sd4=$(echo "$clean_json" | jq -r "[ .route.rules[] | select(.outbound == \"socks-out\" or .strategy == \"prefer_ipv4\") | $extract_dom_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
     sg4=$(echo "$clean_json" | jq -r "[ .route.rules[] | select(.outbound == \"socks-out\" or .strategy == \"prefer_ipv4\") | $extract_geo_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
     
-    sd6=""
-    sg6=""
+    sd6=$(echo "$clean_json" | jq -r "[ .route.rules[] | select(.outbound == \"socks-out\" or .strategy == \"prefer_ipv6\") | $extract_dom_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
+    sg6=$(echo "$clean_json" | jq -r "[ .route.rules[] | select(.outbound == \"socks-out\" or .strategy == \"prefer_ipv6\") | $extract_geo_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
     
     ad4=$(echo "$clean_json" | jq -r "[ .route.rules[] | select(.outbound == \"vps-outbound-v4\") | $extract_dom_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
     ag4=$(echo "$clean_json" | jq -r "[ .route.rules[] | select(.outbound == \"vps-outbound-v4\") | $extract_geo_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
@@ -6759,7 +6792,6 @@ changef() {
   [[ "$sbnh" == "1.10" ]] && num=10 || num=11
   sbymfl
   echo
-  [[ "$sbnh" != "1.10" ]] && wfl4='暂不支持' sfl6='暂不支持'
   green "1：重置warp-wireguard-ipv4优先分流域名 $wfl4"
   green "2：重置warp-wireguard-ipv6优先分流域名 $wfl6"
   green "3：重置warp-socks5-ipv4优先分流域名 $sfl4"
@@ -6802,21 +6834,17 @@ changef() {
   readp "请选择：" menu
   
   if [ "$menu" = "1" ]; then
-    if [[ "$sbnh" == "1.10" ]]; then
-      readp "1：使用后缀域名方式\n2：使用geosite方式\n3：返回上层\n请选择：" menu
-      if [ "$menu" = "1" ]; then
-        readp "每个域名之间留空格，回车跳过表示重置清空warp-wireguard-ipv4的分流通道：" w4flym
-        update_routing_rule "w4" "domain_suffix" "$w4flym"
-        restartsb && changef
-      elif [ "$menu" = "2" ]; then
-        readp "每个域名之间留空格，回车跳过表示重置清空warp-wireguard-ipv4的分流通道：" w4flym
-        update_routing_rule "w4" "geosite" "$w4flym"
-        restartsb && changef
-      else
-        changef
-      fi
+    readp "1：使用后缀域名方式\n2：使用geosite方式\n3：返回上层\n请选择：" menu
+    if [ "$menu" = "1" ]; then
+      readp "每个域名之间留空格，回车跳过表示重置清空warp-wireguard-ipv4的分流通道：" w4flym
+      update_routing_rule "w4" "domain_suffix" "$w4flym"
+      restartsb && changef
+    elif [ "$menu" = "2" ]; then
+      readp "每个域名之间留空格，回车跳过表示重置清空warp-wireguard-ipv4的分流通道：" w4flym
+      update_routing_rule "w4" "geosite" "$w4flym"
+      restartsb && changef
     else
-      yellow "遗憾！当前暂时只支持warp-wireguard-ipv6，如需要warp-wireguard-ipv4，请切换1.10系列内核" && exit
+      changef
     fi
   elif [ "$menu" = "2" ]; then
     readp "1：使用后缀域名方式\n2：使用geosite方式\n3：返回上层\n请选择：" menu
@@ -6845,21 +6873,17 @@ changef() {
       changef
     fi
   elif [ "$menu" = "4" ]; then
-    if [[ "$sbnh" == "1.10" ]]; then
-      readp "1：使用后缀域名方式\n2：使用geosite方式\n3：返回上层\n请选择：" menu
-      if [ "$menu" = "1" ]; then
-        readp "每个域名之间留空格，回车跳过表示重置清空warp-socks5-ipv6的分流通道：" s6flym
-        update_routing_rule "s6" "domain_suffix" "$s6flym"
-        restartsb && changef
-      elif [ "$menu" = "2" ]; then
-        readp "每个域名之间留空格，回车跳过表示重置清空warp-socks5-ipv6的分流通道：" s6flym
-        update_routing_rule "s6" "geosite" "$s6flym"
-        restartsb && changef
-      else
-        changef
-      fi
+    readp "1：使用后缀域名方式\n2：使用geosite方式\n3：返回上层\n请选择：" menu
+    if [ "$menu" = "1" ]; then
+      readp "每个域名之间留空格，回车跳过表示重置清空warp-socks5-ipv6的分流通道：" s6flym
+      update_routing_rule "s6" "domain_suffix" "$s6flym"
+      restartsb && changef
+    elif [ "$menu" = "2" ]; then
+      readp "每个域名之间留空格，回车跳过表示重置清空warp-socks5-ipv6的分流通道：" s6flym
+      update_routing_rule "s6" "geosite" "$s6flym"
+      restartsb && changef
     else
-      yellow "遗憾！当前暂时只支持warp-socks5-ipv4，如需要warp-socks5-ipv6，请切换1.10系列内核" && exit
+      changef
     fi
   elif [ "$menu" = "5" ]; then
     readp "1：使用后缀域名方式\n2：使用geosite方式\n3：返回上层\n请选择：" menu
@@ -8108,8 +8132,8 @@ sb() {
   echo -e "本地IPV4地址：$blue$vps_ipv4$w4$plain   本地IPV6地址：$blue$vps_ipv6$w6$plain"
   echo -e "服务器地区：$blue$location$plain"
   
-  if [[ "$sbnh" == "1.10" ]] && [ -f "$SBFOLDER/sb.json" ]; then
-    rpip=$(strip_json_comments "$SBFOLDER/sb.json" | jq -r '.outbounds[0].domain_strategy') 2>/dev/null
+  if [ -f "$SBFOLDER/sb.json" ]; then
+    rpip=$(strip_json_comments "$SBFOLDER/sb.json" | jq -r '(.route.rules[] | select(.action == "resolve") | .strategy) // (.outbounds[0].domain_strategy) // empty') 2>/dev/null
     if [[ $rpip = 'prefer_ipv6' ]]; then
       v4_6="IPV6优先出站($showv6)"
     elif [[ $rpip = 'prefer_ipv4' ]]; then
