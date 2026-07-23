@@ -617,13 +617,13 @@ inssbjsonser() {
   # Attempt to read existing WireGuard values from sb.json
   if [[ -f "$SBFOLDER/sb.json" ]]; then
     local clean_js=$(strip_json_comments "$SBFOLDER/sb.json")
-    local cur_pvk=$(echo "$clean_js" | jq -r '((.outbounds[] | select(.type == "wireguard") | .private_key) // (.endpoints[] | select(.type == "wireguard") | .private_key) // empty)' 2>/dev/null | head -n 1)
+    local cur_pvk=$(echo "$clean_js" | jq -r ' ((.outbounds[] | select(.type == "wireguard") | .private_key) // (.endpoints[] | select(.type == "wireguard") | .private_key) // empty)' 2>/dev/null | head -n 1)
     [[ -n "$cur_pvk" ]] && pvk="$cur_pvk"
-    local cur_v6=$(echo "$clean_js" | jq -r '((.outbounds[] | select(.type == "wireguard") | .local_address[1]) // (.endpoints[] | select(.type == "wireguard") | .address[1]) // empty)' 2>/dev/null | cut -d/ -f1 | head -n 1)
+    local cur_v6=$(echo "$clean_js" | jq -r ' ((.outbounds[] | select(.type == "wireguard") | .local_address[1]) // (.endpoints[] | select(.type == "wireguard") | .address[1]) // empty)' 2>/dev/null | cut -d/ -f1 | head -n 1)
     [[ -n "$cur_v6" ]] && v6="$cur_v6"
-    local cur_res=$(echo "$clean_js" | jq -c '((.outbounds[] | select(.type == "wireguard") | .reserved) // (.endpoints[] | select(.type == "wireguard") | .peers[0].reserved) // empty)' 2>/dev/null | head -n 1)
+    local cur_res=$(echo "$clean_js" | jq -c ' ((.outbounds[] | select(.type == "wireguard") | .reserved) // (.endpoints[] | select(.type == "wireguard") | .peers[0].reserved) // empty)' 2>/dev/null | head -n 1)
     [[ -n "$cur_res" ]] && res="$cur_res"
-    local cur_endip=$(echo "$clean_js" | jq -r '((.outbounds[] | select(.type == "wireguard") | .server) // (.endpoints[] | select(.type == "wireguard") | .peers[0].address) // empty)' 2>/dev/null | head -n 1)
+    local cur_endip=$(echo "$clean_js" | jq -r ' ((.outbounds[] | select(.type == "wireguard") | .server) // (.endpoints[] | select(.type == "wireguard") | .peers[0].address) // empty)' 2>/dev/null | head -n 1)
     [[ -n "$cur_endip" ]] && endip="$cur_endip"
   fi
   : ${pvk:="g9I2sgUH6OCbIBTehkEfVEnuvInHYZvPOFhWchMLSc4="}
@@ -635,20 +635,20 @@ inssbjsonser() {
   # Attempt to load existing TLS certificate paths and Reality keys
   if [[ -f "$SBFOLDER/sb.json" ]]; then
     local clean_js=$(strip_json_comments "$SBFOLDER/sb.json")
-    local cur_cert=$(echo "$clean_js" | jq -r '(.inbounds[] | select(.tls.certificate_path != null) | .tls.certificate_path) // empty' 2>/dev/null | head -n 1)
+    local cur_cert=$(echo "$clean_js" | jq -r ' (.inbounds[] | select(.tls.certificate_path != null) | .tls.certificate_path) // empty' 2>/dev/null | head -n 1)
     [[ -n "$cur_cert" ]] && certificatec="$cur_cert"
-    local cur_key=$(echo "$clean_js" | jq -r '(.inbounds[] | select(.tls.key_path != null) | .tls.key_path) // empty' 2>/dev/null | head -n 1)
+    local cur_key=$(echo "$clean_js" | jq -r ' (.inbounds[] | select(.tls.key_path != null) | .tls.key_path) // empty' 2>/dev/null | head -n 1)
     [[ -n "$cur_key" ]] && certificatep="$cur_key"
-    local cur_ym=$(echo "$clean_js" | jq -r '(.inbounds[] | select(.tls.server_name != null and .tls.reality == null) | .tls.server_name) // empty' 2>/dev/null | head -n 1)
+    local cur_ym=$(echo "$clean_js" | jq -r ' (.inbounds[] | select(.tls.server_name != null and .tls.reality == null) | .tls.server_name) // empty' 2>/dev/null | head -n 1)
     [[ -n "$cur_ym" ]] && ym_domain="$cur_ym"
-    local cur_vl_ym=$(echo "$clean_js" | jq -r '(.inbounds[] | select(.tls.reality != null) | .tls.server_name) // empty' 2>/dev/null | head -n 1)
+    local cur_vl_ym=$(echo "$clean_js" | jq -r ' (.inbounds[] | select(.tls.reality != null) | .tls.server_name) // empty' 2>/dev/null | head -n 1)
     [[ -n "$cur_vl_ym" ]] && ym_vl_re="$cur_vl_ym"
     
-    local cur_priv=$(echo "$clean_js" | jq -r '(.inbounds[] | select(.tls.reality != null) | .tls.reality.private_key) // empty' 2>/dev/null | head -n 1)
+    local cur_priv=$(echo "$clean_js" | jq -r ' (.inbounds[] | select(.tls.reality != null) | .tls.reality.private_key) // empty' 2>/dev/null | head -n 1)
     [[ -n "$cur_priv" ]] && private_key="$cur_priv"
     local cur_pub=$(cat "$SBFOLDER/public.key" 2>/dev/null)
     [[ -n "$cur_pub" ]] && public_key="$cur_pub"
-    local cur_sid=$(echo "$clean_js" | jq -r '(.inbounds[] | select(.tls.reality != null) | .tls.reality.short_id[0]) // empty' 2>/dev/null | head -n 1)
+    local cur_sid=$(echo "$clean_js" | jq -r ' (.inbounds[] | select(.tls.reality != null) | .tls.reality.short_id[0]) // empty' 2>/dev/null | head -n 1)
     [[ -n "$cur_sid" ]] && short_id="$cur_sid"
   fi
 
@@ -1151,13 +1151,6 @@ inssbjsonser() {
   }'
 
   # Base 1.11+ json
-  local config_json_10='{
-    "log": {
-      "disabled": false,
-      "level": "info",
-      "timestamp": true
-    },
-  # Base 1.11+ json
   local config_json='{
     "log": {
       "disabled": false,
@@ -1323,15 +1316,13 @@ inssbjsonser() {
       local cpath=$(jq -r '.inbounds[0].tls.certificate_path // empty' "$f_conf")
       local kpath=$(jq -r '.inbounds[0].tls.key_path // empty' "$f_conf")
       if [[ -n "$cpath" && "$cpath" != "null" ]]; then
-        config_json=$(echo "$config_json" | jq --arg tag "$tag" --arg cert "$cpath" --arg key "$kpath" \
-          '(.inbounds[] | select(.tag == $tag) | .tls) |= (.certificate_path = $cert | .key_path = $key)')
+        local jq_filter='(.inbounds[] | select(.tag == $tag) | .tls) |= (.certificate_path = $cert | .key_path = $key)'
+        config_json=$(echo "$config_json" | jq --arg tag "$tag" --arg cert "$cpath" --arg key "$kpath" "$jq_filter")
       fi
     fi
   done
 
   echo "$config_json" > "$SBFOLDER/sb.json"
-  sync_configs_from_sb_json
-}
   sync_configs_from_sb_json
 }
 
@@ -1989,7 +1980,7 @@ result_vl_vm_hy_tu() {
   # Reality keys
   vl_name=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "vless-reality-sb" or .tag == "vless-h2-reality-sb") | .tls.server_name // empty' 2>/dev/null | head -n 1)
   public_key=$(cat "$SBFOLDER/public.key" 2>/dev/null)
-  short_id=$(echo "$clean_json" | jq -r '(.inbounds[] | select(.tag == "vless-reality-sb" or .tag == "vless-h2-reality-sb") | .tls.reality.short_id[0]) // empty' 2>/dev/null | head -n 1)
+  short_id=$(echo "$clean_json" | jq -r ' (.inbounds[] | select(.tag == "vless-reality-sb" or .tag == "vless-h2-reality-sb") | .tls.reality.short_id[0]) // empty' 2>/dev/null | head -n 1)
   
   # Shadowsocks credentials
   ss_password=$(echo "$clean_json" | jq -r '.inbounds[] | select(.tag == "shadowsocks-sb") | .password // empty' 2>/dev/null | head -n 1)
@@ -3926,7 +3917,7 @@ cfargo_ym() {
     yellow "因未安装 VMess 协议，无法开启 Argo 隧道！" && sleep 2 && changeserv
     return
   fi
-  local vm_no_tls=$(echo "$clean_json" | jq -r '(.inbounds[] | select(.tag == "vmess-ws-sb") | .listen_port) // empty')
+  local vm_no_tls=$(echo "$clean_json" | jq -r ' (.inbounds[] | select(.tag == "vmess-ws-sb") | .listen_port) // empty')
   if [[ -n "$vm_no_tls" ]]; then
     echo
     yellow "1：添加或者删除Argo临时隧道"
@@ -4030,7 +4021,7 @@ cfargo() {
   yellow "0：返回上层"
   readp "请选择【0-2】：" menu
   local clean_json=$(strip_json_comments "$SBFOLDER/sb.json")
-  local vm_listen_port=$(echo "$clean_json" | jq -r '(.inbounds[] | select(.tag == "vmess-ws-sb") | .listen_port) // empty')
+  local vm_listen_port=$(echo "$clean_json" | jq -r ' (.inbounds[] | select(.tag == "vmess-ws-sb") | .listen_port) // empty')
   if [ "$menu" = "1" ]; then
     green "请稍等……"
     cloudflaredargo
@@ -4205,7 +4196,7 @@ changeport() {
     local tag="$1"
     local new_port="$2"
     for file in $SBFILES; do
-      [ -f "$file" ] && jq --arg tag "$tag" --argjson p "$new_port" '(.inbounds[] | select(.tag == $tag)).listen_port = $p' "$file" > /tmp/tmp.json && mv /tmp/tmp.json "$file"
+      [ -f "$file" ] && jq --arg tag "$tag" --argjson p "$new_port" ' (.inbounds[] | select(.tag == $tag)).listen_port = $p' "$file" > /tmp/tmp.json && mv /tmp/tmp.json "$file"
     done
   }
 
@@ -4520,7 +4511,7 @@ changeuuid() {
   [[ -n "$socks_username" ]] && green "  Socks-User:    $socks_username"
   [[ -n "$socks_password" ]] && green "  Socks-Pass:    $socks_password"
 
-  oldvmpath=$(echo "$clean_json" | jq -r '(.inbounds[] | select(.tag == "vmess-ws-sb") | .transport.path) // empty')
+  oldvmpath=$(echo "$clean_json" | jq -r ' (.inbounds[] | select(.tag == "vmess-ws-sb") | .transport.path) // empty')
   if [[ -n "$oldvmpath" ]]; then
     green "Vmess-WS的path路径：$oldvmpath"
   fi
@@ -4642,12 +4633,12 @@ changeuuid() {
       [[ "$vmpath" != /* ]] && vmpath="/$vmpath"
       for file in $SBFILES; do
         if [ -f "$file" ]; then
-          jq --arg p "$vmpath" '(.inbounds[] | select(.tag == "vmess-ws-sb")).transport.path = $p' "$file" > /tmp/tmp.json && mv /tmp/tmp.json "$file"
+          jq --arg p "$vmpath" ' (.inbounds[] | select(.tag == "vmess-ws-sb")).transport.path = $p' "$file" > /tmp/tmp.json && mv /tmp/tmp.json "$file"
         fi
       done
       restartsb && sbshare > /dev/null 2>&1
     fi
-    blue "已确认Vmess-WS的path路径：$(strip_json_comments "$SBFOLDER/sb.json" | jq -r '(.inbounds[] | select(.tag == "vmess-ws-sb") | .transport.path) // empty')"
+    blue "已确认Vmess-WS的path路径：$(strip_json_comments "$SBFOLDER/sb.json" | jq -r ' (.inbounds[] | select(.tag == "vmess-ws-sb") | .transport.path) // empty')"
   else
     changeserv
   fi
@@ -7169,7 +7160,7 @@ unins() {
   fi
   
   local clean_json=$(strip_json_comments "$SBFOLDER/sb.json" 2>/dev/null)
-  local vm_listen_port=$(echo "$clean_json" | jq -r '(.inbounds[] | select(.tag == "vmess-ws-sb") | .listen_port) // empty' 2>/dev/null)
+  local vm_listen_port=$(echo "$clean_json" | jq -r ' (.inbounds[] | select(.tag == "vmess-ws-sb") | .listen_port) // empty' 2>/dev/null)
   [ -n "$vm_listen_port" ] && ps -ef | grep "[l]ocalhost:$vm_listen_port" | awk '{print $2}' | xargs kill 2>/dev/null
   ps -ef | grep -E '[s]bwpph|[w]arp-plus|[g]ost|[u]sque|[c]loudflared|[c]addy' | awk '{print $2}' | xargs kill -9 2>/dev/null
   if command -v warp-cli >/dev/null 2>&1; then
@@ -7506,6 +7497,10 @@ showprotocol() {
 
 # --- Main Entry and Interface ---
 instsllsingbox() {
+  if [[ -f "$SBFOLDER/sb.json" ]]; then
+    yellow "Sing-box 已安装，切勿重复安装！" && sleep 2 && sb
+    return
+  fi
   detect_system
   install_dependencies
   tun_check
@@ -7888,7 +7883,7 @@ sb() {
   echo -e "服务器地区：$blue$location$plain"
   
   if [ -f "$SBFOLDER/sb.json" ]; then
-    rpip=$(strip_json_comments "$SBFOLDER/sb.json" | jq -r '(.route.rules[] | select(.action == "resolve") | .strategy) // (.outbounds[0].domain_strategy) // empty') 2>/dev/null
+    rpip=$(strip_json_comments "$SBFOLDER/sb.json" | jq -r ' (.route.rules[] | select(.action == "resolve") | .strategy) // (.outbounds[0].domain_strategy) // empty') 2>/dev/null
     if [[ $rpip = 'prefer_ipv6' ]]; then
       v4_6="IPV6优先出站($showv6)"
     elif [[ $rpip = 'prefer_ipv4' ]]; then
