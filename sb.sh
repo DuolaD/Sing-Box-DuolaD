@@ -30,7 +30,7 @@ stty erase $'\b' 2>/dev/null || stty erase '^H' 2>/dev/null
 
 # --- Global Configuration Paths & Constants ---
 SBFOLDER="/var/Sing-Box-DuolaD"
-SBFILES="$SBFOLDER/sb10.json $SBFOLDER/sb11.json $SBFOLDER/sb.json"
+SBFILES="$SBFOLDER/sb.json"
 SCRIPT_URL="https://raw.githubusercontent.com/DuolaD/Sing-Box-DuolaD/main/sb.sh"
 SCRIPT_SHORTCUT="/usr/bin/sb"
 
@@ -239,15 +239,8 @@ openyn() {
 # --- Core Sing-Box Installer ---
 inssb() {
   red "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-  green "使用哪个内核版本？"
-  yellow "1：使用目前最新正式版内核 (回车默认)"
-  yellow "2：使用之前1.10.7正式版内核 (支持geosite分流、IP优选级切换，无Anytls协议)"
-  readp "请选择【1-2】：" menu
-  if [ -z "$menu" ] || [ "$menu" = "1" ] ; then
-    sbcore=$(curl -Ls https://github.com/SagerNet/sing-box/releases/latest | grep -oP 'tag/v\K[0-9.]+' | head -n 1)
-  else
-    sbcore='1.10.7'
-  fi
+  green "自动下载并安装最新正式版 Sing-box 内核..."
+  sbcore=$(curl -Ls https://github.com/SagerNet/sing-box/releases/latest | grep -oP 'tag/v\K[0-9.]+' | head -n 1)
   sbname="sing-box-$sbcore-linux-$cpu"
   mkdir -p "$SBFOLDER"
   curl -L -o "$SBFOLDER/sing-box.tar.gz" -# --retry 2 "https://github.com/SagerNet/sing-box/releases/download/v$sbcore/$sbname.tar.gz"
@@ -1157,119 +1150,15 @@ inssbjsonser() {
     ]
   }'
 
-  # Base 1.10 json
+  # Base 1.11+ json
   local config_json_10='{
     "log": {
       "disabled": false,
       "level": "info",
       "timestamp": true
     },
-    "inbounds": [],
-    "outbounds": [
-      {
-        "type": "direct",
-        "tag": "direct",
-        "domain_strategy": "'"${ipv}"'"
-      },
-      {
-        "type": "direct",
-        "tag": "vps-outbound-v4", 
-        "domain_strategy": "prefer_ipv4"
-      },
-      {
-        "type": "direct",
-        "tag": "vps-outbound-v6",
-        "domain_strategy": "prefer_ipv6"
-      },
-      {
-        "type": "socks",
-        "tag": "socks-out",
-        "server": "127.0.0.1",
-        "server_port": 40000,
-        "version": "5"
-      },
-      {
-        "type": "direct",
-        "tag": "socks-IPv4-out",
-        "detour": "socks-out",
-        "domain_strategy": "prefer_ipv4"
-      },
-      {
-        "type": "direct",
-        "tag": "socks-IPv6-out",
-        "detour": "socks-out",
-        "domain_strategy": "prefer_ipv6"
-      },
-      {
-        "type": "direct",
-        "tag": "warp-IPv4-out",
-        "detour": "wireguard-out",
-        "domain_strategy": "prefer_ipv4"
-      },
-      {
-        "type": "direct",
-        "tag": "warp-IPv6-out",
-        "detour": "wireguard-out",
-        "domain_strategy": "prefer_ipv6"
-      },
-      {
-        "type": "wireguard",
-        "tag": "wireguard-out",
-        "server": "'"${endip}"'",
-        "server_port": 2408,
-        "local_address": [
-          "172.16.0.2/32",
-          "'"${v6}/128"'"
-        ],
-        "private_key": "'"${pvk}"'",
-        "peer_public_key": "bmXOC+F1FxEMF9dyiK2H5/1SUtzH0JuVo51h2wPfgyo=",
-        "reserved": '"${res}"'
-      },
-      {
-        "type": "block",
-        "tag": "block"
-      }
-    ],
-    "route": {
-      "rules": [
-        {
-          "protocol": ["quic", "stun"],
-          "outbound": "block"
-        },
-        {
-          "outbound": "warp-IPv4-out",
-          "domain_suffix": ["DuolaD"]
-        },
-        {
-          "outbound": "warp-IPv6-out",
-          "domain_suffix": ["DuolaD"]
-        },
-        {
-          "outbound": "socks-IPv4-out",
-          "domain_suffix": ["DuolaD"]
-        },
-        {
-          "outbound": "socks-IPv6-out",
-          "domain_suffix": ["DuolaD"]
-        },
-        {
-          "outbound": "vps-outbound-v4",
-          "domain_suffix": ["DuolaD"]
-        },
-        {
-          "outbound": "vps-outbound-v6",
-          "domain_suffix": ["DuolaD"]
-        },
-        {
-          "outbound": "direct",
-          "network": "udp,tcp"
-        }
-      ]
-    }
-  }'
-
-  # Base 1.11 json
-  local config_json_11='{
+  # Base 1.11+ json
+  local config_json='{
     "log": {
       "disabled": false,
       "level": "info",
@@ -1360,93 +1249,72 @@ inssbjsonser() {
   : ${use_vl_h2_re:=false}
   : ${use_socks:=false}
 
-  # Dynamically add selected inbounds to both templates
+  # Dynamically add selected inbounds
   if [[ "$use_vl_re" == "true" ]]; then
-    config_json_10=$(echo "$config_json_10" | jq --argjson inb "$vl_re_inb" '.inbounds += [$inb]')
-    config_json_11=$(echo "$config_json_11" | jq --argjson inb "$vl_re_inb" '.inbounds += [$inb]')
+    config_json=$(echo "$config_json" | jq --argjson inb "$vl_re_inb" '.inbounds += [$inb]')
   fi
   if [[ "$use_vl_ws_tls" == "true" ]]; then
-    config_json_10=$(echo "$config_json_10" | jq --argjson inb "$vl_ws_tls_inb" '.inbounds += [$inb]')
-    config_json_11=$(echo "$config_json_11" | jq --argjson inb "$vl_ws_tls_inb" '.inbounds += [$inb]')
+    config_json=$(echo "$config_json" | jq --argjson inb "$vl_ws_tls_inb" '.inbounds += [$inb]')
   fi
   if [[ "$use_vl_hu_tls" == "true" ]]; then
-    config_json_10=$(echo "$config_json_10" | jq --argjson inb "$vl_hu_tls_inb" '.inbounds += [$inb]')
-    config_json_11=$(echo "$config_json_11" | jq --argjson inb "$vl_hu_tls_inb" '.inbounds += [$inb]')
+    config_json=$(echo "$config_json" | jq --argjson inb "$vl_hu_tls_inb" '.inbounds += [$inb]')
   fi
   if [[ "$use_vm_ws" == "true" ]]; then
-    config_json_10=$(echo "$config_json_10" | jq --argjson inb "$vm_ws_inb" '.inbounds += [$inb]')
-    config_json_11=$(echo "$config_json_11" | jq --argjson inb "$vm_ws_inb" '.inbounds += [$inb]')
+    config_json=$(echo "$config_json" | jq --argjson inb "$vm_ws_inb" '.inbounds += [$inb]')
   fi
   if [[ "$use_vm_ws_tls" == "true" ]]; then
-    config_json_10=$(echo "$config_json_10" | jq --argjson inb "$vm_ws_tls_inb" '.inbounds += [$inb]')
-    config_json_11=$(echo "$config_json_11" | jq --argjson inb "$vm_ws_tls_inb" '.inbounds += [$inb]')
+    config_json=$(echo "$config_json" | jq --argjson inb "$vm_ws_tls_inb" '.inbounds += [$inb]')
   fi
   if [[ "$use_vm_hu_tls" == "true" ]]; then
-    config_json_10=$(echo "$config_json_10" | jq --argjson inb "$vm_hu_tls_inb" '.inbounds += [$inb]')
-    config_json_11=$(echo "$config_json_11" | jq --argjson inb "$vm_hu_tls_inb" '.inbounds += [$inb]')
+    config_json=$(echo "$config_json" | jq --argjson inb "$vm_hu_tls_inb" '.inbounds += [$inb]')
   fi
   if [[ "$use_tr_tls" == "true" ]]; then
-    config_json_10=$(echo "$config_json_10" | jq --argjson inb "$tr_tls_inb" '.inbounds += [$inb]')
-    config_json_11=$(echo "$config_json_11" | jq --argjson inb "$tr_tls_inb" '.inbounds += [$inb]')
+    config_json=$(echo "$config_json" | jq --argjson inb "$tr_tls_inb" '.inbounds += [$inb]')
   fi
   if [[ "$use_tr_ws_tls" == "true" ]]; then
-    config_json_10=$(echo "$config_json_10" | jq --argjson inb "$tr_ws_tls_inb" '.inbounds += [$inb]')
-    config_json_11=$(echo "$config_json_11" | jq --argjson inb "$tr_ws_tls_inb" '.inbounds += [$inb]')
+    config_json=$(echo "$config_json" | jq --argjson inb "$tr_ws_tls_inb" '.inbounds += [$inb]')
   fi
   if [[ "$use_tr_hu_tls" == "true" ]]; then
-    config_json_10=$(echo "$config_json_10" | jq --argjson inb "$tr_hu_tls_inb" '.inbounds += [$inb]')
-    config_json_11=$(echo "$config_json_11" | jq --argjson inb "$tr_hu_tls_inb" '.inbounds += [$inb]')
+    config_json=$(echo "$config_json" | jq --argjson inb "$tr_hu_tls_inb" '.inbounds += [$inb]')
   fi
   if [[ "$use_ss" == "true" ]]; then
-    config_json_10=$(echo "$config_json_10" | jq --argjson inb "$ss_inb" '.inbounds += [$inb]')
-    config_json_11=$(echo "$config_json_11" | jq --argjson inb "$ss_inb" '.inbounds += [$inb]')
+    config_json=$(echo "$config_json" | jq --argjson inb "$ss_inb" '.inbounds += [$inb]')
   fi
   if [[ "$use_hy2" == "true" ]]; then
-    config_json_10=$(echo "$config_json_10" | jq --argjson inb "$hy2_inb" '.inbounds += [$inb]')
-    config_json_11=$(echo "$config_json_11" | jq --argjson inb "$hy2_inb" '.inbounds += [$inb]')
+    config_json=$(echo "$config_json" | jq --argjson inb "$hy2_inb" '.inbounds += [$inb]')
   fi
   if [[ "$use_tu" == "true" ]]; then
-    config_json_10=$(echo "$config_json_10" | jq --argjson inb "$tu_inb" '.inbounds += [$inb]')
-    config_json_11=$(echo "$config_json_11" | jq --argjson inb "$tu_inb" '.inbounds += [$inb]')
+    config_json=$(echo "$config_json" | jq --argjson inb "$tu_inb" '.inbounds += [$inb]')
   fi
   if [[ "$use_an" == "true" ]]; then
-    config_json_10=$(echo "$config_json_10" | jq --argjson inb "$an_inb" '.inbounds += [$inb]')
-    config_json_11=$(echo "$config_json_11" | jq --argjson inb "$an_inb" '.inbounds += [$inb]')
+    config_json=$(echo "$config_json" | jq --argjson inb "$an_inb" '.inbounds += [$inb]')
   fi
   if [[ "$use_vm_tcp" == "true" ]]; then
-    config_json_10=$(echo "$config_json_10" | jq --argjson inb "$vm_tcp_inb" '.inbounds += [$inb]')
-    config_json_11=$(echo "$config_json_11" | jq --argjson inb "$vm_tcp_inb" '.inbounds += [$inb]')
+    config_json=$(echo "$config_json" | jq --argjson inb "$vm_tcp_inb" '.inbounds += [$inb]')
   fi
   if [[ "$use_vm_http" == "true" ]]; then
-    config_json_10=$(echo "$config_json_10" | jq --argjson inb "$vm_http_inb" '.inbounds += [$inb]')
-    config_json_11=$(echo "$config_json_11" | jq --argjson inb "$vm_http_inb" '.inbounds += [$inb]')
+    config_json=$(echo "$config_json" | jq --argjson inb "$vm_http_inb" '.inbounds += [$inb]')
   fi
   if [[ "$use_vm_quic" == "true" ]]; then
-    config_json_10=$(echo "$config_json_10" | jq --argjson inb "$vm_quic_inb" '.inbounds += [$inb]')
-    config_json_11=$(echo "$config_json_11" | jq --argjson inb "$vm_quic_inb" '.inbounds += [$inb]')
+    config_json=$(echo "$config_json" | jq --argjson inb "$vm_quic_inb" '.inbounds += [$inb]')
   fi
   if [[ "$use_vm_h2_tls" == "true" ]]; then
-    config_json_10=$(echo "$config_json_10" | jq --argjson inb "$vm_h2_tls_inb" '.inbounds += [$inb]')
-    config_json_11=$(echo "$config_json_11" | jq --argjson inb "$vm_h2_tls_inb" '.inbounds += [$inb]')
+    config_json=$(echo "$config_json" | jq --argjson inb "$vm_h2_tls_inb" '.inbounds += [$inb]')
   fi
   if [[ "$use_vl_h2_tls" == "true" ]]; then
-    config_json_10=$(echo "$config_json_10" | jq --argjson inb "$vl_h2_tls_inb" '.inbounds += [$inb]')
-    config_json_11=$(echo "$config_json_11" | jq --argjson inb "$vl_h2_tls_inb" '.inbounds += [$inb]')
+    config_json=$(echo "$config_json" | jq --argjson inb "$vl_h2_tls_inb" '.inbounds += [$inb]')
   fi
   if [[ "$use_tr_h2_tls" == "true" ]]; then
-    config_json_10=$(echo "$config_json_10" | jq --argjson inb "$tr_h2_tls_inb" '.inbounds += [$inb]')
-    config_json_11=$(echo "$config_json_11" | jq --argjson inb "$tr_h2_tls_inb" '.inbounds += [$inb]')
+    config_json=$(echo "$config_json" | jq --argjson inb "$tr_h2_tls_inb" '.inbounds += [$inb]')
   fi
   if [[ "$use_vl_h2_re" == "true" ]]; then
-    config_json_10=$(echo "$config_json_10" | jq --argjson inb "$vl_h2_re_inb" '.inbounds += [$inb]')
-    config_json_11=$(echo "$config_json_11" | jq --argjson inb "$vl_h2_re_inb" '.inbounds += [$inb]')
+    config_json=$(echo "$config_json" | jq --argjson inb "$vl_h2_re_inb" '.inbounds += [$inb]')
   fi
   if [[ "$use_socks" == "true" ]]; then
-    config_json_10=$(echo "$config_json_10" | jq --argjson inb "$socks_inb" '.inbounds += [$inb]')
-    config_json_11=$(echo "$config_json_11" | jq --argjson inb "$socks_inb" '.inbounds += [$inb]')
+    config_json=$(echo "$config_json" | jq --argjson inb "$socks_inb" '.inbounds += [$inb]')
   fi
 
-  # Post-process config_json_10 and config_json_11 to preserve custom certificate paths
+  # Post-process config_json to preserve custom certificate paths
   local local_proto_tags=("vless-reality-sb" "vless-ws-tls-sb" "vless-hu-tls-sb" "vless-h2-tls-sb" "vless-h2-reality-sb" "vmess-ws-sb" "vmess-ws-tls-sb" "vmess-hu-tls-sb" "vmess-tcp-sb" "vmess-http-sb" "vmess-quic-sb" "vmess-h2-tls-sb" "trojan-tls-sb" "trojan-ws-tls-sb" "trojan-hu-tls-sb" "trojan-h2-tls-sb" "shadowsocks-sb" "hy2-sb" "tuic5-sb" "anytls-sb" "socks-sb")
   local tag
   for tag in "${local_proto_tags[@]}"; do
@@ -1455,22 +1323,15 @@ inssbjsonser() {
       local cpath=$(jq -r '.inbounds[0].tls.certificate_path // empty' "$f_conf")
       local kpath=$(jq -r '.inbounds[0].tls.key_path // empty' "$f_conf")
       if [[ -n "$cpath" && "$cpath" != "null" ]]; then
-        config_json_10=$(echo "$config_json_10" | jq --arg tag "$tag" --arg cert "$cpath" --arg key "$kpath" \
-          '(.inbounds[] | select(.tag == $tag) | .tls) |= (.certificate_path = $cert | .key_path = $key)')
-        config_json_11=$(echo "$config_json_11" | jq --arg tag "$tag" --arg cert "$cpath" --arg key "$kpath" \
+        config_json=$(echo "$config_json" | jq --arg tag "$tag" --arg cert "$cpath" --arg key "$kpath" \
           '(.inbounds[] | select(.tag == $tag) | .tls) |= (.certificate_path = $cert | .key_path = $key)')
       fi
     fi
   done
 
-  echo "$config_json_10" > "$SBFOLDER/sb10.json"
-  echo "$config_json_11" > "$SBFOLDER/sb11.json"
-
-  if [[ "$sbnh" == "1.10" ]]; then
-    cp "$SBFOLDER/sb10.json" "$SBFOLDER/sb.json"
-  else
-    cp "$SBFOLDER/sb11.json" "$SBFOLDER/sb.json"
-  fi
+  echo "$config_json" > "$SBFOLDER/sb.json"
+  sync_configs_from_sb_json
+}
   sync_configs_from_sb_json
 }
 
@@ -3588,7 +3449,7 @@ $cl_tls_common"
   fi
 
   # 13. AnyTLS
-  if [[ "$sbnh" != "1.10" ]] && [[ -n "$port_an" ]]; then
+  if [[ -n "$port_an" ]]; then
     local servers_list=$(resolve_servers "$port_an" "$sb_an_ip")
     for s_info in $servers_list; do
       local s_type=$(echo "$s_info" | cut -d'|' -f1)
@@ -3943,9 +3804,7 @@ sbshare() {
   resvmess
   reshy2
   restu5
-  if [[ "$sbnh" != "1.10" ]]; then
-    resan
-  fi
+  resan
   restrojan
   resshadowsocks
   resvmess_tcp
@@ -4245,7 +4104,7 @@ changeserv() {
   sbactive
   echo
   green "Sing-box配置变更选择如下:"
-  readp "1：更换Reality域名伪装地址、切换自签证书与Acme域名证书、开关TLS\n2：更换全协议UUID(密码)、Vmess-Path路径\n3：设置Argo临时隧道、固定隧道\n4：切换IPV4或IPV6的代理优先级 (支持1.10+全系列内核)\n5：更换Warp-wireguard出站账户\n6：设置所有Vmess节点的CDN优选地址\n0：返回上层\n请选择【0-6】：" menu
+  readp "1：更换Reality域名伪装地址、切换自签证书与Acme域名证书、开关TLS\n2：更换全协议UUID(密码)、Vmess-Path路径\n3：设置Argo临时隧道、固定隧道\n4：切换IPV4或IPV6的代理优先级\n5：更换Warp-wireguard出站账户\n6：设置所有Vmess节点的CDN优选地址\n0：返回上层\n请选择【0-6】：" menu
   case "$menu" in
     1) changeym ;;
     2) changeuuid ;;
@@ -4389,7 +4248,7 @@ changeport() {
   [[ -n "$port_ss" ]] && green "17：Shadowsocks协议 ${yellow}端口:$port_ss${plain}"
   [[ -n "$port_hy2" ]] && green "18：Hysteria 2协议 ${yellow}端口:$port_hy2  转发多端口: $hy2zfport${plain}"
   [[ -n "$port_tu" ]] && green "19：Tuic-v5协议 ${yellow}端口:$port_tu  转发多端口: $tu5zfport${plain}"
-  if [[ "$sbnh" != "1.10" ]] && [[ -n "$port_an" ]]; then
+  if [[ -n "$port_an" ]]; then
     green "20：AnyTLS协议 ${yellow}端口:$port_an${plain}"
   fi
   [[ -n "$port_socks" ]] && green "21：Socks协议 ${yellow}端口:$port_socks${plain}"
@@ -4590,7 +4449,7 @@ changeport() {
       fi
       ;;
     20)
-      if [[ "$sbnh" != "1.10" ]] && [[ -n "$port_an" ]]; then
+      if [[ -n "$port_an" ]]; then
         local p=$(prompt_new_port "AnyTLS" "$port_an")
         update_inbound_port "anytls-sb" "$p"
         restartsb && sbshare > /dev/null 2>&1
@@ -4794,25 +4653,18 @@ changeuuid() {
   fi
 }
 
-# --- Change IP Priority (For 1.10+ all versions) ---
+# --- Change IP Priority ---
 changeip() {
   v4v6
   chip() {
-    if [ -f "$SBFOLDER/sb10.json" ]; then
-      jq --arg strat "$rrpip" '(.outbounds[] | select(.type == "direct")).domain_strategy = $strat' "$SBFOLDER/sb10.json" > /tmp/sb10.json && mv /tmp/sb10.json "$SBFOLDER/sb10.json"
-    fi
-    if [ -f "$SBFOLDER/sb11.json" ]; then
-      jq --arg strat "$rrpip" '
-        (.outbounds[]) |= del(.domain_strategy) |
-        if (.route.rules | map(select(.action == "resolve")) | length) > 0 then
-          .route.rules |= map(if .action == "resolve" then .strategy = $strat | del(.domain_suffix) else . end)
-        else
-          .route.rules = [{"action": "resolve", "strategy": $strat}] + .route.rules
-        end
-      ' "$SBFOLDER/sb11.json" > /tmp/sb11.json && mv /tmp/sb11.json "$SBFOLDER/sb11.json"
-    fi
-    [[ "$sbnh" == "1.10" ]] && num=10 || num=11
-    cp "$SBFOLDER/sb${num}.json" "$SBFOLDER/sb.json" 2>/dev/null
+    jq --arg strat "$rrpip" '
+      (.outbounds[]) |= del(.domain_strategy) |
+      if (.route.rules | map(select(.action == "resolve")) | length) > 0 then
+        .route.rules |= map(if .action == "resolve" then .strategy = $strat | del(.domain_suffix) else . end)
+      else
+        .route.rules = [{"action": "resolve", "strategy": $strat}] + .route.rules
+      end
+    ' "$SBFOLDER/sb.json" > /tmp/sb.json && mv /tmp/sb.json "$SBFOLDER/sb.json"
     restartsb
   }
   readp "1. IPV4优先\n2. IPV6优先\n3. 仅IPV4\n4. 仅IPV6\n请选择：" choose
@@ -4883,21 +4735,13 @@ warpwg() {
 }
 
 changewg() {
-  [[ "$sbnh" == "1.10" ]] && num=10 || num=11
   local clean_json=$(strip_json_comments "$SBFOLDER/sb.json")
-  if [[ "$sbnh" == "1.10" ]]; then
-    wgipv6=$(echo "$clean_json" | jq -r '.outbounds[] | select(.type == "wireguard") | .local_address[1] | split("/")[0]')
-    wgprkey=$(echo "$clean_json" | jq -r '.outbounds[] | select(.type == "wireguard") | .private_key')
-    wgres=$(sed -n '165s/.*\[\(.*\)\].*/\1/p' "$SBFOLDER/sb.json")
-    wgip=$(echo "$clean_json" | jq -r '.outbounds[] | select(.type == "wireguard") | .server')
-    wgpo=$(echo "$clean_json" | jq -r '.outbounds[] | select(.type == "wireguard") | .server_port')
-  else
-    wgipv6=$(echo "$clean_json" | jq -r '.endpoints[] | .address[1] | split("/")[0]')
-    wgprkey=$(echo "$clean_json" | jq -r '.endpoints[] | .private_key')
-    wgres=$(sed -n '142s/.*\[\(.*\)\].*/\1/p' "$SBFOLDER/sb.json")
-    wgip=$(echo "$clean_json" | jq -r '.endpoints[] | .peers[].address')
-    wgpo=$(echo "$clean_json" | jq -r '.endpoints[] | .peers[].port')
-  fi
+  wgipv6=$(echo "$clean_json" | jq -r '.endpoints[]? | select(.type == "wireguard") | .address[1] | split("/")[0]' 2>/dev/null)
+  wgprkey=$(echo "$clean_json" | jq -r '.endpoints[]? | select(.type == "wireguard") | .private_key' 2>/dev/null)
+  wgres=$(echo "$clean_json" | jq -c '.endpoints[]? | select(.type == "wireguard") | .peers[0].reserved' 2>/dev/null)
+  wgip=$(echo "$clean_json" | jq -r '.endpoints[]? | select(.type == "wireguard") | .peers[0].address' 2>/dev/null)
+  wgpo=$(echo "$clean_json" | jq -r '.endpoints[]? | select(.type == "wireguard") | .peers[0].port' 2>/dev/null)
+
   echo
   green "当前warp-wireguard可更换的参数如下："
   green "Private_key私钥：$wgprkey"
@@ -4921,19 +4765,11 @@ changewg() {
       menu_res="0,0,0"
     fi
     
-    # Use JQ for clean and robust updates
-    # sb10.json
+    # Use JQ for clean and robust updates on sb.json
     jq --arg key "$menu_key" --arg ip "$menu_ip/128" --argjson res "[$menu_res]" \
-       '(.outbounds[] | select(.type == "wireguard")) |= (.private_key = $key | .local_address[1] = $ip | .reserved = $res)' \
-       "$SBFOLDER/sb10.json" > /tmp/sb10.json && mv /tmp/sb10.json "$SBFOLDER/sb10.json"
-    
-    # sb11.json
-    jq --arg key "$menu_key" --arg ip "$menu_ip/128" --argjson res "[$menu_res]" \
-       '(.endpoints[] | select(.type == "wireguard")) |= (.private_key = $key | .address[1] = $ip | .peers[0].reserved = $res)' \
-       "$SBFOLDER/sb11.json" > /tmp/sb11.json && mv /tmp/sb11.json "$SBFOLDER/sb11.json"
-       
-    rm -rf "$SBFOLDER/sb.json"
-    cp "$SBFOLDER/sb${num}.json" "$SBFOLDER/sb.json"
+       '(.endpoints[]? | select(.type == "wireguard")) |= (.private_key = $key | .address[1] = $ip | .peers[0].reserved = $res)' \
+       "$SBFOLDER/sb.json" > /tmp/sb.json && mv /tmp/sb.json "$SBFOLDER/sb.json"
+        
     restartsb
     green "设置结束"
   else
@@ -5864,18 +5700,14 @@ modify_protocol_config() {
     done
     
     local target
-    for target in sb.json sb10.json sb11.json; do
-      if [[ -f "$SBFOLDER/$target" ]]; then
-        jq --argjson inbs "$inbounds_arr" '.inbounds = $inbs' "$SBFOLDER/$target" > "$SBFOLDER/${target}.tmp" && mv "$SBFOLDER/${target}.tmp" "$SBFOLDER/$target"
-      fi
-    done
+    if [[ -f "$SBFOLDER/sb.json" ]]; then
+      jq --argjson inbs "$inbounds_arr" '.inbounds = $inbs' "$SBFOLDER/sb.json" > "$SBFOLDER/sb.json.tmp" && mv "$SBFOLDER/sb.json.tmp" "$SBFOLDER/sb.json"
+    fi
 
     local clean_js=$(strip_json_comments "$SBFOLDER/sb.json")
     local base_config=$(echo "$clean_js" | jq '.inbounds = []' 2>/dev/null)
     if [[ -n "$base_config" ]]; then
       echo "$base_config" > "$SBFOLDER/config.json"
-      echo "$base_config" > "$SBFOLDER/config10.json"
-      echo "$base_config" > "$SBFOLDER/config11.json"
     fi
 
     write_caddyfile
@@ -5951,10 +5783,8 @@ add_protocol() {
   yellow "18：Hysteria 2 (QUIC/UDP) $state"
   [[ -f "$SBFOLDER/conf/tuic5-sb.json" ]] && state="${green}[已安装]${plain}" || state="${yellow}[未安装]${plain}"
   yellow "19：Tuic-v5 (QUIC/UDP) $state"
-  if [[ "$sbnh" != "1.10" ]]; then
-    [[ -f "$SBFOLDER/conf/anytls-sb.json" ]] && state="${green}[已安装]${plain}" || state="${yellow}[未安装]${plain}"
-    yellow "20：AnyTLS $state"
-  fi
+  [[ -f "$SBFOLDER/conf/anytls-sb.json" ]] && state="${green}[已安装]${plain}" || state="${yellow}[未安装]${plain}"
+  yellow "20：AnyTLS $state"
   [[ -f "$SBFOLDER/conf/socks-sb.json" ]] && state="${green}[已安装]${plain}" || state="${yellow}[未安装]${plain}"
   yellow "21：Socks (Socks5 代理服务) $state"
   echo " 0：返回上层"
@@ -5991,7 +5821,7 @@ add_protocol() {
       17) sel_idx=16 ;;
       18) sel_idx=17 ;;
       19) sel_idx=18 ;;
-      20) [[ "$sbnh" != "1.10" ]] && sel_idx=19 ;;
+      20) sel_idx=19 ;;
       21) sel_idx=20 ;;
       *) continue ;;
     esac
@@ -6440,14 +6270,11 @@ init_warp_instances_db() {
 
 rebuild_singbox_outbounds() {
   init_warp_instances_db
-  local clean_10=$(strip_json_comments "$SBFOLDER/sb10.json" 2>/dev/null)
-  local clean_11=$(strip_json_comments "$SBFOLDER/sb11.json" 2>/dev/null)
+  local clean_json=$(strip_json_comments "$SBFOLDER/sb.json" 2>/dev/null)
   
-  [ -z "$clean_10" ] && return
+  [ -z "$clean_json" ] && return
   
-  local base_outs_10=$(echo "$clean_10" | jq '[.outbounds[] | select(.type != "socks")]' 2>/dev/null)
-  local base_outs_11=$(echo "$clean_11" | jq '[.outbounds[] | select(.type != "socks")]' 2>/dev/null)
-  
+  local base_outs=$(echo "$clean_json" | jq '[.outbounds[] | select(.type != "socks")]' 2>/dev/null)
   local socks_outs="[]"
   
   if [ -s "$WARP_INST_FILE" ]; then
@@ -6465,11 +6292,7 @@ rebuild_singbox_outbounds() {
     socks_outs='[{"type":"socks","tag":"socks-out","server":"127.0.0.1","server_port":40000,"version":"5"}]'
   fi
   
-  jq --argjson s "$socks_outs" --argjson b "$base_outs_10" '.outbounds = ($b + $s)' "$SBFOLDER/sb10.json" > /tmp/sb10.json && mv /tmp/sb10.json "$SBFOLDER/sb10.json"
-  jq --argjson s "$socks_outs" --argjson b "$base_outs_11" '.outbounds = ($b + $s)' "$SBFOLDER/sb11.json" > /tmp/sb11.json && mv /tmp/sb11.json "$SBFOLDER/sb11.json"
-  
-  [[ "$sbnh" == "1.10" ]] && num=10 || num=11
-  cp "$SBFOLDER/sb${num}.json" "$SBFOLDER/sb.json" 2>/dev/null
+  jq --argjson s "$socks_outs" --argjson b "$base_outs" '.outbounds = ($b + $s)' "$SBFOLDER/sb.json" > /tmp/sb.json && mv /tmp/sb.json "$SBFOLDER/sb.json"
 }
 
 # --- Domain Splitting & Routing Rules Compiler ---
@@ -6496,69 +6319,36 @@ update_routing_rule() {
     *) target_outbound="$route_channel" ;;
   esac
 
-  # For sb10.json:
-  if [[ "$rule_type" == "geosite" ]]; then
-    if [[ "$json_array" == '["DuolaD"]' ]]; then
-      jq --arg ob "$target_outbound" '
-        (.route.rules[] | select(.outbound == $ob)) |= (del(.geosite) | del(.rule_set))
-      ' "$SBFOLDER/sb10.json" > /tmp/sb10.json && mv /tmp/sb10.json "$SBFOLDER/sb10.json"
-    else
-      jq --argjson arr "$json_array" --arg ob "$target_outbound" '
-        ($arr | map(gsub("^geosite-";"") | gsub("\\.srs$";""))) as $clean_arr
-        | ($clean_arr | map("geosite-" + .)) as $tags
-        | ($clean_arr | map({
-            "tag": ("geosite-" + .),
-            "type": "remote",
-            "format": "binary",
-            "url": ("https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo/geosite/" + . + ".srs"),
-            "download_detour": "direct"
-          })) as $new_rulesets
-        | .route.rule_set = (((.route.rule_set // []) + $new_rulesets) | unique_by(.tag))
-        | if any(.route.rules[]; .outbound == $ob) then
-            (.route.rules[] | select(.outbound == $ob)).geosite = $clean_arr
-            | (.route.rules[] | select(.outbound == $ob)).rule_set = $tags
-          else
-            .route.rules += [{"outbound": $ob, "geosite": $clean_arr, "rule_set": $tags}]
-          end
-      ' "$SBFOLDER/sb10.json" > /tmp/sb10.json && mv /tmp/sb10.json "$SBFOLDER/sb10.json"
-    fi
-  else
-    jq --argjson arr "$json_array" --arg rtype "$rule_type" --arg ob "$target_outbound" \
-       'if any(.route.rules[]; .outbound == $ob) then (.route.rules[] | select(.outbound == $ob))[$rtype] = $arr else .route.rules += [{"outbound": $ob, ($rtype): $arr}] end' \
-       "$SBFOLDER/sb10.json" > /tmp/sb10.json && mv /tmp/sb10.json "$SBFOLDER/sb10.json"
-  fi
-
-  # For sb11.json:
   if [[ "$rule_type" == "domain_suffix" ]]; then
     case "$route_channel" in
       w4)
         jq --argjson arr "$json_array" \
            '(.route.rules[] | select(.strategy == "prefer_ipv4")).domain_suffix = $arr |
             (.route.rules[] | select(.outbound == "warp-out")).domain_suffix = $arr' \
-           "$SBFOLDER/sb11.json" > /tmp/sb11.json && mv /tmp/sb11.json "$SBFOLDER/sb11.json"
+           "$SBFOLDER/sb.json" > /tmp/sb.json && mv /tmp/sb.json "$SBFOLDER/sb.json"
         ;;
       w6)
         jq --argjson arr "$json_array" \
            '(.route.rules[] | select(.strategy == "prefer_ipv6")).domain_suffix = $arr |
             (.route.rules[] | select(.outbound == "warp-out")).domain_suffix = $arr' \
-           "$SBFOLDER/sb11.json" > /tmp/sb11.json && mv /tmp/sb11.json "$SBFOLDER/sb11.json"
+           "$SBFOLDER/sb.json" > /tmp/sb.json && mv /tmp/sb.json "$SBFOLDER/sb.json"
         ;;
       s4)
         jq --argjson arr "$json_array" \
            '(.route.rules[] | select(.strategy == "prefer_ipv4")).domain_suffix = $arr |
             (.route.rules[] | select(.outbound == "socks-out")).domain_suffix = $arr' \
-           "$SBFOLDER/sb11.json" > /tmp/sb11.json && mv /tmp/sb11.json "$SBFOLDER/sb11.json"
+           "$SBFOLDER/sb.json" > /tmp/sb.json && mv /tmp/sb.json "$SBFOLDER/sb.json"
         ;;
       s6)
         jq --argjson arr "$json_array" \
            '(.route.rules[] | select(.strategy == "prefer_ipv6")).domain_suffix = $arr |
             (.route.rules[] | select(.outbound == "socks-out")).domain_suffix = $arr' \
-           "$SBFOLDER/sb11.json" > /tmp/sb11.json && mv /tmp/sb11.json "$SBFOLDER/sb11.json"
+           "$SBFOLDER/sb.json" > /tmp/sb.json && mv /tmp/sb.json "$SBFOLDER/sb.json"
         ;;
       *)
         jq --argjson arr "$json_array" --arg ob "$target_outbound" \
            'if any(.route.rules[]; .outbound == $ob) then (.route.rules[] | select(.outbound == $ob)).domain_suffix = $arr else .route.rules += [{"domain_suffix": $arr, "outbound": $ob}] end' \
-           "$SBFOLDER/sb11.json" > /tmp/sb11.json && mv /tmp/sb11.json "$SBFOLDER/sb11.json"
+           "$SBFOLDER/sb.json" > /tmp/sb.json && mv /tmp/sb.json "$SBFOLDER/sb.json"
         ;;
     esac
   elif [[ "$rule_type" == "geosite" ]]; then
@@ -6568,30 +6358,30 @@ update_routing_rule() {
           jq '
             (.route.rules[] | select(.strategy == "prefer_ipv4")) |= del(.rule_set) |
             (.route.rules[] | select(.outbound == "warp-out")) |= del(.rule_set)
-          ' "$SBFOLDER/sb11.json" > /tmp/sb11.json && mv /tmp/sb11.json "$SBFOLDER/sb11.json"
+          ' "$SBFOLDER/sb.json" > /tmp/sb.json && mv /tmp/sb.json "$SBFOLDER/sb.json"
           ;;
         w6)
           jq '
             (.route.rules[] | select(.strategy == "prefer_ipv6")) |= del(.rule_set) |
             (.route.rules[] | select(.outbound == "warp-out")) |= del(.rule_set)
-          ' "$SBFOLDER/sb11.json" > /tmp/sb11.json && mv /tmp/sb11.json "$SBFOLDER/sb11.json"
+          ' "$SBFOLDER/sb.json" > /tmp/sb.json && mv /tmp/sb.json "$SBFOLDER/sb.json"
           ;;
         s4)
           jq '
             (.route.rules[] | select(.strategy == "prefer_ipv4")) |= del(.rule_set) |
             (.route.rules[] | select(.outbound == "socks-out")) |= del(.rule_set)
-          ' "$SBFOLDER/sb11.json" > /tmp/sb11.json && mv /tmp/sb11.json "$SBFOLDER/sb11.json"
+          ' "$SBFOLDER/sb.json" > /tmp/sb.json && mv /tmp/sb.json "$SBFOLDER/sb.json"
           ;;
         s6)
           jq '
             (.route.rules[] | select(.strategy == "prefer_ipv6")) |= del(.rule_set) |
             (.route.rules[] | select(.outbound == "socks-out")) |= del(.rule_set)
-          ' "$SBFOLDER/sb11.json" > /tmp/sb11.json && mv /tmp/sb11.json "$SBFOLDER/sb11.json"
+          ' "$SBFOLDER/sb.json" > /tmp/sb.json && mv /tmp/sb.json "$SBFOLDER/sb.json"
           ;;
         *)
           jq --arg ob "$target_outbound" '
             (.route.rules[] | select(.outbound == $ob)) |= del(.rule_set)
-          ' "$SBFOLDER/sb11.json" > /tmp/sb11.json && mv /tmp/sb11.json "$SBFOLDER/sb11.json"
+          ' "$SBFOLDER/sb.json" > /tmp/sb.json && mv /tmp/sb.json "$SBFOLDER/sb.json"
           ;;
       esac
     else
@@ -6625,13 +6415,9 @@ update_routing_rule() {
           else
             if any(.route.rules[]; .outbound == $ob) then (.route.rules[] | select(.outbound == $ob)).rule_set = $tags else .route.rules += [{"outbound": $ob, "rule_set": $tags}] end
           end
-      ' "$SBFOLDER/sb11.json" > /tmp/sb11.json && mv /tmp/sb11.json "$SBFOLDER/sb11.json"
+      ' "$SBFOLDER/sb.json" > /tmp/sb.json && mv /tmp/sb.json "$SBFOLDER/sb.json"
     fi
   fi
-  
-  # Sync to active sb.json
-  [[ "$sbnh" == "1.10" ]] && num=10 || num=11
-  cp "$SBFOLDER/sb${num}.json" "$SBFOLDER/sb.json" 2>/dev/null
 }
 
 sbymfl() {
@@ -6677,43 +6463,23 @@ sbymfl() {
   extract_dom_jq='[ (.domain_suffix // [])[]? | select(. != "DuolaD") ]'
   extract_geo_jq='[ (.geosite // [])[]?, ((.rule_set // [])[]? | select(type=="string" and startswith("geosite-")) | sub("^geosite-";"")) ] | map(select(. != "DuolaD"))'
   
-  if [[ "$sbnh" == "1.10" ]]; then
-    wd4=$(echo "$clean_json" | jq -r "[ .route.rules[] | select(.outbound == \"warp-IPv4-out\") | $extract_dom_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
-    args_wg4=$(echo "$clean_json" | jq -r "[ .route.rules[] | select(.outbound == \"warp-IPv4-out\") | $extract_geo_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
-    
-    wd6=$(echo "$clean_json" | jq -r "[ .route.rules[] | select(.outbound == \"warp-IPv6-out\") | $extract_dom_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
-    args_wg6=$(echo "$clean_json" | jq -r "[ .route.rules[] | select(.outbound == \"warp-IPv6-out\") | $extract_geo_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
-    
-    sd4=$(echo "$clean_json" | jq -r "[ .route.rules[] | select(.outbound == \"socks-IPv4-out\") | $extract_dom_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
-    sg4=$(echo "$clean_json" | jq -r "[ .route.rules[] | select(.outbound == \"socks-IPv4-out\") | $extract_geo_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
-    
-    sd6=$(echo "$clean_json" | jq -r "[ .route.rules[] | select(.outbound == \"socks-IPv6-out\") | $extract_dom_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
-    sg6=$(echo "$clean_json" | jq -r "[ .route.rules[] | select(.outbound == \"socks-IPv6-out\") | $extract_geo_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
-    
-    ad4=$(echo "$clean_json" | jq -r "[ .route.rules[] | select(.outbound == \"vps-outbound-v4\") | $extract_dom_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
-    ag4=$(echo "$clean_json" | jq -r "[ .route.rules[] | select(.outbound == \"vps-outbound-v4\") | $extract_geo_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
-    
-    ad6=$(echo "$clean_json" | jq -r "[ .route.rules[] | select(.outbound == \"vps-outbound-v6\") | $extract_dom_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
-    ag6=$(echo "$clean_json" | jq -r "[ .route.rules[] | select(.outbound == \"vps-outbound-v6\") | $extract_geo_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
-  else
-    wd4=$(echo "$clean_json" | jq -r "[ .route.rules[] | select(.outbound == \"warp-out\" or .strategy == \"prefer_ipv4\") | $extract_dom_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
-    args_wg4=$(echo "$clean_json" | jq -r "[ .route.rules[] | select(.outbound == \"warp-out\" or .strategy == \"prefer_ipv4\") | $extract_geo_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
-    
-    wd6=$(echo "$clean_json" | jq -r "[ .route.rules[] | select(.outbound == \"warp-out\" or .strategy == \"prefer_ipv6\") | $extract_dom_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
-    args_wg6=$(echo "$clean_json" | jq -r "[ .route.rules[] | select(.outbound == \"warp-out\" or .strategy == \"prefer_ipv6\") | $extract_geo_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
-    
-    sd4=$(echo "$clean_json" | jq -r "[ .route.rules[] | select(.outbound == \"socks-out\" or .strategy == \"prefer_ipv4\") | $extract_dom_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
-    sg4=$(echo "$clean_json" | jq -r "[ .route.rules[] | select(.outbound == \"socks-out\" or .strategy == \"prefer_ipv4\") | $extract_geo_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
-    
-    sd6=$(echo "$clean_json" | jq -r "[ .route.rules[] | select(.outbound == \"socks-out\" or .strategy == \"prefer_ipv6\") | $extract_dom_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
-    sg6=$(echo "$clean_json" | jq -r "[ .route.rules[] | select(.outbound == \"socks-out\" or .strategy == \"prefer_ipv6\") | $extract_geo_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
-    
-    ad4=$(echo "$clean_json" | jq -r "[ .route.rules[] | select(.outbound == \"vps-outbound-v4\") | $extract_dom_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
-    ag4=$(echo "$clean_json" | jq -r "[ .route.rules[] | select(.outbound == \"vps-outbound-v4\") | $extract_geo_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
-    
-    ad6=$(echo "$clean_json" | jq -r "[ .route.rules[] | select(.outbound == \"vps-outbound-v6\") | $extract_dom_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
-    ag6=$(echo "$clean_json" | jq -r "[ .route.rules[] | select(.outbound == \"vps-outbound-v6\") | $extract_geo_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
-  fi
+  wd4=$(echo "$clean_json" | jq -r "[ .route.rules[] | select(.outbound == \"warp-out\" or .strategy == \"prefer_ipv4\") | $extract_dom_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
+  args_wg4=$(echo "$clean_json" | jq -r "[ .route.rules[] | select(.outbound == \"warp-out\" or .strategy == \"prefer_ipv4\") | $extract_geo_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
+  
+  wd6=$(echo "$clean_json" | jq -r "[ .route.rules[] | select(.outbound == \"warp-out\" or .strategy == \"prefer_ipv6\") | $extract_dom_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
+  args_wg6=$(echo "$clean_json" | jq -r "[ .route.rules[] | select(.outbound == \"warp-out\" or .strategy == \"prefer_ipv6\") | $extract_geo_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
+  
+  sd4=$(echo "$clean_json" | jq -r "[ .route.rules[] | select(.outbound == \"socks-out\" or .strategy == \"prefer_ipv4\") | $extract_dom_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
+  sg4=$(echo "$clean_json" | jq -r "[ .route.rules[] | select(.outbound == \"socks-out\" or .strategy == \"prefer_ipv4\") | $extract_geo_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
+  
+  sd6=$(echo "$clean_json" | jq -r "[ .route.rules[] | select(.outbound == \"socks-out\" or .strategy == \"prefer_ipv6\") | $extract_dom_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
+  sg6=$(echo "$clean_json" | jq -r "[ .route.rules[] | select(.outbound == \"socks-out\" or .strategy == \"prefer_ipv6\") | $extract_geo_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
+  
+  ad4=$(echo "$clean_json" | jq -r "[ .route.rules[] | select(.outbound == \"vps-outbound-v4\") | $extract_dom_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
+  ag4=$(echo "$clean_json" | jq -r "[ .route.rules[] | select(.outbound == \"vps-outbound-v4\") | $extract_geo_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
+  
+  ad6=$(echo "$clean_json" | jq -r "[ .route.rules[] | select(.outbound == \"vps-outbound-v6\") | $extract_dom_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
+  ag6=$(echo "$clean_json" | jq -r "[ .route.rules[] | select(.outbound == \"vps-outbound-v6\") | $extract_geo_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
 
   if [[ -z "$wd4" && -z "$args_wg4" ]]; then
     wfl4="${yellow}【warp出站IPV4可用】未分流${plain}"
@@ -6789,7 +6555,6 @@ changefl() {
 }
 
 changef() {
-  [[ "$sbnh" == "1.10" ]] && num=10 || num=11
   sbymfl
   echo
   green "1：重置warp-wireguard-ipv4优先分流域名 $wfl4"
@@ -7204,8 +6969,7 @@ inswarpplus() {
     [[ -n "$pids" ]] && echo "$pids" | xargs kill -9 2>/dev/null
     sed -i "${del_idx}d" "$WARP_INST_FILE"
     rm -f "$SBFOLDER/usque_${del_port}.json"
-    jq --arg ob "$del_tag" '.route.rules = [.route.rules[] | select(.outbound != $ob)]' "$SBFOLDER/sb10.json" > /tmp/sb10.json 2>/dev/null && mv /tmp/sb10.json "$SBFOLDER/sb10.json"
-    jq --arg ob "$del_tag" '.route.rules = [.route.rules[] | select(.outbound != $ob)]' "$SBFOLDER/sb11.json" > /tmp/sb11.json 2>/dev/null && mv /tmp/sb11.json "$SBFOLDER/sb11.json"
+    jq --arg ob "$del_tag" '.route.rules = [.route.rules[] | select(.outbound != $ob)]' "$SBFOLDER/sb.json" > /tmp/sb.json 2>/dev/null && mv /tmp/sb.json "$SBFOLDER/sb.json"
     rebuild_singbox_outbounds
     restartsb
     green "实例 [$del_tag] 已成功停止并删除！"
@@ -7298,7 +7062,7 @@ upsbcroe() {
   [[ $inscore =~ ^[0-9.]+$ ]] && lat="【已安装v$inscore】" || pre="【已安装v$inscore】"
   green "1：升级/切换Sing-box最新正式版 v$latcore  ${bblue}${lat}${plain}"
   green "2：升级/切换Sing-box最新测试版 v$precore  ${bblue}${pre}${plain}"
-  green "3：切换Sing-box某个正式版或测试版，需指定版本号 (建议1.10.0以上版本)"
+  green "3：切换Sing-box某个正式版或测试版，需指定版本号 (建议1.11.0及以上版本)"
   green "0：返回上层"
   readp "请选择【0-3】：" menu
   if [ "$menu" = "1" ]; then
@@ -7307,9 +7071,9 @@ upsbcroe() {
     upcore=$(curl -Ls https://github.com/SagerNet/sing-box/releases | grep -oP '/tag/v\K[0-9.]+-[^"]+' | head -n 1)
   elif [ "$menu" = "3" ]; then
     echo
-    red "注意: 版本号在 https://github.com/SagerNet/sing-box/tags 可查，且有Downloads字样 (必须1.10系或者1.30系以上版本)"
-    green "正式版版本号格式：数字.数字.数字 (例：1.10.7"
-    green "测试版版本号格式：数字.数字.数字-alpha或rc或beta.数字 (例：1.13.0-alpha或rc或beta.1)"
+    red "注意: 版本号在 https://github.com/SagerNet/sing-box/tags 可查，且有Downloads字样 (建议1.11.0及以上版本)"
+    green "正式版版本号格式：数字.数字.数字 (例：1.11.0)"
+    green "测试版版本号格式：数字.数字.数字-alpha或rc或beta.数字 (例：1.13.0-alpha.1)"
     readp "请输入Sing-box版本号：" upcore
   else
     sb
@@ -7327,9 +7091,6 @@ upsbcroe() {
         chown root:root "$SBFOLDER/sing-box"
         chmod +x "$SBFOLDER/sing-box"
         sbnh=$("$SBFOLDER/sing-box" version 2>/dev/null | awk '/version/{print $NF}' 2>/dev/null | cut -d '.' -f 1,2)
-        [[ "$sbnh" == "1.10" ]] && num=10 || num=11
-        rm -rf "$SBFOLDER/sb.json"
-        cp "$SBFOLDER/sb${num}.json" "$SBFOLDER/sb.json"
         restartsb && sbshare > /dev/null 2>&1
         blue "成功升级/切换 Sing-box 内核版本：$("$SBFOLDER/sing-box" version | awk '/version/{print $NF}')" && sleep 3 && sb
       else
@@ -7666,7 +7427,7 @@ showprotocol() {
   if [[ -n "$port_tu" ]]; then
     print_protocol_line "Tuic-v5" "$port_tu" "证书形式:$hy2_zs  转发多端口: $tu5zfport"
   fi
-  if [[ "$sbnh" != "1.10" && -n "$port_an" ]]; then
+  if [[ -n "$port_an" ]]; then
     print_protocol_line "Anytls" "$port_an" "证书形式:$hy2_zs"
   fi
   if [[ -n "$port_vm_tcp" ]]; then
@@ -7712,7 +7473,7 @@ showprotocol() {
   l4="VPS本地ipv4优先分流域名：$adfl4"
   l6="VPS本地ipv6优先分流域名：$adfl6"
 
-  [[ "$sbnh" == "1.10" ]] && ymflzu=("ww4" "ww6" "ws4" "ws6" "l4" "l6") || ymflzu=("ww6" "ws4" "l4" "l6")
+  ymflzu=("ww4" "ww6" "ws4" "ws6" "l4" "l6")
   local all_unset=true
   for ymfl in "${ymflzu[@]}"; do
     if [[ ${!ymfl} != *"未"* ]]; then
@@ -7799,9 +7560,7 @@ instsllsingbox() {
   yellow "17：Shadowsocks (Shadowsocks 多种加密)"
   yellow "18：Hysteria 2 (QUIC/UDP)"
   yellow "19：Tuic-v5 (QUIC/UDP)"
-  if [[ "$sbnh" != "1.10" ]]; then
-    yellow "20：AnyTLS"
-  fi
+  yellow "20：AnyTLS"
   yellow "21：Socks (Socks5 代理服务)"
   readp "请选择【1-21】：" select_proto
   if [[ -z "$select_proto" ]]; then
@@ -7833,7 +7592,7 @@ instsllsingbox() {
         17) use_ss=true ;;
         18) use_hy2=true ;;
         19) use_tu=true ;;
-        20) [[ "$sbnh" != "1.10" ]] && use_an=true ;;
+        20) use_an=true ;;
         21) use_socks=true ;;
       esac
     done
@@ -8023,10 +7782,6 @@ instsllsingbox() {
 sb() {
   clear
   detect_system
-  if [ -f "$SBFOLDER/sb.json" ]; then
-    [ ! -f "$SBFOLDER/sb10.json" ] && cp "$SBFOLDER/sb.json" "$SBFOLDER/sb10.json"
-    [ ! -f "$SBFOLDER/sb11.json" ] && cp "$SBFOLDER/sb.json" "$SBFOLDER/sb11.json"
-  fi
   white "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" 
   echo -e "${bblue}   _____ _             _                  ${plain}"
   echo -e "${bblue}  / ____(_)           | |                 ${plain}"
