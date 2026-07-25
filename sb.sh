@@ -8712,16 +8712,22 @@ showprotocol() {
 
   init_warp_instances_db
   local has_socks=0
+  local has_ss=0
+  local has_wg=0
   local has_dns_sni=0
   [[ -s "$WARP_INST_FILE" ]] && has_socks=1
+  [[ -s "$SS_INST_FILE" ]] && has_ss=1
+  [[ -s "$WG_INST_FILE" ]] && has_wg=1
   [[ -s "$DNS_SNI_INST_FILE" ]] && has_dns_sni=1
 
-  if [[ $has_socks -eq 0 && $has_dns_sni -eq 0 ]]; then
+  if [[ $has_socks -eq 0 && $has_ss -eq 0 && $has_wg -eq 0 && $has_dns_sni -eq 0 ]]; then
     echo -e "已出站通道状态：${yellow}未启动/无代理实例${plain}"
     echo -e "${blue}----------------------------------------------------------------------------------${plain}"
   else
     local total_count=0
     [[ $has_socks -eq 1 ]] && total_count=$((total_count + $(grep -c '|' "$WARP_INST_FILE")))
+    [[ $has_ss -eq 1 ]] && total_count=$((total_count + $(grep -c '|' "$SS_INST_FILE")))
+    [[ $has_wg -eq 1 ]] && total_count=$((total_count + $(grep -c '|' "$WG_INST_FILE")))
     [[ $has_dns_sni -eq 1 ]] && total_count=$((total_count + $(grep -c '|' "$DNS_SNI_INST_FILE")))
     echo -e "已出站通道状态：${green}已启动${plain} (共 ${total_count} 个出站通道)"
     echo -e "${blue}----------------------------------------------------------------------------------${plain}"
@@ -8732,10 +8738,42 @@ showprotocol() {
         [[ -z "$i_port" ]] && continue
         local type_str="Socks5"
         [[ "$i_type" != "NONE" && -n "$i_type" ]] && type_str="Socks5($i_type)"
-        printf " ${green}[%-2d]${plain}  %-16s  %-20s  %-26s  ${green}%s${plain}\n" \
-          "$count" "$type_str" "端口: $i_port" "Tag: $i_tag" "已启动"
+        local target_str="端口: $i_port"
+        local tag_str="Tag: $i_tag"
+        [[ ${#target_str} -gt 28 ]] && target_str="${target_str:0:25}..."
+        [[ ${#tag_str} -gt 28 ]] && tag_str="${tag_str:0:25}..."
+        printf " ${green}[%-2d]${plain}  %-16s  %-28s  %-28s  ${green}%s${plain}\n" \
+          "$count" "$type_str" "$target_str" "$tag_str" "已启动"
         ((count++))
       done < "$WARP_INST_FILE"
+    fi
+
+    if [[ $has_ss -eq 1 ]]; then
+      while IFS='|' read -r s_server s_port s_method s_password s_tag s_status; do
+        [[ -z "$s_server" ]] && continue
+        local type_str="Shadowsocks"
+        local target_str="目标: ${s_server}:${s_port}"
+        local tag_str="Tag: $s_tag"
+        [[ ${#target_str} -gt 28 ]] && target_str="${target_str:0:25}..."
+        [[ ${#tag_str} -gt 28 ]] && tag_str="${tag_str:0:25}..."
+        printf " ${green}[%-2d]${plain}  %-16s  %-28s  %-28s  ${green}%s${plain}\n" \
+          "$count" "$type_str" "$target_str" "$tag_str" "已启动"
+        ((count++))
+      done < "$SS_INST_FILE"
+    fi
+
+    if [[ $has_wg -eq 1 ]]; then
+      while IFS='|' read -r w_endpoint w_pvk w_addrs w_pbk w_psk w_res w_tag w_status; do
+        [[ -z "$w_endpoint" ]] && continue
+        local type_str="WireGuard"
+        local target_str="目标: ${w_endpoint}"
+        local tag_str="Tag: $w_tag"
+        [[ ${#target_str} -gt 28 ]] && target_str="${target_str:0:25}..."
+        [[ ${#tag_str} -gt 28 ]] && tag_str="${tag_str:0:25}..."
+        printf " ${green}[%-2d]${plain}  %-16s  %-28s  %-28s  ${green}%s${plain}\n" \
+          "$count" "$type_str" "$target_str" "$tag_str" "已启动"
+        ((count++))
+      done < "$WG_INST_FILE"
     fi
 
     if [[ $has_dns_sni -eq 1 ]]; then
@@ -8743,8 +8781,12 @@ showprotocol() {
         [[ -z "$r_mode" ]] && continue
         local display_type="DNS代理"
         [[ "$r_mode" == "sni" ]] && display_type="SNI反代"
-        printf " ${green}[%-2d]${plain}  %-16s  %-20s  %-26s  ${green}%s${plain}\n" \
-          "$count" "$display_type" "目标: $r_target" "Tag: $r_tag" "已启动"
+        local target_str="目标: $r_target"
+        local tag_str="Tag: $r_tag"
+        [[ ${#target_str} -gt 28 ]] && target_str="${target_str:0:25}..."
+        [[ ${#tag_str} -gt 28 ]] && tag_str="${tag_str:0:25}..."
+        printf " ${green}[%-2d]${plain}  %-16s  %-28s  %-28s  ${green}%s${plain}\n" \
+          "$count" "$display_type" "$target_str" "$tag_str" "已启动"
         ((count++))
       done < "$DNS_SNI_INST_FILE"
     fi
