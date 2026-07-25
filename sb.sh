@@ -239,25 +239,47 @@ openyn() {
 # --- Core Sing-Box Installer ---
 inssb() {
   red "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-  green "自动下载并安装最新正式版 Sing-box 内核..."
-  sbcore=$(curl -Ls https://github.com/SagerNet/sing-box/releases/latest | grep -oP 'tag/v\K[0-9.]+' | head -n 1)
+  green "使用哪个内核版本？"
+  yellow "1：使用目前最新正式版内核 (回车默认)"
+  yellow "2：手动输入 Release Tag 指定版本（例如：1.13.0 或 1.13.0-alpha.1，仅支持1.13.0或更高版本）"
+  readp "请选择【1-2】：" menu
+  if [[ -z "$menu" ]] || [[ "$menu" = "1" ]]; then
+    green "正在获取最新正式版 Sing-box 内核版本..."
+    sbcore=$(curl -Ls https://github.com/SagerNet/sing-box/releases/latest | grep -oP 'tag/v\K[0-9.]+' | head -n 1)
+  elif [[ "$menu" = "2" ]]; then
+    readp "请输入 Sing-box 版本号 Tag：" custom_tag
+    sbcore="${custom_tag#v}"
+    sbcore="${sbcore#V}"
+  else
+    red "输入错误，请重新选择" && inssb
+    return
+  fi
+
+  if [[ -z "$sbcore" ]]; then
+    red "未获取到有效的 Sing-box 版本号，安装失败！" && exit
+  fi
+
+  green "开始下载并安装 Sing-box 内核版本 v$sbcore ..."
   sbname="sing-box-$sbcore-linux-$cpu"
   mkdir -p "$SBFOLDER"
   curl -L -o "$SBFOLDER/sing-box.tar.gz" -# --retry 2 "https://github.com/SagerNet/sing-box/releases/download/v$sbcore/$sbname.tar.gz"
   if [[ -f "$SBFOLDER/sing-box.tar.gz" ]]; then
-    tar xzf "$SBFOLDER/sing-box.tar.gz" -C "$SBFOLDER"
-    mv "$SBFOLDER/$sbname/sing-box" "$SBFOLDER/sing-box"
-    rm -rf "$SBFOLDER/sing-box.tar.gz" "$SBFOLDER/$sbname"
+    tar xzf "$SBFOLDER/sing-box.tar.gz" -C "$SBFOLDER" 2>/dev/null
+    if [[ -f "$SBFOLDER/$sbname/sing-box" ]]; then
+      mv "$SBFOLDER/$sbname/sing-box" "$SBFOLDER/sing-box"
+      rm -rf "$SBFOLDER/sing-box.tar.gz" "$SBFOLDER/$sbname"
+    fi
     if [[ -f "$SBFOLDER/sing-box" ]]; then
       chown root:root "$SBFOLDER/sing-box"
       chmod +x "$SBFOLDER/sing-box"
       blue "成功安装 Sing-box 内核版本：$("$SBFOLDER/sing-box" version | awk '/version/{print $NF}')"
       sbnh=$("$SBFOLDER/sing-box" version 2>/dev/null | awk '/version/{print $NF}' 2>/dev/null | cut -d '.' -f 1,2)
     else
-      red "下载 Sing-box 内核不完整，安装失败，请再运行安装一次" && exit
+      rm -rf "$SBFOLDER/sing-box.tar.gz" "$SBFOLDER/$sbname"
+      red "下载 Sing-box 内核不完整或该版本 Tag 不存在，安装失败，请重新运行安装并核对版本号！" && exit
     fi
   else
-    red "下载 Sing-box 内核失败，请再运行安装一次，并检测VPS的网络是否可以访问Github" && exit
+    red "下载 Sing-box 内核失败，请再运行安装一次，并检测 VPS 的网络是否可以访问 GitHub" && exit
   fi
 }
 
