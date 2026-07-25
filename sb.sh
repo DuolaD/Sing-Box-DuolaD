@@ -9205,66 +9205,88 @@ instsllsingbox() {
   use_socks=false        # 21: Socks
 
   echo
-  green "请选择需要安装的协议组合 (回车默认安装 1 7 18 19，或输入数字并用空格分隔，如 1 17 18)"
-  green "--- VLESS 组合 ---"
-  yellow " 1：VLESS-Reality (Vision + TCP)"
-  yellow " 2：VLESS-WS-TLS (VLESS over WebSocket + TLS)"
-  yellow " 3：VLESS-HTTPUpgrade-TLS (VLESS over HTTPUpgrade + TLS)"
-  yellow " 4：VLESS-H2-TLS (VLESS over HTTP/2 + TLS)"
-  yellow " 5：VLESS-HTTP2-REALITY (VLESS over HTTP/2 + REALITY)"
-  green "--- VMess 组合 ---"
-  yellow " 6：VMess-WS (VMess over WebSocket，不启用 TLS)"
-  yellow " 7：VMess-WS-TLS (VMess over WebSocket + TLS)"
-  yellow " 8：VMess-HTTPUpgrade-TLS (VMess over HTTPUpgrade + TLS)"
-  yellow " 9：VMess-TCP (VMess over TCP，不启用 TLS)"
-  yellow "10：VMess-HTTP (VMess over HTTP，不启用 TLS)"
-  yellow "11：VMess-QUIC (VMess over QUIC，启用 TLS)"
-  yellow "12：VMess-H2-TLS (VMess over HTTP/2 + TLS)"
-  green "--- Trojan 组合 ---"
-  yellow "13：Trojan-TLS (Trojan over TCP + TLS)"
-  yellow "14：Trojan-WS-TLS (Trojan over WebSocket + TLS)"
-  yellow "15：Trojan-HTTPUpgrade-TLS (Trojan over HTTPUpgrade + TLS)"
-  yellow "16：Trojan-H2-TLS (Trojan over HTTP/2 + TLS)"
-  green "--- 其他经典/高速协议 ---"
-  yellow "17：Shadowsocks (Shadowsocks 多种加密)"
-  yellow "18：Hysteria 2 (QUIC/UDP)"
-  yellow "19：Tuic-v5 (QUIC/UDP)"
-  yellow "20：AnyTLS"
-  yellow "21：Socks (Socks5 代理服务)"
-  readp "请选择【1-21】：" select_proto
-  if [[ -z "$select_proto" ]]; then
-    use_vl_re=true
-    use_vm_ws_tls=true
+  green "中国大陆直连推荐协议：Hysteria 2、Tuic-v5、VLESS-Reality、VMess-WS、VLESS-WS-TLS"
+  green "海外直连推荐协议：Shadowsocks、Socks、VMess-WS、VLESS-WS-TLS"
+  echo
+  yellow "1：中国大陆推荐协议（回车默认）"
+  yellow "2：海外直连推荐协议"
+  yellow "3：自定义"
+  readp "请选择【1-3】： " preset_choice
+  if [[ -z "$preset_choice" || "$preset_choice" == "1" ]]; then
     use_hy2=true
     use_tu=true
+    use_vl_re=true
+    use_vm_ws=true
+    use_vl_ws_tls=true
+  elif [[ "$preset_choice" == "2" ]]; then
+    use_ss=true
+    use_socks=true
+    use_vm_ws=true
+    use_vl_ws_tls=true
   else
-    read -r -a proto_arr <<< "$select_proto"
-    for item in "${proto_arr[@]}"; do
-      item=$(echo "$item" | xargs)
-      case "$item" in
-        1) use_vl_re=true ;;
-        2) use_vl_ws_tls=true ;;
-        3) use_vl_hu_tls=true ;;
-        4) use_vl_h2_tls=true ;;
-        5) use_vl_h2_re=true ;;
-        6) use_vm_ws=true ;;
-        7) use_vm_ws_tls=true ;;
-        8) use_vm_hu_tls=true ;;
-        9) use_vm_tcp=true ;;
-        10) use_vm_http=true ;;
-        11) use_vm_quic=true ;;
-        12) use_vm_h2_tls=true ;;
-        13) use_tr_tls=true ;;
-        14) use_tr_ws_tls=true ;;
-        15) use_tr_hu_tls=true ;;
-        16) use_tr_h2_tls=true ;;
-        17) use_ss=true ;;
-        18) use_hy2=true ;;
-        19) use_tu=true ;;
-        20) use_an=true ;;
-        21) use_socks=true ;;
-      esac
-    done
+    echo
+    green "请选择需要安装的协议组合 (回车默认安装 1 6 7 18 19，或输入数字并用空格分隔，如 1 17 18)"
+    green "--- VLESS 组合 ---"
+    yellow " 1：VLESS-Reality (Vision + TCP)"
+    yellow " 2：VLESS-WS-TLS (VLESS over WebSocket + TLS)"
+    yellow " 3：VLESS-HTTPUpgrade-TLS (VLESS over HTTPUpgrade + TLS)"
+    yellow " 4：VLESS-H2-TLS (VLESS over HTTP/2 + TLS)"
+    yellow " 5：VLESS-HTTP2-REALITY (VLESS over HTTP/2 + REALITY)"
+    green "--- VMess 组合 ---"
+    yellow " 6：VMess-WS (VMess over WebSocket，不启用 TLS)"
+    yellow " 7：VMess-WS-TLS (VMess over WebSocket + TLS)"
+    yellow " 8：VMess-HTTPUpgrade-TLS (VMess over HTTPUpgrade + TLS)"
+    yellow " 9：VMess-TCP (VMess over TCP，不启用 TLS)"
+    yellow "10：VMess-HTTP (VMess over HTTP，不启用 TLS)"
+    yellow "11：VMess-QUIC (VMess over QUIC，启用 TLS)"
+    yellow "12：VMess-H2-TLS (VMess over HTTP/2 + TLS)"
+    green "--- Trojan 组合 ---"
+    yellow "13：Trojan-TLS (Trojan over TCP + TLS)"
+    yellow "14：Trojan-WS-TLS (Trojan over WebSocket + TLS)"
+    yellow "15：Trojan-HTTPUpgrade-TLS (Trojan over HTTPUpgrade + TLS)"
+    yellow "16：Trojan-H2-TLS (Trojan over HTTP/2 + TLS)"
+    green "--- 其他经典/高速协议 ---"
+    yellow "17：Shadowsocks (Shadowsocks 多种加密)"
+    yellow "18：Hysteria 2 (QUIC/UDP)"
+    yellow "19：Tuic-v5 (QUIC/UDP)"
+    yellow "20：AnyTLS"
+    yellow "21：Socks (Socks5 代理服务)"
+    readp "请选择【1-21】：" select_proto
+    if [[ -z "$select_proto" ]]; then
+      use_vl_re=true
+      use_vm_ws=true
+      use_vm_ws_tls=true
+      use_hy2=true
+      use_tu=true
+    else
+      read -r -a proto_arr <<< "$select_proto"
+      for item in "${proto_arr[@]}"; do
+        item=$(echo "$item" | xargs)
+        case "$item" in
+          1) use_vl_re=true ;;
+          2) use_vl_ws_tls=true ;;
+          3) use_vl_hu_tls=true ;;
+          4) use_vl_h2_tls=true ;;
+          5) use_vl_h2_re=true ;;
+          6) use_vm_ws=true ;;
+          7) use_vm_ws_tls=true ;;
+          8) use_vm_hu_tls=true ;;
+          9) use_vm_tcp=true ;;
+          10) use_vm_http=true ;;
+          11) use_vm_quic=true ;;
+          12) use_vm_h2_tls=true ;;
+          13) use_tr_tls=true ;;
+          14) use_tr_ws_tls=true ;;
+          15) use_tr_hu_tls=true ;;
+          16) use_tr_h2_tls=true ;;
+          17) use_ss=true ;;
+          18) use_hy2=true ;;
+          19) use_tu=true ;;
+          20) use_an=true ;;
+          21) use_socks=true ;;
+        esac
+      done
+    fi
   fi
 
   # Fallback if nothing was selected
