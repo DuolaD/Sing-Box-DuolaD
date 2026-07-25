@@ -1157,6 +1157,17 @@ inssbjsonser() {
       "level": "info",
       "timestamp": true
     },
+    "dns": {
+      "servers": [
+        {
+          "tag": "remote-dns",
+          "type": "udp",
+          "server": "1.1.1.1"
+        }
+      ],
+      "rules": [],
+      "strategy": "'"${ipv}"'"
+    },
     "inbounds": [],
     "endpoints": [
       {
@@ -1200,8 +1211,7 @@ inssbjsonser() {
           "action": "sniff"
         },
         {
-          "action": "resolve",
-          "strategy": "'"${ipv}"'"
+          "action": "resolve"
         },
         {
           "domain_suffix": ["DuolaD"],
@@ -4697,8 +4707,8 @@ changeip() {
   chip() {
     jq --arg strat "$rrpip" '
       (.outbounds[]) |= del(.domain_strategy) |
-      if (.route.rules | map(select(.action == "resolve")) | length) > 0 then
-        .route.rules |= map(if .action == "resolve" then .strategy = $strat | del(.domain_suffix) else . end)
+      if any(.route.rules[]?; .action == "resolve" and .domain_suffix == null and .rule_set == null and .geosite == null and .domain == null) then
+        .route.rules |= map(if (.action == "resolve" and .domain_suffix == null and .rule_set == null and .geosite == null and .domain == null) then .strategy = $strat else . end)
       else
         .route.rules = [{"action": "resolve", "strategy": $strat}] + .route.rules
       end
@@ -6772,41 +6782,105 @@ update_routing_rule() {
       case "$route_channel" in
         w4)
           jq '
-            (.route.rules[] | select(.strategy == "prefer_ipv4")) |= del(.domain_suffix) |
-            (.route.rules[] | select(.outbound == "warp-out")) |= del(.domain_suffix)
+            (.route.rules |= map(
+              if (.action == "resolve" and .strategy == "prefer_ipv4" and .domain_suffix != null) then
+                if (.rule_set == null and .geosite == null and .domain == null) then empty else del(.domain_suffix) end
+              else . end
+            )) |
+            (([.route.rules[]? | select(.action == "resolve" and (.strategy == "prefer_ipv4" or .strategy == "prefer_ipv6") and .domain_suffix != null) | .domain_suffix[]?] | unique) as $merged_arr |
+             if ($merged_arr | length) > 0 then
+               if any(.route.rules[]?; .outbound == "warp-out" and .domain_suffix != null) then (.route.rules[] | select(.outbound == "warp-out" and .domain_suffix != null)).domain_suffix = $merged_arr else .route.rules += [{"outbound": "warp-out", "domain_suffix": $merged_arr}] end
+             else
+               (.route.rules |= map(
+                 if (.outbound == "warp-out" and .domain_suffix != null) then
+                   if (.rule_set == null and .geosite == null and .domain == null) then empty else del(.domain_suffix) end
+                 else . end
+               ))
+             end)
           ' "$SBFOLDER/sb.json" > /tmp/sb.json && mv /tmp/sb.json "$SBFOLDER/sb.json"
           ;;
         w6)
           jq '
-            (.route.rules[] | select(.strategy == "prefer_ipv6")) |= del(.domain_suffix) |
-            (.route.rules[] | select(.outbound == "warp-out")) |= del(.domain_suffix)
+            (.route.rules |= map(
+              if (.action == "resolve" and .strategy == "prefer_ipv6" and .domain_suffix != null) then
+                if (.rule_set == null and .geosite == null and .domain == null) then empty else del(.domain_suffix) end
+              else . end
+            )) |
+            (([.route.rules[]? | select(.action == "resolve" and (.strategy == "prefer_ipv4" or .strategy == "prefer_ipv6") and .domain_suffix != null) | .domain_suffix[]?] | unique) as $merged_arr |
+             if ($merged_arr | length) > 0 then
+               if any(.route.rules[]?; .outbound == "warp-out" and .domain_suffix != null) then (.route.rules[] | select(.outbound == "warp-out" and .domain_suffix != null)).domain_suffix = $merged_arr else .route.rules += [{"outbound": "warp-out", "domain_suffix": $merged_arr}] end
+             else
+               (.route.rules |= map(
+                 if (.outbound == "warp-out" and .domain_suffix != null) then
+                   if (.rule_set == null and .geosite == null and .domain == null) then empty else del(.domain_suffix) end
+                 else . end
+               ))
+             end)
           ' "$SBFOLDER/sb.json" > /tmp/sb.json && mv /tmp/sb.json "$SBFOLDER/sb.json"
           ;;
         s4)
           jq '
-            (.route.rules[] | select(.strategy == "prefer_ipv4")) |= del(.domain_suffix) |
-            (.route.rules[] | select(.outbound == "socks-out")) |= del(.domain_suffix)
+            (.route.rules |= map(
+              if (.action == "resolve" and .strategy == "prefer_ipv4" and .domain_suffix != null) then
+                if (.rule_set == null and .geosite == null and .domain == null) then empty else del(.domain_suffix) end
+              else . end
+            )) |
+            (([.route.rules[]? | select(.action == "resolve" and (.strategy == "prefer_ipv4" or .strategy == "prefer_ipv6") and .domain_suffix != null) | .domain_suffix[]?] | unique) as $merged_arr |
+             if ($merged_arr | length) > 0 then
+               if any(.route.rules[]?; .outbound == "socks-out" and .domain_suffix != null) then (.route.rules[] | select(.outbound == "socks-out" and .domain_suffix != null)).domain_suffix = $merged_arr else .route.rules += [{"outbound": "socks-out", "domain_suffix": $merged_arr}] end
+             else
+               (.route.rules |= map(
+                 if (.outbound == "socks-out" and .domain_suffix != null) then
+                   if (.rule_set == null and .geosite == null and .domain == null) then empty else del(.domain_suffix) end
+                 else . end
+               ))
+             end)
           ' "$SBFOLDER/sb.json" > /tmp/sb.json && mv /tmp/sb.json "$SBFOLDER/sb.json"
           ;;
         s6)
           jq '
-            (.route.rules[] | select(.strategy == "prefer_ipv6")) |= del(.domain_suffix) |
-            (.route.rules[] | select(.outbound == "socks-out")) |= del(.domain_suffix)
+            (.route.rules |= map(
+              if (.action == "resolve" and .strategy == "prefer_ipv6" and .domain_suffix != null) then
+                if (.rule_set == null and .geosite == null and .domain == null) then empty else del(.domain_suffix) end
+              else . end
+            )) |
+            (([.route.rules[]? | select(.action == "resolve" and (.strategy == "prefer_ipv4" or .strategy == "prefer_ipv6") and .domain_suffix != null) | .domain_suffix[]?] | unique) as $merged_arr |
+             if ($merged_arr | length) > 0 then
+               if any(.route.rules[]?; .outbound == "socks-out" and .domain_suffix != null) then (.route.rules[] | select(.outbound == "socks-out" and .domain_suffix != null)).domain_suffix = $merged_arr else .route.rules += [{"outbound": "socks-out", "domain_suffix": $merged_arr}] end
+             else
+               (.route.rules |= map(
+                 if (.outbound == "socks-out" and .domain_suffix != null) then
+                   if (.rule_set == null and .geosite == null and .domain == null) then empty else del(.domain_suffix) end
+                 else . end
+               ))
+             end)
           ' "$SBFOLDER/sb.json" > /tmp/sb.json && mv /tmp/sb.json "$SBFOLDER/sb.json"
           ;;
         ad4)
           jq '
-            (.route.rules[] | select(.outbound == "vps-outbound-v4")) |= del(.domain_suffix)
+            .route.rules |= map(
+              if (.outbound == "vps-outbound-v4" and .domain_suffix != null) then
+                if (.rule_set == null and .geosite == null and .domain == null) then empty else del(.domain_suffix) end
+              else . end
+            )
           ' "$SBFOLDER/sb.json" > /tmp/sb.json && mv /tmp/sb.json "$SBFOLDER/sb.json"
           ;;
         ad6)
           jq '
-            (.route.rules[] | select(.outbound == "vps-outbound-v6")) |= del(.domain_suffix)
+            .route.rules |= map(
+              if (.outbound == "vps-outbound-v6" and .domain_suffix != null) then
+                if (.rule_set == null and .geosite == null and .domain == null) then empty else del(.domain_suffix) end
+              else . end
+            )
           ' "$SBFOLDER/sb.json" > /tmp/sb.json && mv /tmp/sb.json "$SBFOLDER/sb.json"
           ;;
         *)
           jq --arg ob "$target_outbound" '
-            (.route.rules[] | select(.outbound == $ob)) |= del(.domain_suffix)
+            .route.rules |= map(
+              if (.outbound == $ob and .domain_suffix != null) then
+                if (.rule_set == null and .geosite == null and .domain == null) then empty else del(.domain_suffix) end
+              else . end
+            )
           ' "$SBFOLDER/sb.json" > /tmp/sb.json && mv /tmp/sb.json "$SBFOLDER/sb.json"
           ;;
       esac
@@ -6814,41 +6888,45 @@ update_routing_rule() {
       case "$route_channel" in
         w4)
           jq --argjson arr "$json_array" \
-             '(if any(.route.rules[]; .strategy == "prefer_ipv4") then (.route.rules[] | select(.strategy == "prefer_ipv4")).domain_suffix = $arr else .route.rules += [{"strategy": "prefer_ipv4", "domain_suffix": $arr}] end) |
-              (if any(.route.rules[]; .outbound == "warp-out") then (.route.rules[] | select(.outbound == "warp-out")).domain_suffix = $arr else .route.rules += [{"outbound": "warp-out", "domain_suffix": $arr}] end)' \
+             '(if any(.route.rules[]?; .action == "resolve" and .strategy == "prefer_ipv4" and .domain_suffix != null) then (.route.rules[] | select(.action == "resolve" and .strategy == "prefer_ipv4" and .domain_suffix != null)).domain_suffix = $arr else .route.rules = [{"action": "resolve", "strategy": "prefer_ipv4", "domain_suffix": $arr}] + .route.rules end) |
+              (([.route.rules[]? | select(.action == "resolve" and (.strategy == "prefer_ipv4" or .strategy == "prefer_ipv6") and .domain_suffix != null) | .domain_suffix[]?] | unique) as $merged_arr |
+              if any(.route.rules[]?; .outbound == "warp-out" and .domain_suffix != null) then (.route.rules[] | select(.outbound == "warp-out" and .domain_suffix != null)).domain_suffix = $merged_arr else .route.rules += [{"outbound": "warp-out", "domain_suffix": $merged_arr}] end)' \
              "$SBFOLDER/sb.json" > /tmp/sb.json && mv /tmp/sb.json "$SBFOLDER/sb.json"
           ;;
         w6)
           jq --argjson arr "$json_array" \
-             '(if any(.route.rules[]; .strategy == "prefer_ipv6") then (.route.rules[] | select(.strategy == "prefer_ipv6")).domain_suffix = $arr else .route.rules += [{"strategy": "prefer_ipv6", "domain_suffix": $arr}] end) |
-              (if any(.route.rules[]; .outbound == "warp-out") then (.route.rules[] | select(.outbound == "warp-out")).domain_suffix = $arr else .route.rules += [{"outbound": "warp-out", "domain_suffix": $arr}] end)' \
+             '(if any(.route.rules[]?; .action == "resolve" and .strategy == "prefer_ipv6" and .domain_suffix != null) then (.route.rules[] | select(.action == "resolve" and .strategy == "prefer_ipv6" and .domain_suffix != null)).domain_suffix = $arr else .route.rules = [{"action": "resolve", "strategy": "prefer_ipv6", "domain_suffix": $arr}] + .route.rules end) |
+              (([.route.rules[]? | select(.action == "resolve" and (.strategy == "prefer_ipv4" or .strategy == "prefer_ipv6") and .domain_suffix != null) | .domain_suffix[]?] | unique) as $merged_arr |
+              if any(.route.rules[]?; .outbound == "warp-out" and .domain_suffix != null) then (.route.rules[] | select(.outbound == "warp-out" and .domain_suffix != null)).domain_suffix = $merged_arr else .route.rules += [{"outbound": "warp-out", "domain_suffix": $merged_arr}] end)' \
              "$SBFOLDER/sb.json" > /tmp/sb.json && mv /tmp/sb.json "$SBFOLDER/sb.json"
           ;;
         s4)
           jq --argjson arr "$json_array" \
-             '(if any(.route.rules[]; .strategy == "prefer_ipv4") then (.route.rules[] | select(.strategy == "prefer_ipv4")).domain_suffix = $arr else .route.rules += [{"strategy": "prefer_ipv4", "domain_suffix": $arr}] end) |
-              (if any(.route.rules[]; .outbound == "socks-out") then (.route.rules[] | select(.outbound == "socks-out")).domain_suffix = $arr else .route.rules += [{"outbound": "socks-out", "domain_suffix": $arr}] end)' \
+             '(if any(.route.rules[]?; .action == "resolve" and .strategy == "prefer_ipv4" and .domain_suffix != null) then (.route.rules[] | select(.action == "resolve" and .strategy == "prefer_ipv4" and .domain_suffix != null)).domain_suffix = $arr else .route.rules = [{"action": "resolve", "strategy": "prefer_ipv4", "domain_suffix": $arr}] + .route.rules end) |
+              (([.route.rules[]? | select(.action == "resolve" and (.strategy == "prefer_ipv4" or .strategy == "prefer_ipv6") and .domain_suffix != null) | .domain_suffix[]?] | unique) as $merged_arr |
+              if any(.route.rules[]?; .outbound == "socks-out" and .domain_suffix != null) then (.route.rules[] | select(.outbound == "socks-out" and .domain_suffix != null)).domain_suffix = $merged_arr else .route.rules += [{"outbound": "socks-out", "domain_suffix": $merged_arr}] end)' \
              "$SBFOLDER/sb.json" > /tmp/sb.json && mv /tmp/sb.json "$SBFOLDER/sb.json"
           ;;
         s6)
           jq --argjson arr "$json_array" \
-             '(if any(.route.rules[]; .strategy == "prefer_ipv6") then (.route.rules[] | select(.strategy == "prefer_ipv6")).domain_suffix = $arr else .route.rules += [{"strategy": "prefer_ipv6", "domain_suffix": $arr}] end) |
-              (if any(.route.rules[]; .outbound == "socks-out") then (.route.rules[] | select(.outbound == "socks-out")).domain_suffix = $arr else .route.rules += [{"outbound": "socks-out", "domain_suffix": $arr}] end)' \
+             '(if any(.route.rules[]?; .action == "resolve" and .strategy == "prefer_ipv6" and .domain_suffix != null) then (.route.rules[] | select(.action == "resolve" and .strategy == "prefer_ipv6" and .domain_suffix != null)).domain_suffix = $arr else .route.rules = [{"action": "resolve", "strategy": "prefer_ipv6", "domain_suffix": $arr}] + .route.rules end) |
+              (([.route.rules[]? | select(.action == "resolve" and (.strategy == "prefer_ipv4" or .strategy == "prefer_ipv6") and .domain_suffix != null) | .domain_suffix[]?] | unique) as $merged_arr |
+              if any(.route.rules[]?; .outbound == "socks-out" and .domain_suffix != null) then (.route.rules[] | select(.outbound == "socks-out" and .domain_suffix != null)).domain_suffix = $merged_arr else .route.rules += [{"outbound": "socks-out", "domain_suffix": $merged_arr}] end)' \
              "$SBFOLDER/sb.json" > /tmp/sb.json && mv /tmp/sb.json "$SBFOLDER/sb.json"
           ;;
         ad4)
           jq --argjson arr "$json_array" \
-             'if any(.route.rules[]; .outbound == "vps-outbound-v4") then (.route.rules[] | select(.outbound == "vps-outbound-v4")).domain_suffix = $arr else .route.rules += [{"outbound": "vps-outbound-v4", "domain_suffix": $arr}] end' \
+             'if any(.route.rules[]?; .outbound == "vps-outbound-v4" and .domain_suffix != null) then (.route.rules[] | select(.outbound == "vps-outbound-v4" and .domain_suffix != null)).domain_suffix = $arr else .route.rules += [{"outbound": "vps-outbound-v4", "domain_suffix": $arr}] end' \
              "$SBFOLDER/sb.json" > /tmp/sb.json && mv /tmp/sb.json "$SBFOLDER/sb.json"
           ;;
         ad6)
           jq --argjson arr "$json_array" \
-             'if any(.route.rules[]; .outbound == "vps-outbound-v6") then (.route.rules[] | select(.outbound == "vps-outbound-v6")).domain_suffix = $arr else .route.rules += [{"outbound": "vps-outbound-v6", "domain_suffix": $arr}] end' \
+             'if any(.route.rules[]?; .outbound == "vps-outbound-v6" and .domain_suffix != null) then (.route.rules[] | select(.outbound == "vps-outbound-v6" and .domain_suffix != null)).domain_suffix = $arr else .route.rules += [{"outbound": "vps-outbound-v6", "domain_suffix": $arr}] end' \
              "$SBFOLDER/sb.json" > /tmp/sb.json && mv /tmp/sb.json "$SBFOLDER/sb.json"
           ;;
         *)
           jq --argjson arr "$json_array" --arg ob "$target_outbound" \
-             'if any(.route.rules[]; .outbound == $ob) then (.route.rules[] | select(.outbound == $ob)).domain_suffix = $arr else .route.rules += [{"domain_suffix": $arr, "outbound": $ob}] end' \
+             'if any(.route.rules[]?; .outbound == $ob and .domain_suffix != null) then (.route.rules[] | select(.outbound == $ob and .domain_suffix != null)).domain_suffix = $arr else .route.rules += [{"domain_suffix": $arr, "outbound": $ob}] end' \
              "$SBFOLDER/sb.json" > /tmp/sb.json && mv /tmp/sb.json "$SBFOLDER/sb.json"
           ;;
       esac
@@ -6858,76 +6936,167 @@ update_routing_rule() {
       case "$route_channel" in
         w4)
           jq '
-            (.route.rules[] | select(.strategy == "prefer_ipv4")) |= del(.rule_set) |
-            (.route.rules[] | select(.outbound == "warp-out")) |= del(.rule_set)
+            (.route.rules |= map(
+              if (.action == "resolve" and .strategy == "prefer_ipv4" and (.rule_set != null or .geosite != null)) then
+                if (.domain_suffix == null and .domain == null) then empty else del(.rule_set, .geosite) end
+              else . end
+            )) |
+            ((([.route.rules[]? | select(.action == "resolve" and (.strategy == "prefer_ipv4" or .strategy == "prefer_ipv6") and .rule_set != null) | .rule_set[]?] | unique)) as $merged_geo |
+             if ($merged_geo | length) > 0 then
+               if any(.route.rules[]?; .outbound == "warp-out" and (.rule_set != null or .geosite != null)) then (.route.rules[] | select(.outbound == "warp-out" and (.rule_set != null or .geosite != null))).rule_set = $merged_geo else .route.rules += [{"outbound": "warp-out", "rule_set": $merged_geo}] end
+             else
+               (.route.rules |= map(
+                 if (.outbound == "warp-out" and (.rule_set != null or .geosite != null)) then
+                   if (.domain_suffix == null and .domain == null) then empty else del(.rule_set, .geosite) end
+                 else . end
+               ))
+             end)
           ' "$SBFOLDER/sb.json" > /tmp/sb.json && mv /tmp/sb.json "$SBFOLDER/sb.json"
           ;;
         w6)
           jq '
-            (.route.rules[] | select(.strategy == "prefer_ipv6")) |= del(.rule_set) |
-            (.route.rules[] | select(.outbound == "warp-out")) |= del(.rule_set)
+            (.route.rules |= map(
+              if (.action == "resolve" and .strategy == "prefer_ipv6" and (.rule_set != null or .geosite != null)) then
+                if (.domain_suffix == null and .domain == null) then empty else del(.rule_set, .geosite) end
+              else . end
+            )) |
+            ((([.route.rules[]? | select(.action == "resolve" and (.strategy == "prefer_ipv4" or .strategy == "prefer_ipv6") and .rule_set != null) | .rule_set[]?] | unique)) as $merged_geo |
+             if ($merged_geo | length) > 0 then
+               if any(.route.rules[]?; .outbound == "warp-out" and (.rule_set != null or .geosite != null)) then (.route.rules[] | select(.outbound == "warp-out" and (.rule_set != null or .geosite != null))).rule_set = $merged_geo else .route.rules += [{"outbound": "warp-out", "rule_set": $merged_geo}] end
+             else
+               (.route.rules |= map(
+                 if (.outbound == "warp-out" and (.rule_set != null or .geosite != null)) then
+                   if (.domain_suffix == null and .domain == null) then empty else del(.rule_set, .geosite) end
+                 else . end
+               ))
+             end)
           ' "$SBFOLDER/sb.json" > /tmp/sb.json && mv /tmp/sb.json "$SBFOLDER/sb.json"
           ;;
         s4)
           jq '
-            (.route.rules[] | select(.strategy == "prefer_ipv4")) |= del(.rule_set) |
-            (.route.rules[] | select(.outbound == "socks-out")) |= del(.rule_set)
+            (.route.rules |= map(
+              if (.action == "resolve" and .strategy == "prefer_ipv4" and (.rule_set != null or .geosite != null)) then
+                if (.domain_suffix == null and .domain == null) then empty else del(.rule_set, .geosite) end
+              else . end
+            )) |
+            ((([.route.rules[]? | select(.action == "resolve" and (.strategy == "prefer_ipv4" or .strategy == "prefer_ipv6") and .rule_set != null) | .rule_set[]?] | unique)) as $merged_geo |
+             if ($merged_geo | length) > 0 then
+               if any(.route.rules[]?; .outbound == "socks-out" and (.rule_set != null or .geosite != null)) then (.route.rules[] | select(.outbound == "socks-out" and (.rule_set != null or .geosite != null))).rule_set = $merged_geo else .route.rules += [{"outbound": "socks-out", "rule_set": $merged_geo}] end
+             else
+               (.route.rules |= map(
+                 if (.outbound == "socks-out" and (.rule_set != null or .geosite != null)) then
+                   if (.domain_suffix == null and .domain == null) then empty else del(.rule_set, .geosite) end
+                 else . end
+               ))
+             end)
           ' "$SBFOLDER/sb.json" > /tmp/sb.json && mv /tmp/sb.json "$SBFOLDER/sb.json"
           ;;
         s6)
           jq '
-            (.route.rules[] | select(.strategy == "prefer_ipv6")) |= del(.rule_set) |
-            (.route.rules[] | select(.outbound == "socks-out")) |= del(.rule_set)
+            (.route.rules |= map(
+              if (.action == "resolve" and .strategy == "prefer_ipv6" and (.rule_set != null or .geosite != null)) then
+                if (.domain_suffix == null and .domain == null) then empty else del(.rule_set, .geosite) end
+              else . end
+            )) |
+            ((([.route.rules[]? | select(.action == "resolve" and (.strategy == "prefer_ipv4" or .strategy == "prefer_ipv6") and .rule_set != null) | .rule_set[]?] | unique)) as $merged_geo |
+             if ($merged_geo | length) > 0 then
+               if any(.route.rules[]?; .outbound == "socks-out" and (.rule_set != null or .geosite != null)) then (.route.rules[] | select(.outbound == "socks-out" and (.rule_set != null or .geosite != null))).rule_set = $merged_geo else .route.rules += [{"outbound": "socks-out", "rule_set": $merged_geo}] end
+             else
+               (.route.rules |= map(
+                 if (.outbound == "socks-out" and (.rule_set != null or .geosite != null)) then
+                   if (.domain_suffix == null and .domain == null) then empty else del(.rule_set, .geosite) end
+                 else . end
+               ))
+             end)
           ' "$SBFOLDER/sb.json" > /tmp/sb.json && mv /tmp/sb.json "$SBFOLDER/sb.json"
           ;;
         ad4)
           jq '
-            (.route.rules[] | select(.outbound == "vps-outbound-v4")) |= del(.rule_set)
+            .route.rules |= map(
+              if (.outbound == "vps-outbound-v4" and (.rule_set != null or .geosite != null)) then
+                if (.domain_suffix == null and .domain == null) then empty else del(.rule_set, .geosite) end
+              else . end
+            )
           ' "$SBFOLDER/sb.json" > /tmp/sb.json && mv /tmp/sb.json "$SBFOLDER/sb.json"
           ;;
         ad6)
           jq '
-            (.route.rules[] | select(.outbound == "vps-outbound-v6")) |= del(.rule_set)
+            .route.rules |= map(
+              if (.outbound == "vps-outbound-v6" and (.rule_set != null or .geosite != null)) then
+                if (.domain_suffix == null and .domain == null) then empty else del(.rule_set, .geosite) end
+              else . end
+            )
           ' "$SBFOLDER/sb.json" > /tmp/sb.json && mv /tmp/sb.json "$SBFOLDER/sb.json"
           ;;
         *)
           jq --arg ob "$target_outbound" '
-            (.route.rules[] | select(.outbound == $ob)) |= del(.rule_set)
+            .route.rules |= map(
+              if (.outbound == $ob and (.rule_set != null or .geosite != null)) then
+                if (.domain_suffix == null and .domain == null) then empty else del(.rule_set, .geosite) end
+              else . end
+            )
           ' "$SBFOLDER/sb.json" > /tmp/sb.json && mv /tmp/sb.json "$SBFOLDER/sb.json"
           ;;
       esac
     else
-      jq --argjson arr "$json_array" --arg ob "$target_outbound" --arg channel "$route_channel" '
-        ($arr | map(gsub("^geosite-";"") | gsub("\\.srs$";""))) as $clean_arr
-        | ($clean_arr | map("geosite-" + .)) as $tags
-        | ($clean_arr | map({
-            "tag": ("geosite-" + .),
-            "type": "remote",
-            "format": "binary",
-            "url": ("https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo/geosite/" + . + ".srs"),
-            "download_detour": "direct"
-          })) as $new_rulesets
-        | .route.rule_set = (((.route.rule_set // []) + $new_rulesets) | unique_by(.tag))
-        | if $channel == "w4" then
-            (if any(.route.rules[]; .strategy == "prefer_ipv4") then (.route.rules[] | select(.strategy == "prefer_ipv4")).rule_set = $tags else .route.rules += [{"strategy": "prefer_ipv4", "rule_set": $tags}] end) |
-            (if any(.route.rules[]; .outbound == "warp-out") then (.route.rules[] | select(.outbound == "warp-out")).rule_set = $tags else .route.rules += [{"outbound": "warp-out", "rule_set": $tags}] end)
-          elif $channel == "w6" then
-            (if any(.route.rules[]; .strategy == "prefer_ipv6") then (.route.rules[] | select(.strategy == "prefer_ipv6")).rule_set = $tags else .route.rules += [{"strategy": "prefer_ipv6", "rule_set": $tags}] end) |
-            (if any(.route.rules[]; .outbound == "warp-out") then (.route.rules[] | select(.outbound == "warp-out")).rule_set = $tags else .route.rules += [{"outbound": "warp-out", "rule_set": $tags}] end)
-          elif $channel == "s4" then
-            (if any(.route.rules[]; .strategy == "prefer_ipv4") then (.route.rules[] | select(.strategy == "prefer_ipv4")).rule_set = $tags else .route.rules += [{"strategy": "prefer_ipv4", "rule_set": $tags}] end) |
-            (if any(.route.rules[]; .outbound == "socks-out") then (.route.rules[] | select(.outbound == "socks-out")).rule_set = $tags else .route.rules += [{"outbound": "socks-out", "rule_set": $tags}] end)
-          elif $channel == "s6" then
-            (if any(.route.rules[]; .strategy == "prefer_ipv6") then (.route.rules[] | select(.strategy == "prefer_ipv6")).rule_set = $tags else .route.rules += [{"strategy": "prefer_ipv6", "rule_set": $tags}] end) |
-            (if any(.route.rules[]; .outbound == "socks-out") then (.route.rules[] | select(.outbound == "socks-out")).rule_set = $tags else .route.rules += [{"outbound": "socks-out", "rule_set": $tags}] end)
-          elif $channel == "ad4" then
-            (if any(.route.rules[]; .outbound == "vps-outbound-v4") then (.route.rules[] | select(.outbound == "vps-outbound-v4")).rule_set = $tags else .route.rules += [{"outbound": "vps-outbound-v4", "rule_set": $tags}] end)
-          elif $channel == "ad6" then
-            (if any(.route.rules[]; .outbound == "vps-outbound-v6") then (.route.rules[] | select(.outbound == "vps-outbound-v6")).rule_set = $tags else .route.rules += [{"outbound": "vps-outbound-v6", "rule_set": $tags}] end)
-          else
-            if any(.route.rules[]; .outbound == $ob) then (.route.rules[] | select(.outbound == $ob)).rule_set = $tags else .route.rules += [{"outbound": $ob, "rule_set": $tags}] end
-          end
+      jq --argjson arr "$json_array" '
+        ($arr | map(gsub("^geosite-";"") | gsub("\\.srs$";""))) as $clean_arr |
+        ($clean_arr | map({
+          "tag": ("geosite-" + .),
+          "type": "remote",
+          "format": "binary",
+          "url": ("https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo/geosite/" + . + ".srs"),
+          "download_detour": "direct"
+        })) as $new_rulesets |
+        .route.rule_set = (((.route.rule_set // []) + $new_rulesets) | unique_by(.tag))
       ' "$SBFOLDER/sb.json" > /tmp/sb.json && mv /tmp/sb.json "$SBFOLDER/sb.json"
+
+      local tags_array=$(echo "$json_array" | jq -c '[ .[] | gsub("^geosite-";"") | gsub("\\.srs$";"") | "geosite-" + . ]')
+      case "$route_channel" in
+        w4)
+          jq --argjson tags "$tags_array" \
+             '(if any(.route.rules[]?; .action == "resolve" and .strategy == "prefer_ipv4" and (.rule_set != null or .geosite != null)) then (.route.rules[] | select(.action == "resolve" and .strategy == "prefer_ipv4" and (.rule_set != null or .geosite != null))).rule_set = $tags else .route.rules = [{"action": "resolve", "strategy": "prefer_ipv4", "rule_set": $tags}] + .route.rules end) |
+              (([.route.rules[]? | select(.action == "resolve" and (.strategy == "prefer_ipv4" or .strategy == "prefer_ipv6") and .rule_set != null) | .rule_set[]?] | unique) as $merged_geo |
+               if any(.route.rules[]?; .outbound == "warp-out" and (.rule_set != null or .geosite != null)) then (.route.rules[] | select(.outbound == "warp-out" and (.rule_set != null or .geosite != null))).rule_set = $merged_geo else .route.rules += [{"outbound": "warp-out", "rule_set": $merged_geo}] end)' \
+             "$SBFOLDER/sb.json" > /tmp/sb.json && mv /tmp/sb.json "$SBFOLDER/sb.json"
+          ;;
+        w6)
+          jq --argjson tags "$tags_array" \
+             '(if any(.route.rules[]?; .action == "resolve" and .strategy == "prefer_ipv6" and (.rule_set != null or .geosite != null)) then (.route.rules[] | select(.action == "resolve" and .strategy == "prefer_ipv6" and (.rule_set != null or .geosite != null))).rule_set = $tags else .route.rules = [{"action": "resolve", "strategy": "prefer_ipv6", "rule_set": $tags}] + .route.rules end) |
+              (([.route.rules[]? | select(.action == "resolve" and (.strategy == "prefer_ipv4" or .strategy == "prefer_ipv6") and .rule_set != null) | .rule_set[]?] | unique) as $merged_geo |
+               if any(.route.rules[]?; .outbound == "warp-out" and (.rule_set != null or .geosite != null)) then (.route.rules[] | select(.outbound == "warp-out" and (.rule_set != null or .geosite != null))).rule_set = $merged_geo else .route.rules += [{"outbound": "warp-out", "rule_set": $merged_geo}] end)' \
+             "$SBFOLDER/sb.json" > /tmp/sb.json && mv /tmp/sb.json "$SBFOLDER/sb.json"
+          ;;
+        s4)
+          jq --argjson tags "$tags_array" \
+             '(if any(.route.rules[]?; .action == "resolve" and .strategy == "prefer_ipv4" and (.rule_set != null or .geosite != null)) then (.route.rules[] | select(.action == "resolve" and .strategy == "prefer_ipv4" and (.rule_set != null or .geosite != null))).rule_set = $tags else .route.rules = [{"action": "resolve", "strategy": "prefer_ipv4", "rule_set": $tags}] + .route.rules end) |
+              (([.route.rules[]? | select(.action == "resolve" and (.strategy == "prefer_ipv4" or .strategy == "prefer_ipv6") and .rule_set != null) | .rule_set[]?] | unique) as $merged_geo |
+               if any(.route.rules[]?; .outbound == "socks-out" and (.rule_set != null or .geosite != null)) then (.route.rules[] | select(.outbound == "socks-out" and (.rule_set != null or .geosite != null))).rule_set = $merged_geo else .route.rules += [{"outbound": "socks-out", "rule_set": $merged_geo}] end)' \
+             "$SBFOLDER/sb.json" > /tmp/sb.json && mv /tmp/sb.json "$SBFOLDER/sb.json"
+          ;;
+        s6)
+          jq --argjson tags "$tags_array" \
+             '(if any(.route.rules[]?; .action == "resolve" and .strategy == "prefer_ipv6" and (.rule_set != null or .geosite != null)) then (.route.rules[] | select(.action == "resolve" and .strategy == "prefer_ipv6" and (.rule_set != null or .geosite != null))).rule_set = $tags else .route.rules = [{"action": "resolve", "strategy": "prefer_ipv6", "rule_set": $tags}] + .route.rules end) |
+              (([.route.rules[]? | select(.action == "resolve" and (.strategy == "prefer_ipv4" or .strategy == "prefer_ipv6") and .rule_set != null) | .rule_set[]?] | unique) as $merged_geo |
+               if any(.route.rules[]?; .outbound == "socks-out" and (.rule_set != null or .geosite != null)) then (.route.rules[] | select(.outbound == "socks-out" and (.rule_set != null or .geosite != null))).rule_set = $merged_geo else .route.rules += [{"outbound": "socks-out", "rule_set": $merged_geo}] end)' \
+             "$SBFOLDER/sb.json" > /tmp/sb.json && mv /tmp/sb.json "$SBFOLDER/sb.json"
+          ;;
+        ad4)
+          jq --argjson tags "$tags_array" \
+             'if any(.route.rules[]?; .outbound == "vps-outbound-v4" and (.rule_set != null or .geosite != null)) then (.route.rules[] | select(.outbound == "vps-outbound-v4" and (.rule_set != null or .geosite != null))).rule_set = $tags else .route.rules += [{"outbound": "vps-outbound-v4", "rule_set": $tags}] end' \
+             "$SBFOLDER/sb.json" > /tmp/sb.json && mv /tmp/sb.json "$SBFOLDER/sb.json"
+          ;;
+        ad6)
+          jq --argjson tags "$tags_array" \
+             'if any(.route.rules[]?; .outbound == "vps-outbound-v6" and (.rule_set != null or .geosite != null)) then (.route.rules[] | select(.outbound == "vps-outbound-v6" and (.rule_set != null or .geosite != null))).rule_set = $tags else .route.rules += [{"outbound": "vps-outbound-v6", "rule_set": $tags}] end' \
+             "$SBFOLDER/sb.json" > /tmp/sb.json && mv /tmp/sb.json "$SBFOLDER/sb.json"
+          ;;
+        *)
+          jq --argjson tags "$tags_array" --arg ob "$target_outbound" \
+             'if any(.route.rules[]?; .outbound == $ob and (.rule_set != null or .geosite != null)) then (.route.rules[] | select(.outbound == $ob and (.rule_set != null or .geosite != null))).rule_set = $tags else .route.rules += [{"outbound": $ob, "rule_set": $tags}] end' \
+             "$SBFOLDER/sb.json" > /tmp/sb.json && mv /tmp/sb.json "$SBFOLDER/sb.json"
+          ;;
+      esac
     fi
   fi
   prune_orphaned_rule_sets
@@ -6976,17 +7145,17 @@ sbymfl() {
   extract_dom_jq='[ (.domain_suffix // [])[]? | select(. != "DuolaD") ]'
   extract_geo_jq='[ (.geosite // [])[]?, ((.rule_set // [])[]? | select(type=="string" and startswith("geosite-")) | sub("^geosite-";"")) ] | map(select(. != "DuolaD"))'
   
-  wd4=$(echo "$clean_json" | jq -r "[ .route.rules[] | select(.outbound == \"warp-out\" or .strategy == \"prefer_ipv4\") | $extract_dom_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
-  args_wg4=$(echo "$clean_json" | jq -r "[ .route.rules[] | select(.outbound == \"warp-out\" or .strategy == \"prefer_ipv4\") | $extract_geo_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
+  wd4=$(echo "$clean_json" | jq -r "[ (.dns.rules[]? | select(.strategy == \"prefer_ipv4\")), (.route.rules[]? | select(.strategy == \"prefer_ipv4\")) | $extract_dom_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
+  args_wg4=$(echo "$clean_json" | jq -r "[ (.dns.rules[]? | select(.strategy == \"prefer_ipv4\")), (.route.rules[]? | select(.strategy == \"prefer_ipv4\")) | $extract_geo_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
   
-  wd6=$(echo "$clean_json" | jq -r "[ .route.rules[] | select(.outbound == \"warp-out\" or .strategy == \"prefer_ipv6\") | $extract_dom_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
-  args_wg6=$(echo "$clean_json" | jq -r "[ .route.rules[] | select(.outbound == \"warp-out\" or .strategy == \"prefer_ipv6\") | $extract_geo_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
+  wd6=$(echo "$clean_json" | jq -r "[ (.dns.rules[]? | select(.strategy == \"prefer_ipv6\")), (.route.rules[]? | select(.strategy == \"prefer_ipv6\")) | $extract_dom_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
+  args_wg6=$(echo "$clean_json" | jq -r "[ (.dns.rules[]? | select(.strategy == \"prefer_ipv6\")), (.route.rules[]? | select(.strategy == \"prefer_ipv6\")) | $extract_geo_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
   
-  sd4=$(echo "$clean_json" | jq -r "[ .route.rules[] | select(.outbound == \"socks-out\" or .strategy == \"prefer_ipv4\") | $extract_dom_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
-  sg4=$(echo "$clean_json" | jq -r "[ .route.rules[] | select(.outbound == \"socks-out\" or .strategy == \"prefer_ipv4\") | $extract_geo_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
+  sd4=$(echo "$clean_json" | jq -r "[ (.dns.rules[]? | select(.strategy == \"prefer_ipv4\")), (.route.rules[]? | select(.outbound == \"socks-out\" and .strategy == \"prefer_ipv4\")) | $extract_dom_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
+  sg4=$(echo "$clean_json" | jq -r "[ (.dns.rules[]? | select(.strategy == \"prefer_ipv4\")), (.route.rules[]? | select(.outbound == \"socks-out\" and .strategy == \"prefer_ipv4\")) | $extract_geo_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
   
-  sd6=$(echo "$clean_json" | jq -r "[ .route.rules[] | select(.outbound == \"socks-out\" or .strategy == \"prefer_ipv6\") | $extract_dom_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
-  sg6=$(echo "$clean_json" | jq -r "[ .route.rules[] | select(.outbound == \"socks-out\" or .strategy == \"prefer_ipv6\") | $extract_geo_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
+  sd6=$(echo "$clean_json" | jq -r "[ (.dns.rules[]? | select(.strategy == \"prefer_ipv6\")), (.route.rules[]? | select(.outbound == \"socks-out\" and .strategy == \"prefer_ipv6\")) | $extract_dom_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
+  sg6=$(echo "$clean_json" | jq -r "[ (.dns.rules[]? | select(.strategy == \"prefer_ipv6\")), (.route.rules[]? | select(.outbound == \"socks-out\" and .strategy == \"prefer_ipv6\")) | $extract_geo_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
   
   ad4=$(echo "$clean_json" | jq -r "[ .route.rules[] | select(.outbound == \"vps-outbound-v4\") | $extract_dom_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
   ag4=$(echo "$clean_json" | jq -r "[ .route.rules[] | select(.outbound == \"vps-outbound-v4\") | $extract_geo_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
@@ -7084,7 +7253,7 @@ changef() {
   declare -A inst_line_nums
   
   local has_dyn=0
-  if [[ -s "$WARP_INST_FILE" || -s "$DNS_SNI_INST_FILE" || -s "$SS_INST_FILE" ]]; then
+  if [[ -s "$WARP_INST_FILE" || -s "$DNS_SNI_INST_FILE" || -s "$SS_INST_FILE" || -s "$WG_INST_FILE" ]]; then
     has_dyn=1
     echo -e "\n${blue}【已检测到的出栈通道】${plain}"
   fi
@@ -7137,6 +7306,30 @@ changef() {
       inst_kinds[$dyn_idx]="shadowsocks"
       ((dyn_idx++))
     done < "$SS_INST_FILE"
+  fi
+
+  if [ -s "$WG_INST_FILE" ]; then
+    while IFS='|' read -r w_endpoint w_pvk w_addrs w_pbk w_psk w_res w_tag w_status; do
+      [[ -z "$w_endpoint" || "$w_status" != "running" ]] && continue
+      local cur_domain=$(echo "$clean_json" | jq -r --arg ob "$w_tag" "[ .route.rules[]? | select(.outbound == \$ob) | $extract_dom_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
+      local cur_geo=$(echo "$clean_json" | jq -r --arg ob "$w_tag" "[ .route.rules[]? | select(.outbound == \$ob) | $extract_geo_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
+      local cur_rule=""
+      [[ -n "$cur_domain" ]] && cur_rule="$cur_domain"
+      if [[ -n "$cur_geo" ]]; then
+        [[ -n "$cur_rule" ]] && cur_rule="$cur_rule $cur_geo" || cur_rule="$cur_geo"
+      fi
+      local fl_status=""
+      if [[ -z "$cur_rule" ]]; then
+        fl_status="${yellow}未分流${plain}"
+      else
+        fl_status="${yellow}已分流：$cur_rule${plain}"
+      fi
+      green "$dyn_idx：重置 [WireGuard] 通道 [$w_tag] (目标:$w_endpoint) 分流 $fl_status"
+      inst_tags[$dyn_idx]="$w_tag"
+      inst_descs[$dyn_idx]="$w_tag(目标:$w_endpoint)"
+      inst_kinds[$dyn_idx]="wireguard"
+      ((dyn_idx++))
+    done < "$WG_INST_FILE"
   fi
 
   if [ -s "$DNS_SNI_INST_FILE" ]; then
@@ -7230,7 +7423,7 @@ changef() {
     local target_desc="${inst_descs[$menu]}"
     local kind="${inst_kinds[$menu]}"
 
-    if [[ "$kind" == "socks" || "$kind" == "shadowsocks" ]]; then
+    if [[ "$kind" == "socks" || "$kind" == "shadowsocks" || "$kind" == "wireguard" ]]; then
       readp "1：使用后缀域名方式\n2：使用geosite方式\n3：返回上层\n请选择：" menu_type
       if [ "$menu_type" = "1" ]; then
         readp "每个域名之间留空格，回车跳过表示重置清空 [$target_desc] 的分流通道：" dyn_flym
@@ -9315,10 +9508,10 @@ sb() {
     local v4_6=""
     rpip=$(strip_json_comments "$SBFOLDER/sb.json" | jq -r '
       [
-        (.route.rules[]? | select(.action == "resolve" and .strategy != null) | .strategy),
-        (.route.rules[]? | select(.strategy != null) | .strategy),
-        (.outbounds[]? | select(.domain_strategy != null) | .domain_strategy),
-        (.dns.strategy? // empty)
+        (.route.rules[]? | select(.action == "resolve" and .strategy != null and .domain_suffix == null and .rule_set == null and .geosite == null and .domain == null) | .strategy),
+        (.route.rules[]? | select(.strategy != null and .domain_suffix == null and .rule_set == null and .geosite == null and .domain == null) | .strategy),
+        (.dns.strategy? // empty),
+        (.outbounds[]? | select(.domain_strategy != null) | .domain_strategy)
       ] | map(select(. != null and . != "")) | first // empty
     ' 2>/dev/null)
     if [[ $rpip = 'prefer_ipv6' ]]; then
