@@ -288,6 +288,28 @@ get_self_domain() {
   cat /var/Sing-Box-DuolaD/self_domain.log 2>/dev/null || echo "dl.delivery.mp.microsoft.com"
 }
 
+init_reality_fps() {
+  local fps=("firefox" "edge" "safari")
+  local r1=$((RANDOM % 3))
+  local r2=$(((r1 + 1 + RANDOM % 2) % 3))
+  echo "${fps[$r1]}" > "$SBFOLDER/reality_fp_vl_re.txt"
+  echo "${fps[$r2]}" > "$SBFOLDER/reality_fp_vl_h2_re.txt"
+}
+
+get_reality_fp() {
+  local tag="${1:-vl_re}"
+  local file="$SBFOLDER/reality_fp_${tag}.txt"
+  local fp=""
+  if [[ -f "$file" ]]; then
+    fp=$(cat "$file" 2>/dev/null | tr -d ' \n\r')
+  fi
+  if [[ "$fp" != "firefox" && "$fp" != "edge" && "$fp" != "safari" ]]; then
+    init_reality_fps
+    fp=$(cat "$file" 2>/dev/null | tr -d ' \n\r')
+  fi
+  echo "$fp"
+}
+
 generate_self_signed_cert() {
   local target_key="$1"
   local target_cert="$2"
@@ -2150,13 +2172,14 @@ resvless() {
   if [[ "$server_ip" =~ : ]]; then ip_tag="IPV6"; fi
 
   if [[ -n "$port_vl_re" ]]; then
+    local re_fp=$(get_reality_fp "vl_re")
     echo
     white "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
     if [[ "$server_ip" = "dual" ]]; then
       local v4_addr=$(cat "$SBFOLDER/v4.log" 2>/dev/null)
       local v6_addr=$(cat "$SBFOLDER/v6.log" 2>/dev/null)
-      vl_link_v4="vless://$uuid_vl_re@$v4_addr:$port_vl_re?encryption=none&flow=xtls-rprx-vision&security=reality&sni=$vl_name&fp=chrome&pbk=$public_key&sid=$short_id&type=tcp&headerType=none#vl-reality-$hostname-IPV4"
-      vl_link_v6="vless://$uuid_vl_re@[$v6_addr]:$port_vl_re?encryption=none&flow=xtls-rprx-vision&security=reality&sni=$vl_name&fp=chrome&pbk=$public_key&sid=$short_id&type=tcp&headerType=none#vl-reality-$hostname-IPV6"
+      vl_link_v4="vless://$uuid_vl_re@$v4_addr:$port_vl_re?encryption=none&flow=xtls-rprx-vision&security=reality&sni=$vl_name&fp=$re_fp&pbk=$public_key&sid=$short_id&type=tcp&headerType=none#vl-reality-$hostname-IPV4"
+      vl_link_v6="vless://$uuid_vl_re@[$v6_addr]:$port_vl_re?encryption=none&flow=xtls-rprx-vision&security=reality&sni=$vl_name&fp=$re_fp&pbk=$public_key&sid=$short_id&type=tcp&headerType=none#vl-reality-$hostname-IPV6"
       echo -e "$vl_link_v4\n$vl_link_v6" > "$SBFOLDER/vl_reality.txt"
       red "🚀【 vless-reality-vision-IPV4 】节点信息如下：" && sleep 1
       echo -e "${yellow}$vl_link_v4${plain}\n"
@@ -2165,7 +2188,7 @@ resvless() {
       echo -e "${yellow}$vl_link_v6${plain}\n"
       print_qr "$vl_link_v6"
     else
-      vl_link="vless://$uuid_vl_re@$server_ip:$port_vl_re?encryption=none&flow=xtls-rprx-vision&security=reality&sni=$vl_name&fp=chrome&pbk=$public_key&sid=$short_id&type=tcp&headerType=none#vl-reality-$hostname-$ip_tag"
+      vl_link="vless://$uuid_vl_re@$server_ip:$port_vl_re?encryption=none&flow=xtls-rprx-vision&security=reality&sni=$vl_name&fp=$re_fp&pbk=$public_key&sid=$short_id&type=tcp&headerType=none#vl-reality-$hostname-$ip_tag"
       echo "$vl_link" > "$SBFOLDER/vl_reality.txt"
       red "🚀【 vless-reality-vision-$ip_tag 】节点信息如下：" && sleep 2
       echo -e "${yellow}$vl_link${plain}\n"
@@ -2860,14 +2883,15 @@ restrojan_h2_tls() {
 
 resvless_h2_re() {
   [[ -z "$port_vl_h2_re" ]] && return 0
+  local re_fp=$(get_reality_fp "vl_h2_re")
   echo
   white "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
   server_ip=$(cat "$SBFOLDER/server_ip.log" 2>/dev/null)
   if [[ "$server_ip" = "dual" ]]; then
     local v4_addr=$(cat "$SBFOLDER/v4.log" 2>/dev/null)
     local v6_addr=$(cat "$SBFOLDER/v6.log" 2>/dev/null)
-    local vl_h2_re_link_v4="vless://$uuid_vl_h2_re@$v4_addr:$port_vl_h2_re?encryption=none&security=reality&sni=$vl_name&fp=chrome&pbk=$public_key&sid=$short_id&type=h2&path=%2F${uuid_vl_h2_re}#vl-h2-reality-$hostname-IPV4"
-    local vl_h2_re_link_v6="vless://$uuid_vl_h2_re@[$v6_addr]:$port_vl_h2_re?encryption=none&security=reality&sni=$vl_name&fp=chrome&pbk=$public_key&sid=$short_id&type=h2&path=%2F${uuid_vl_h2_re}#vl-h2-reality-$hostname-IPV6"
+    local vl_h2_re_link_v4="vless://$uuid_vl_h2_re@$v4_addr:$port_vl_h2_re?encryption=none&security=reality&sni=$vl_name&fp=$re_fp&pbk=$public_key&sid=$short_id&type=h2&path=%2F${uuid_vl_h2_re}#vl-h2-reality-$hostname-IPV4"
+    local vl_h2_re_link_v6="vless://$uuid_vl_h2_re@[$v6_addr]:$port_vl_h2_re?encryption=none&security=reality&sni=$vl_name&fp=$re_fp&pbk=$public_key&sid=$short_id&type=h2&path=%2F${uuid_vl_h2_re}#vl-h2-reality-$hostname-IPV6"
     echo -e "$vl_h2_re_link_v4\n$vl_h2_re_link_v6" > "$SBFOLDER/vl_h2_reality.txt"
     red "🚀【 VLESS-HTTP2-REALITY-IPV4 】节点信息如下：" && sleep 1
     echo -e "${yellow}$vl_h2_re_link_v4${plain}\n"
@@ -2878,7 +2902,7 @@ resvless_h2_re() {
   else
     local ip_tag="IPV4"
     if [[ "$server_ip" =~ : ]]; then ip_tag="IPV6"; fi
-    local vl_h2_re_link="vless://$uuid_vl_h2_re@$server_ip:$port_vl_h2_re?encryption=none&security=reality&sni=$vl_name&fp=chrome&pbk=$public_key&sid=$short_id&type=h2&path=%2F${uuid_vl_h2_re}#vl-h2-reality-$hostname-$ip_tag"
+    local vl_h2_re_link="vless://$uuid_vl_h2_re@$server_ip:$port_vl_h2_re?encryption=none&security=reality&sni=$vl_name&fp=$re_fp&pbk=$public_key&sid=$short_id&type=h2&path=%2F${uuid_vl_h2_re}#vl-h2-reality-$hostname-$ip_tag"
     echo "$vl_h2_re_link" > "$SBFOLDER/vl_h2_reality.txt"
     red "🚀【 VLESS-HTTP2-REALITY-$ip_tag 】节点信息如下：" && sleep 2
     echo -e "${yellow}$vl_h2_re_link${plain}\n"
@@ -3125,6 +3149,7 @@ $indented_cert"
 
   # 1. VLESS Reality
   if [[ -n "$port_vl_re" ]]; then
+    local re_fp=$(get_reality_fp "vl_re")
     local servers_list=$(resolve_servers "$port_vl_re" "$server_ipcl")
     for s_info in $servers_list; do
       local s_type=$(echo "$s_info" | cut -d'|' -f1)
@@ -3133,8 +3158,8 @@ $indented_cert"
       if [[ "$s_type" == "v6" || "$s_addr" =~ : ]]; then ip_tag="IPV6"; fi
       local suffix="-$hostname-$ip_tag"
       
-      local vl_re_extra=$(jq -n --arg uuid "$uuid_vl_re" --arg name "$vl_name" --arg pbk "$public_key" --arg sid "$short_id" \
-        '{uuid: $uuid, flow: "xtls-rprx-vision", tls: {enabled: true, server_name: $name, utls: {enabled: true, fingerprint: "chrome"}, reality: {enabled: true, public_key: $pbk, short_id: $sid}}}')
+      local vl_re_extra=$(jq -n --arg uuid "$uuid_vl_re" --arg name "$vl_name" --arg pbk "$public_key" --arg sid "$short_id" --arg fp "$re_fp" \
+        '{uuid: $uuid, flow: "xtls-rprx-vision", tls: {enabled: true, server_name: $name, utls: {enabled: true, fingerprint: $fp}, reality: {enabled: true, public_key: $pbk, short_id: $sid}}}')
       add_sb_outbound "vless-reality${suffix}" "vless" "$s_addr" "$port_vl_re" "$vl_re_extra"
       
       local cl_vl_re_opts="  uuid: $uuid_vl_re
@@ -3145,7 +3170,7 @@ $indented_cert"
   reality-opts:
     public-key: $public_key
     short-id: $short_id
-  client-fingerprint: chrome"
+  client-fingerprint: $re_fp"
       add_clash_proxy "vless-reality${suffix}" "vless" "$s_addr" "$port_vl_re" "$cl_vl_re_opts"
     done
   fi
@@ -3633,6 +3658,7 @@ $cl_tls_caddy
 
   # VLESS-HTTP2-REALITY
   if [[ -n "$port_vl_h2_re" ]]; then
+    local re_fp=$(get_reality_fp "vl_h2_re")
     local servers_list=$(resolve_servers "$port_vl_h2_re" "$server_ipcl")
     for s_info in $servers_list; do
       local s_type=$(echo "$s_info" | cut -d'|' -f1)
@@ -3640,8 +3666,8 @@ $cl_tls_caddy
       local ip_tag="IPV4"
       if [[ "$s_type" == "v6" || "$s_addr" =~ : ]]; then ip_tag="IPV6"; fi
       local suffix="-$hostname-$ip_tag"
-      local vl_h2_re_extra=$(jq -n --arg uuid "$uuid_vl_h2_re" --arg name "$vl_name" --arg pbk "$public_key" --arg sid "$short_id" \
-        '{uuid: $uuid, transport: {type: "http", host: [$name], path: $uuid}, tls: {enabled: true, server_name: $name, utls: {enabled: true, fingerprint: "chrome"}, reality: {enabled: true, public_key: $pbk, short_id: $sid}}}')
+      local vl_h2_re_extra=$(jq -n --arg uuid "$uuid_vl_h2_re" --arg name "$vl_name" --arg pbk "$public_key" --arg sid "$short_id" --arg fp "$re_fp" \
+        '{uuid: $uuid, transport: {type: "http", host: [$name], path: $uuid}, tls: {enabled: true, server_name: $name, utls: {enabled: true, fingerprint: $fp}, reality: {enabled: true, public_key: $pbk, short_id: $sid}}}')
       add_sb_outbound "vless-h2-reality${suffix}" "vless" "$s_addr" "$port_vl_h2_re" "$vl_h2_re_extra"
       local cl_vl_h2_re_opts="  uuid: $uuid_vl_h2_re
   network: h2
@@ -3650,7 +3676,7 @@ $cl_tls_caddy
   reality-opts:
     public-key: $public_key
     short-id: $short_id
-  client-fingerprint: chrome
+  client-fingerprint: $re_fp
   h2-opts:
     host:
       - $vl_name
@@ -5893,6 +5919,7 @@ modify_protocol_config() {
       local private_key=$(echo "$reality_keys" | awk '/PrivateKey/{print $NF}' | tr -d '"')
       local public_key=$(echo "$reality_keys" | awk '/PublicKey/{print $NF}' | tr -d '"')
       local short_id=$(openssl rand -hex 8)
+      init_reality_fps
       jq --arg priv "$private_key" --arg pub "$public_key" --arg sid "$short_id" \
          '.inbounds[0].tls.reality.private_key = $priv | .inbounds[0].tls.reality.short_id = [$sid]' \
          "$file_path" > /tmp/tmp.json && mv /tmp/tmp.json "$file_path"
@@ -6342,6 +6369,7 @@ add_protocol() {
         echo "$private_key" > "$SBFOLDER/private.key"
         echo "$public_key" > "$SBFOLDER/public.key"
         short_id=$(openssl rand -hex 8)
+        init_reality_fps
       fi
     fi
 
@@ -9385,6 +9413,7 @@ instsllsingbox() {
     echo "$private_key" > "$SBFOLDER/private.key"
     echo "$public_key" > "$SBFOLDER/public.key"
     short_id=$(openssl rand -hex 8)
+    init_reality_fps
   fi
   
   if [[ "$use_vl_ws_tls" = "true" || "$use_vl_hu_tls" = "true" || \
