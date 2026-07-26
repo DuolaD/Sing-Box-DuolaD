@@ -328,6 +328,28 @@ get_self_domain() {
   cat /var/Sing-Box-DuolaD/self_domain.log 2>/dev/null || echo "dl.delivery.mp.microsoft.com"
 }
 
+get_proto_mode() {
+  local tag="$1"
+  local mode=$(grep "^${tag}:" /var/Sing-Box-DuolaD/proto_mode.log 2>/dev/null | cut -d: -f2 | tr -d ' \r\n')
+  if [[ -z "$mode" ]]; then
+    if systemctl is-active --quiet caddy 2>/dev/null || rc-service caddy status 2>/dev/null | grep -q "started" || [[ -f /usr/local/bin/caddy ]]; then
+      mode="caddy"
+    else
+      mode="direct"
+    fi
+  fi
+  echo "$mode"
+}
+
+set_proto_mode() {
+  local tag="$1"
+  local mode="$2"
+  mkdir -p /var/Sing-Box-DuolaD
+  touch /var/Sing-Box-DuolaD/proto_mode.log
+  sed -i "/^${tag}:/d" /var/Sing-Box-DuolaD/proto_mode.log
+  echo "${tag}:${mode}" >> /var/Sing-Box-DuolaD/proto_mode.log
+}
+
 init_reality_fps() {
   local fps=("firefox" "edge" "safari")
   local r1=$((RANDOM % 3))
@@ -1454,6 +1476,9 @@ write_caddyfile() {
 
   local tag
   for tag in "${caddy_tags[@]}"; do
+    local p_mode=$(get_proto_mode "$tag")
+    [[ "$p_mode" == "direct" ]] && continue
+
     local port=$(echo "$clean_json" | jq -r ".inbounds[] | select(.tag == \"$tag\") | .listen_port // empty" 2>/dev/null | head -n 1)
     local path=""
     if [[ "$tag" =~ "trojan" ]]; then
@@ -2199,8 +2224,8 @@ resvless() {
   local s_ip_hu="$server_ip"
   
   if $caddy_active; then
-    p_vl_ws="443"
-    p_vl_hu="443"
+    [[ "$(get_proto_mode "vless-ws-tls-sb")" == "caddy" ]] && p_vl_ws="443"
+    [[ "$(get_proto_mode "vless-hu-tls-sb")" == "caddy" ]] && p_vl_hu="443"
     local cert_type=$(cat /var/Sing-Box-DuolaD/cert_type.log 2>/dev/null || echo "self")
     if [[ "$cert_type" == "domain" && -n "$tls_sni" ]]; then
       s_ip_ws="$tls_sni"
@@ -2300,8 +2325,8 @@ resvmess() {
   local s_ipcl_hu="$server_ipcl"
   
   if $caddy_active; then
-    p_vm_ws_tls="443"
-    p_vm_hu_tls="443"
+    [[ "$(get_proto_mode "vmess-ws-tls-sb")" == "caddy" ]] && p_vm_ws_tls="443"
+    [[ "$(get_proto_mode "vmess-hu-tls-sb")" == "caddy" ]] && p_vm_hu_tls="443"
     local cert_type=$(cat /var/Sing-Box-DuolaD/cert_type.log 2>/dev/null || echo "self")
     if [[ "$cert_type" == "domain" && -n "$tls_sni" ]]; then
       s_ipcl_ws="$tls_sni"
@@ -3023,15 +3048,15 @@ sb_client() {
   local cl_s_tr_h2="$tls_sni"
 
   if $caddy_active; then
-    cl_p_vl_ws="443"
-    cl_p_vl_hu="443"
-    cl_p_vl_h2="443"
-    cl_p_vm_ws="443"
-    cl_p_vm_hu="443"
-    cl_p_vm_h2="443"
-    cl_p_tr_ws="443"
-    cl_p_tr_hu="443"
-    cl_p_tr_h2="443"
+    [[ "$(get_proto_mode "vless-ws-tls-sb")" == "caddy" ]] && cl_p_vl_ws="443"
+    [[ "$(get_proto_mode "vless-hu-tls-sb")" == "caddy" ]] && cl_p_vl_hu="443"
+    [[ "$(get_proto_mode "vless-h2-tls-sb")" == "caddy" ]] && cl_p_vl_h2="443"
+    [[ "$(get_proto_mode "vmess-ws-tls-sb")" == "caddy" ]] && cl_p_vm_ws="443"
+    [[ "$(get_proto_mode "vmess-hu-tls-sb")" == "caddy" ]] && cl_p_vm_hu="443"
+    [[ "$(get_proto_mode "vmess-h2-tls-sb")" == "caddy" ]] && cl_p_vm_h2="443"
+    [[ "$(get_proto_mode "trojan-ws-tls-sb")" == "caddy" ]] && cl_p_tr_ws="443"
+    [[ "$(get_proto_mode "trojan-hu-tls-sb")" == "caddy" ]] && cl_p_tr_hu="443"
+    [[ "$(get_proto_mode "trojan-h2-tls-sb")" == "caddy" ]] && cl_p_tr_h2="443"
     
     local cert_type=$(cat /var/Sing-Box-DuolaD/cert_type.log 2>/dev/null || echo "self")
     if [[ "$cert_type" == "domain" && -n "$tls_sni" ]]; then
@@ -5836,6 +5861,22 @@ modify_protocol_config() {
     opt_num=$((opt_num+1))
   fi
 
+  local can_caddy=false
+  if [[ "$sel_tag" == "vless-ws-tls-sb" || "$sel_tag" == "vless-hu-tls-sb" || "$sel_tag" == "vless-h2-tls-sb" || \
+        "$sel_tag" == "vmess-ws-tls-sb" || "$sel_tag" == "vmess-hu-tls-sb" || "$sel_tag" == "vmess-h2-tls-sb" || \
+        "$sel_tag" == "trojan-ws-tls-sb" || "$sel_tag" == "trojan-hu-tls-sb" || "$sel_tag" == "trojan-h2-tls-sb" ]]; then
+    can_caddy=true
+  fi
+
+  if $can_caddy; then
+    local cur_mode=$(get_proto_mode "$sel_tag")
+    local mode_desc="经过 Caddy 443 反代模式"
+    [[ "$cur_mode" == "direct" ]] && mode_desc="Sing-Box 直连 TLS 模式"
+    echo "${opt_num}：切换传输模式 (当前: ${mode_desc})"
+    map_opts+=("toggle_caddy_mode")
+    opt_num=$((opt_num+1))
+  fi
+
   if $need_ssl; then
     echo "${opt_num}：更改绑定的 SSL 证书类型 (自签/IP/域名)"
     map_opts+=("change_ssl_type")
@@ -5857,6 +5898,46 @@ modify_protocol_config() {
   local config_changed=false
 
   case "$selected_action" in
+    toggle_caddy_mode)
+      local cur_mode=$(get_proto_mode "$sel_tag")
+      local new_mode="direct"
+      [[ "$cur_mode" == "direct" ]] && new_mode="caddy"
+      
+      local new_mode_desc="Caddy 443 反代模式"
+      [[ "$new_mode" == "direct" ]] && new_mode_desc="Sing-Box 直连 TLS 模式"
+      
+      set_proto_mode "$sel_tag" "$new_mode"
+      
+      if [[ "$new_mode" == "direct" ]]; then
+        local global_cert_type=$(cat /var/Sing-Box-DuolaD/cert_type.log 2>/dev/null || echo "self")
+        local p_cert=$(grep -w "^${sel_tag}:" /var/Sing-Box-DuolaD/proto_certs.log 2>/dev/null | cut -d: -f2)
+        [[ -z "$p_cert" ]] && p_cert="$global_cert_type"
+        
+        local cpath="/var/Sing-Box-DuolaD/cert.pem"
+        local kpath="/var/Sing-Box-DuolaD/private.key"
+        if [[ "$p_cert" == "self" && -f "/var/Sing-Box-DuolaD/self_cert.pem" ]]; then
+          cpath="/var/Sing-Box-DuolaD/self_cert.pem"; kpath="/var/Sing-Box-DuolaD/self_private.key"
+        elif [[ "$p_cert" == "ip" && -f "/var/Sing-Box-DuolaD/ip_cert.pem" ]]; then
+          cpath="/var/Sing-Box-DuolaD/ip_cert.pem"; kpath="/var/Sing-Box-DuolaD/ip_private.key"
+        elif [[ "$p_cert" == "domain" && -f "/var/Sing-Box-DuolaD/domain_cert.pem" ]]; then
+          cpath="/var/Sing-Box-DuolaD/domain_cert.pem"; kpath="/var/Sing-Box-DuolaD/domain_private.key"
+        fi
+        
+        local sname=$(cat /var/Sing-Box-DuolaD/domain.log 2>/dev/null || get_self_domain)
+        jq --arg cert "$cpath" --arg key "$kpath" --arg sni "$sname" \
+           '.inbounds[0].tls.enabled = true | .inbounds[0].tls.server_name = $sni | .inbounds[0].tls.certificate_path = $cert | .inbounds[0].tls.key_path = $key' \
+           "$file_path" > /tmp/tmp.json && mv /tmp/tmp.json "$file_path"
+      else
+        if [[ "$sel_tag" =~ "-h2-tls" ]]; then
+          jq '.inbounds[0].tls.enabled = true' "$file_path" > /tmp/tmp.json && mv /tmp/tmp.json "$file_path"
+        else
+          jq '.inbounds[0].tls.enabled = false' "$file_path" > /tmp/tmp.json && mv /tmp/tmp.json "$file_path"
+        fi
+      fi
+      
+      config_changed=true
+      blue "\n传输模式已成功切换为：${new_mode_desc}"
+      ;;
     port)
       local current_port=$(jq -r '.inbounds[0].listen_port // empty' "$file_path")
       readp "请输入新端口 (当前为: ${current_port:-自动分配}, 回车自动分配随机空闲端口)：" new_port
@@ -9130,11 +9211,25 @@ showprotocol() {
     echo -e "${blue}----------------------------------------------------------------------------------${plain}"
   fi
 
+  local caddy_active=false
+  if systemctl is-active --quiet caddy 2>/dev/null || rc-service caddy status 2>/dev/null | grep -q "started"; then
+    caddy_active=true
+  fi
+
   print_protocol_line() {
     local name="$1"
     local port="$2"
     local extra="$3"
-    printf "🚀【 ${green}%-13s${plain} 】 端口:${yellow}%-5s${plain}  %s\n" "$name" "$port" "$extra"
+    local is_caddy_proto="${4:-false}"
+    local tag="$5"
+    local disp_port="$port"
+    if $caddy_active && [[ "$is_caddy_proto" == "true" ]]; then
+      local p_mode=$(get_proto_mode "$tag")
+      if [[ "$p_mode" == "caddy" ]]; then
+        disp_port="443 - ${port}"
+      fi
+    fi
+    printf "🚀【 ${green}%-13s${plain} 】 端口:${yellow}%-11s${plain}  %s\n" "$name" "$disp_port" "$extra"
   }
 
   echo -e "Sing-box节点关键信息、已分流域名情况如下："
@@ -9142,28 +9237,28 @@ showprotocol() {
     print_protocol_line "VLESS-Reality" "$port_vl_re" "Reality伪装域名: $vl_name"
   fi
   if [[ -n "$port_vl_ws_tls" ]]; then
-    print_protocol_line "VLESS-WS-TLS" "$port_vl_ws_tls" "证书形式:$hy2_zs  路径: /${uuid_vl_ws}"
+    print_protocol_line "VLESS-WS-TLS" "$port_vl_ws_tls" "证书形式:$hy2_zs  路径: /${uuid_vl_ws}" "true" "vless-ws-tls-sb"
   fi
   if [[ -n "$port_vl_hu_tls" ]]; then
-    print_protocol_line "VLESS-HU-TLS" "$port_vl_hu_tls" "证书形式:$hy2_zs  路径: /${uuid_vl_hu}"
+    print_protocol_line "VLESS-HU-TLS" "$port_vl_hu_tls" "证书形式:$hy2_zs  路径: /${uuid_vl_hu}" "true" "vless-hu-tls-sb"
   fi
   if [[ -n "$port_vm_ws" ]]; then
     print_protocol_line "VMess-WS" "$port_vm_ws" "不开启 TLS  路径: /${uuid_vm_ws}  Argo状态:$argoym"
   fi
   if [[ -n "$port_vm_ws_tls" ]]; then
-    print_protocol_line "VMess-WS-TLS" "$port_vm_ws_tls" "证书形式:$hy2_zs  路径: /${uuid_vm_ws_tls}"
+    print_protocol_line "VMess-WS-TLS" "$port_vm_ws_tls" "证书形式:$hy2_zs  路径: /${uuid_vm_ws_tls}" "true" "vmess-ws-tls-sb"
   fi
   if [[ -n "$port_vm_hu_tls" ]]; then
-    print_protocol_line "VMess-HU-TLS" "$port_vm_hu_tls" "证书形式:$hy2_zs  路径: /${uuid_vm_hu_tls}"
+    print_protocol_line "VMess-HU-TLS" "$port_vm_hu_tls" "证书形式:$hy2_zs  路径: /${uuid_vm_hu_tls}" "true" "vmess-hu-tls-sb"
   fi
   if [[ -n "$port_tr_tls" ]]; then
     print_protocol_line "Trojan-TLS" "$port_tr_tls" "证书形式:$hy2_zs"
   fi
   if [[ -n "$port_tr_ws_tls" ]]; then
-    print_protocol_line "Trojan-WS-TLS" "$port_tr_ws_tls" "证书形式:$hy2_zs  路径: /${uuid_tr_ws_tls}"
+    print_protocol_line "Trojan-WS-TLS" "$port_tr_ws_tls" "证书形式:$hy2_zs  路径: /${uuid_tr_ws_tls}" "true" "trojan-ws-tls-sb"
   fi
   if [[ -n "$port_tr_hu_tls" ]]; then
-    print_protocol_line "Trojan-HU-TLS" "$port_tr_hu_tls" "证书形式:$hy2_zs  路径: /${uuid_tr_hu_tls}"
+    print_protocol_line "Trojan-HU-TLS" "$port_tr_hu_tls" "证书形式:$hy2_zs  路径: /${uuid_tr_hu_tls}" "true" "trojan-hu-tls-sb"
   fi
   if [[ -n "$port_ss" ]]; then
     print_protocol_line "Shadowsocks" "$port_ss" "加密: ${ss_method:-2022-blake3-aes-128-gcm}"
@@ -9187,13 +9282,13 @@ showprotocol() {
     print_protocol_line "VMess-QUIC" "$port_vm_quic" "证书形式:$hy2_zs"
   fi
   if [[ -n "$port_vm_h2_tls" ]]; then
-    print_protocol_line "VMess-H2-TLS" "$port_vm_h2_tls" "证书形式:$hy2_zs  路径: /${uuid_vm_h2_tls}"
+    print_protocol_line "VMess-H2-TLS" "$port_vm_h2_tls" "证书形式:$hy2_zs  路径: /${uuid_vm_h2_tls}" "true" "vmess-h2-tls-sb"
   fi
   if [[ -n "$port_vl_h2_tls" ]]; then
-    print_protocol_line "VLESS-H2-TLS" "$port_vl_h2_tls" "证书形式:$hy2_zs  路径: /${uuid_vl_h2}"
+    print_protocol_line "VLESS-H2-TLS" "$port_vl_h2_tls" "证书形式:$hy2_zs  路径: /${uuid_vl_h2}" "true" "vless-h2-tls-sb"
   fi
   if [[ -n "$port_tr_h2_tls" ]]; then
-    print_protocol_line "Trojan-H2-TLS" "$port_tr_h2_tls" "证书形式:$hy2_zs  路径: /${uuid_tr_h2_tls}"
+    print_protocol_line "Trojan-H2-TLS" "$port_tr_h2_tls" "证书形式:$hy2_zs  路径: /${uuid_tr_h2_tls}" "true" "trojan-h2-tls-sb"
   fi
   if [[ -n "$port_vl_h2_re" ]]; then
     print_protocol_line "VLESS-H2-Re" "$port_vl_h2_re" "Reality伪装域名: $vl_name  路径: /${uuid_vl_h2_re}"
