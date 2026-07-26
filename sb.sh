@@ -303,8 +303,8 @@ close_firewall() {
 }
 
 openyn() {
-  red "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-  readp "是否开放端口，关闭防火墙？\n1、是，执行 (回车默认)\n2、否，跳过！自行处理\n请选择【1-2】：" action
+  red "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+  readp "是否开放端口，关闭防火墙？\n1: 是，执行 (回车默认)\n2: 否，跳过！自行处理\n请选择【1-2】:" action
   if [[ -z $action ]] || [[ "$action" = "1" ]]; then
     close_firewall
   elif [[ "$action" = "2" ]]; then
@@ -316,11 +316,11 @@ openyn() {
 
 # --- Core Sing-Box Installer ---
 inssb() {
-  red "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+  red "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
   green "使用哪个内核版本？"
-  yellow "1：使用目前最新正式版内核 (回车默认)"
-  yellow "2：手动输入 Release Tag 指定版本（例如：1.13.0 或 1.13.0-alpha.1，仅支持1.13.0或更高版本）"
-  readp "请选择【1-2】：" menu
+  yellow "1: 使用目前最新正式版内核 (回车默认)"
+  yellow "2: 手动输入 Release Tag 指定版本 (例如：1.13.0 或 1.13.0-alpha.1，仅支持 1.13.0 或更高版本)"
+  readp "请选择【1-2】:" menu
   if [[ -z "$menu" ]] || [[ "$menu" = "1" ]]; then
     green "正在获取最新正式版 Sing-box 内核版本..."
     sbcore=$(curl -Ls https://github.com/SagerNet/sing-box/releases/latest | grep -oP 'tag/v\K[0-9.]+' | head -n 1)
@@ -454,11 +454,11 @@ EOF
 inscertificate() {
   local cur_self_dom=$(get_self_domain)
   echo
-  green "请选择 SSL 证书类型："
-  yellow "1：自签证书 ($cur_self_dom) (回车默认)"
-  yellow "2：纯 IP 证书 (由 Let's Encrypt 签发，需确保 VPS 80 端口开放且未被防火墙阻断)"
-  yellow "3：域名证书 (自动 ACME 申请，自备已解析的域名)"
-  readp "请选择【1-3】：" cert_menu
+  green "请选择 SSL 证书类型:"
+  yellow "1: 自签证书 ($cur_self_dom) (回车默认)"
+  yellow "2: 纯 IP 证书 (由 Let's Encrypt 签发，需确保 VPS 80 端口开放且未被防火墙阻断)"
+  yellow "3: 域名证书 (自动 ACME 申请，自备已解析的域名)"
+  readp "请选择【1-3】:" cert_menu
   case "$cert_menu" in
     2)
       cert_type="ip"
@@ -479,7 +479,7 @@ inscertificate() {
           if [[ -z "$resolved_ip" || "$resolved_ip" != "$server_ip" ]]; then
             red "检测到域名 $ym_domain 未解析到当前 VPS 外部 IP $server_ip (解析到的 IP 是: ${resolved_ip:-无})。"
             yellow "请先确保域名解析生效，或者输入 y 忽略并强制继续："
-            readp "忽略并继续？[y/N]：" force_dns
+            readp "忽略并继续？[Y/N]:" force_dns
             if [[ "$force_dns" =~ ^[Yy]$ ]]; then
               break
             fi
@@ -522,27 +522,27 @@ chooseport() {
 }
 
 vlport() {
-  readp "\n设置Vless-reality端口 (回车跳过为10000-65535之间的随机端口)：" port
+  readp "\n设置 VLESS-Reality 端口 (回车跳过为 10000-65535 之间的随机端口):" port
   chooseport
   port_vl_re=$port
 }
 vmport() {
-  readp "\n设置Vmess-ws端口 (回车跳过为10000-65535之间的随机端口)：" port
+  readp "\n设置 VMess-WS 端口 (回车跳过为 10000-65535 之间的随机端口):" port
   chooseport
   port_vm_ws=$port
 }
 hy2port() {
-  readp "\n设置Hysteria2主端口 (回车跳过为10000-65535之间的随机端口)：" port
+  readp "\n设置 Hysteria2 主端口 (回车跳过为 10000-65535 之间的随机端口):" port
   chooseport
   port_hy2=$port
 }
 tu5port() {
-  readp "\n设置Tuic5主端口 (回车跳过为10000-65535之间的随机端口)：" port
+  readp "\n设置 TUIC 主端口 (回车跳过为 10000-65535 之间的随机端口):" port
   chooseport
   port_tu=$port
 }
 anport() {
-  readp "\n设置Anytls主端口，最新内核时可用 (回车跳过为10000-65535之间的随机端口)：" port
+  readp "\n设置 AnyTLS 主端口，最新内核时可用 (回车跳过为 10000-65535 之间的随机端口):" port
   chooseport
   port_an=$port
 }
@@ -560,11 +560,11 @@ get_random_free_port() {
 }
 
 insport() {
-  red "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-  green "三、设置各协议端口"
+  red "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+  green "3. 设置各协议端口"
   yellow "1：自动生成选定协议的随机端口 (10000-65535范围内)，回车默认。请确保VPS后台已开放所有端口"
   yellow "2：自定义选定协议端口。请确保VPS后台已开放指定的端口"
-  readp "请输入【1-2】：" port_choice
+  readp "请输入【1-2】:" port_choice
   
   local allocated_ports=()
 
@@ -619,7 +619,7 @@ insport() {
     local name="$1"
     local var_name="$2"
     while true; do
-      readp "\n设置 ${name} 端口 (回车跳过为10000-65535之间的随机端口)：" port
+      readp "\n设置 ${name} 端口 (回车跳过为 10000-65535 之间的随机端口):" port
       if [[ -z "$port" ]]; then
         port=$(get_random_free_port)
         break
@@ -713,8 +713,8 @@ insport() {
   [[ "$use_vl_h2_re" = "true" ]] && blue "VLESS-HTTP2-REALITY端口：$port_vl_h2_re"
   [[ "$use_socks" = "true" ]] && blue "Socks端口：$port_socks"
   
-  red "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-  green "四、自动生成各个协议独立的uuid (密码)"
+  red "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+  green "4. 自动生成各个协议独立的 UUID (密码)"
   uuid_vl_re=$("$SBFOLDER/sing-box" generate uuid)
   uuid_vl_ws=$("$SBFOLDER/sing-box" generate uuid)
   uuid_vl_hu=$("$SBFOLDER/sing-box" generate uuid)
@@ -736,7 +736,7 @@ insport() {
   uuid_vl_h2_re=$("$SBFOLDER/sing-box" generate uuid)
   socks_username=$("$SBFOLDER/sing-box" generate uuid)
   socks_password=$("$SBFOLDER/sing-box" generate uuid)
-  blue "已确认各个协议独立的uuid (密码)已自动生成"
+  blue "已确认各个协议独立的 UUID (密码)已自动生成"
   
   if [[ "$use_ss" = "true" ]]; then
     blue "已确认Shadowsocks加密方式：${ss_method}"
@@ -1620,7 +1620,7 @@ select_ip_cert_mode() {
     yellow "1: 为双栈 IP (IPv4 + IPv6) 共同申请证书 (回车默认)"
     yellow "2: 仅为 IPv4 地址 (${v4_addr:-IPv4}) 申请证书"
     yellow "3: 仅为 IPv6 地址 (${v6_addr:-IPv6}) 申请证书"
-    readp "请选择【1-3】(默认 1)：" ip_choice
+    readp "请选择【1-3】 (默认 1):" ip_choice
     case "$ip_choice" in
       2) mode="v4" ;;
       3) mode="v6" ;;
@@ -1957,11 +1957,11 @@ ipuuid() {
     if [[ -n $v4 && -n $v6 ]]; then
       echo "$v4" > "$SBFOLDER/v4.log"
       echo "$v6" > "$SBFOLDER/v6.log"
-      green "调整IPv4/IPV6配置输出"
-      yellow "1：刷新本地IP，使用IPV4配置输出 (回车默认) "
-      yellow "2：刷新本地IP，使用IPV6配置输出"
-      yellow "3：刷新本地IP，使用双栈配置输出"
-      readp "请选择【1-3】：" menu
+      green "调整 IPv4/IPv6 配置输出"
+      yellow "1: 刷新本地 IP，使用 IPv4 配置输出 (回车默认)"
+      yellow "2: 刷新本地 IP，使用 IPv6 配置输出"
+      yellow "3: 刷新本地 IP，使用双栈配置输出"
+      readp "请选择【1-3】:" menu
       if [ -z "$menu" ] || [ "$menu" = "1" ]; then
         server_ip="$v4"
         server_ipcl="$v4"
@@ -3929,13 +3929,13 @@ sbshare() {
   local show_qr_code=false
   local show_client_config=false
   if [ -t 1 ]; then
-    readp "是否需要同时在控制台输出各个节点的二维码？[y/N] (默认不输出)：" qr_choice
+    readp "是否需要同时在控制台输出各个节点的二维码？[Y/N] (默认不输出):" qr_choice
     if [[ "$qr_choice" =~ ^[Yy]$ ]]; then
       show_qr_code=true
     fi
     if [[ "$1" == "install" ]]; then
       show_client_config=true
-      readp "是否需要同时在控制台输出Mihomo、Sing-box客户端SFA/SFI/SFW三合一配置？[Y/n] (默认输出)：" client_choice
+      readp "是否需要同时在控制台输出 Mihomo、Sing-box 客户端 SFA/SFI/SFW 三合一配置？[Y/N] (默认输出):" client_choice
       if [[ "$client_choice" =~ ^[Nn]$ ]]; then
         show_client_config=false
       fi
@@ -4075,10 +4075,10 @@ sbshare() {
 clash_sb_share() {
   sbactive
   echo
-  yellow "1：刷新并查看各协议分享链接、二维码、聚合节点"
-  yellow "2：刷新并查看Mihomo、Sing-box客户端SFA/SFI/SFW三合一配置"
-  yellow "0：返回上层"
-  readp "请选择【0-2】：" menu
+  yellow "1: 刷新并查看各协议分享链接、二维码、聚合节点"
+  yellow "2: 刷新并查看 Mihomo、Sing-box 客户端 SFA/SFI/SFW 三合一配置"
+  yellow "0: 返回上层"
+  readp "请选择【0-2】:" menu
   if [ "$menu" = "1" ]; then
     sbshare
   elif [ "$menu" = "2" ]; then
@@ -4128,10 +4128,10 @@ cfargo_ym() {
   local vm_no_tls=$(echo "$clean_json" | jq -r ' (.inbounds[] | select(.tag == "vmess-ws-sb") | .listen_port) // empty')
   if [[ -n "$vm_no_tls" ]]; then
     echo
-    yellow "1：添加或者删除Argo临时隧道"
-    yellow "2：添加或者删除Argo固定隧道"
-    yellow "0：返回上层"
-    readp "请选择【0-2】：" menu
+    yellow "1: 添加或者删除 Argo 临时隧道"
+    yellow "2: 添加或者删除 Argo 固定隧道"
+    yellow "0: 返回上层"
+    readp "请选择【0-2】:" menu
     if [ "$menu" = "1" ]; then
       cfargo
     elif [ "$menu" = "2" ]; then
@@ -4152,10 +4152,10 @@ cfargoym() {
   fi
   echo
   green "请进入Cloudflare官网 --- Zero Trust --- 网络 --- 连接器，创建固定隧道"
-  yellow "1：重置/设置Argo固定隧道域名"
-  yellow "2：停止Argo固定隧道"
-  yellow "0：返回上层"
-  readp "请选择【0-2】：" menu
+  yellow "1: 重置/设置 Argo 固定隧道域名"
+  yellow "2: 停止 Argo 固定隧道"
+  yellow "0: 返回上层"
+  readp "请选择【0-2】:" menu
   if [ "$menu" = "1" ]; then
     cloudflaredargo
     readp "输入Argo固定隧道Token: " argotoken
@@ -4224,10 +4224,10 @@ EOF
 
 cfargo() {
   echo
-  yellow "1：重置Argo临时隧道域名"
-  yellow "2：停止Argo临时隧道"
-  yellow "0：返回上层"
-  readp "请选择【0-2】：" menu
+  yellow "1: 重置 Argo 临时隧道域名"
+  yellow "2: 停止 Argo 临时隧道"
+  yellow "0: 返回上层"
+  readp "请选择【0-2】:" menu
   local clean_json=$(strip_json_comments "$SBFOLDER/sb.json")
   local vm_listen_port=$(echo "$clean_json" | jq -r ' (.inbounds[] | select(.tag == "vmess-ws-sb") | .listen_port) // empty')
   if [ "$menu" = "1" ]; then
@@ -4303,14 +4303,13 @@ changeserv() {
   sbactive
   echo
   green "Sing-box配置变更选择如下:"
-  readp "1：更换Reality域名伪装地址、切换自签证书与Acme域名证书、开关TLS\n2：更换全协议UUID(密码)、Vmess-Path路径\n3：设置Argo临时隧道、固定隧道\n4：切换IPV4或IPV6的代理优先级\n5：更换Warp-wireguard出站账户/对端IP(Endpoint)\n6：设置所有Vmess节点的CDN优选地址\n0：返回上层\n请选择【0-6】：" menu
+  readp "1：管理协议与证书（域名伪装/Acme证书/TLS开关）\n2：设置 Cloudflare Argo 隧道（临时/固定隧道）\n3：切换 IPv4 / IPv6 代理出站优先级\n4：管理 WARP WireGuard 出站（更换账户/对端 IP Endpoint）\n5：设置 VMess 节点 CDN 优选地址\n0：返回上层\n请选择【0-5】:" menu
   case "$menu" in
     1) changeym ;;
-    2) changeuuid ;;
-    3) cfargo_ym ;;
-    4) changeip ;;
-    5) changewg ;;
-    6) vmesscfadd ;;
+    2) cfargo_ym ;;
+    3) changeip ;;
+    4) changewg ;;
+    5) vmesscfadd ;;
     *) sb ;;
   esac
 }
@@ -4577,22 +4576,22 @@ changeport() {
       ;;
     18)
       [[ -z "$port_hy2" ]] && red "协议未安装！" && sleep 2 && changeport && return
-      green "1：更换Hysteria 2主端口 (原多端口自动重置删除)"
-      green "2：添加Hysteria 2多端口"
-      green "3：重置删除Hysteria 2多端口"
-      green "0：返回上层"
-      readp "请选择【0-3】：" menu
+      green "1: 更换 Hysteria 2 主端口 (原多端口自动重置删除)"
+      green "2: 添加 Hysteria 2 多端口"
+      green "3: 重置删除 Hysteria 2 多端口"
+      green "0: 返回上层"
+      readp "请选择【0-3】:" menu
       if [ "$menu" = "1" ]; then
         [ -n "$hy2_ports" ] && hy2deports
         local p=$(prompt_new_port "Hysteria 2" "$port_hy2")
         update_inbound_port "hy2-sb" "$p"
         restartsb && sbshare > /dev/null 2>&1
-        blue "Hysteria 2端口已变更为 $p"
+        blue "Hysteria 2 端口已变更为 $p"
       elif [ "$menu" = "2" ]; then
-        green "1：添加Hysteria 2范围端口"
-        green "2：添加Hysteria 2单端口"
-        green "0：返回上层"
-        readp "请选择【0-2】：" menu
+        green "1: 添加 Hysteria 2 范围端口"
+        green "2: 添加 Hysteria 2 单端口"
+        green "0: 返回上层"
+        readp "请选择【0-2】:" menu
         port=$port_hy2
         if [ "$menu" = "1" ]; then
           fports && sbshare > /dev/null 2>&1 && changeport
@@ -4603,9 +4602,9 @@ changeport() {
         fi
       elif [ "$menu" = "3" ]; then
         if [ -n "$hy2_ports" ]; then
-          hy2deports && sbshare > /dev/null 2>&1 && yellow "Hysteria 2多端口已删除" && changeport
+          hy2deports && sbshare > /dev/null 2>&1 && yellow "Hysteria 2 多端口已删除" && changeport
         else
-          sbshare > /dev/null 2>&1 && yellow "Hysteria 2未设置多端口" && changeport
+          sbshare > /dev/null 2>&1 && yellow "Hysteria 2 未设置多端口" && changeport
         fi
       else
         changeport
@@ -4613,22 +4612,22 @@ changeport() {
       ;;
     19)
       [[ -z "$port_tu" ]] && red "协议未安装！" && sleep 2 && changeport && return
-      green "1：更换Tuic-v5主端口 (原多端口自动重置删除)"
-      green "2：添加Tuic-v5多端口"
-      green "3：重置删除Tuic-v5多端口"
-      green "0：返回上层"
-      readp "请选择【0-3】：" menu
+      green "1: 更换 TUIC 主端口 (原多端口自动重置删除)"
+      green "2: 添加 TUIC 多端口"
+      green "3: 重置删除 TUIC 多端口"
+      green "0: 返回上层"
+      readp "请选择【0-3】:" menu
       if [ "$menu" = "1" ]; then
         [ -n "$tu5_ports" ] && tu5deports
-        local p=$(prompt_new_port "Tuic-v5" "$port_tu")
+        local p=$(prompt_new_port "TUIC" "$port_tu")
         update_inbound_port "tuic5-sb" "$p"
         restartsb && sbshare > /dev/null 2>&1
-        blue "Tuic-v5端口已变更为 $p"
+        blue "TUIC 端口已变更为 $p"
       elif [ "$menu" = "2" ]; then
-        green "1：添加Tuic-v5范围端口"
-        green "2：添加Tuic-v5单端口"
-        green "0：返回上层"
-        readp "请选择【0-2】：" menu
+        green "1: 添加 TUIC 范围端口"
+        green "2: 添加 TUIC 单端口"
+        green "0: 返回上层"
+        readp "请选择【0-2】:" menu
         port=$port_tu
         if [ "$menu" = "1" ]; then
           fports && sbshare > /dev/null 2>&1 && changeport
@@ -4729,9 +4728,9 @@ changeuuid() {
     yellow "2：自定义Vmess-WS的path路径"
   fi
   yellow "0：返回上层"
-  readp "请选择【0-2】：" menu
+  readp "请选择【0-2】:" menu
   if [ "$menu" = "1" ]; then
-    readp "输入自定义uuid (回车表示随机生成各协议独立uuid)：" menu
+    readp "输入自定义 UUID (回车表示随机生成各协议独立 UUID):" menu
     if [ -z "$menu" ]; then
       uuid_vl_re=$("$SBFOLDER/sing-box" generate uuid)
       uuid_vl_ws=$("$SBFOLDER/sing-box" generate uuid)
@@ -4829,13 +4828,13 @@ changeuuid() {
       fi
     done
     restartsb && sbshare > /dev/null 2>&1
-    blue "已确认各协议的uuid (密码)已更新完成！"
+    blue "已确认各协议的 UUID (密码)已更新完成！"
   elif [ "$menu" = "2" ]; then
     if [[ -z "$oldvmpath" ]]; then
-      red "Vmess-WS协议未安装，无法修改其Path路径！" && sleep 2 && changeuuid
+      red "VMess-WS 协议未安装，无法修改其 Path 路径！" && sleep 2 && changeuuid
       return
     fi
-    readp "输入Vmess-WS of path路径，回车表示不变：" menu
+    readp "请输入 VMess-WS 的 Path 路径 (回车表示保持不变):" menu
     if [ -n "$menu" ]; then
       vmpath=$menu
       [[ "$vmpath" != /* ]] && vmpath="/$vmpath"
@@ -4846,9 +4845,7 @@ changeuuid() {
       done
       restartsb && sbshare > /dev/null 2>&1
     fi
-    blue "已确认Vmess-WS的path路径：$(strip_json_comments "$SBFOLDER/sb.json" | jq -r ' (.inbounds[] | select(.tag == "vmess-ws-sb") | .transport.path) // empty')"
-  else
-    changeserv
+    blue "已确认 VMess-WS 的 Path 路径：$(strip_json_comments "$SBFOLDER/sb.json" | jq -r ' (.inbounds[] | select(.tag == "vmess-ws-sb") | .transport.path) // empty')"
   fi
 }
 
@@ -4866,7 +4863,7 @@ changeip() {
     ' "$SBFOLDER/sb.json" > /tmp/sb.json && mv /tmp/sb.json "$SBFOLDER/sb.json"
     restartsb
   }
-  readp "1. IPV4优先\n2. IPV6优先\n3. 仅IPV4\n4. 仅IPV6\n请选择：" choose
+  readp "1: IPv4 优先\n2: IPv6 优先\n3: 仅 IPv4\n4: 仅 IPv6\n请选择:" choose
   if [[ $choose == "1" && -n $v4 ]]; then
     rrpip="prefer_ipv4" && chip && v4_6="IPV4优先出站($showv4)"
   elif [[ $choose == "2" && -n $v6 ]]; then
@@ -5165,20 +5162,21 @@ changewg() {
   green "对端IP：$wgip:$wgpo"
   echo
   yellow "1：更换warp-wireguard账户"
-  yellow "2：更换/优选warp-wireguard对端IP与端口 (不建议随意改动)"
-  yellow "3：测试WireGuard出站连通性 (204响应)"
-  yellow "4：测试Warp-wireguard IP (IPv4/IPv6 & 地区)"
-  yellow "0：返回上层"
-  readp "请选择【0-4】：" menu
+  yellow "1: 更换注册 WARP-WireGuard 账户"
+  yellow "2: 更换/优选 WARP-WireGuard 对端 IP 与端口 (不建议随意改动)"
+  yellow "3: 测试 WireGuard 出站连通性 (204 响应)"
+  yellow "4: 测试 WARP-WireGuard IP (IPv4/IPv6 & 地区)"
+  yellow "0: 返回上层"
+  readp "请选择【0-4】:" menu
   if [ "$menu" = "1" ]; then
-    green "最新随机生成普通warp-wireguard账户如下"
+    green "最新随机生成普通 WARP-WireGuard 账户如下"
     warpwg
     echo
-    readp "输入自定义Private_key：" menu_key
+    readp "输入自定义 Private_key:" menu_key
     [ -z "$menu_key" ] && menu_key=$pvk
-    readp "输入自定义IPV6地址：" menu_ip
+    readp "输入自定义 IPv6 地址:" menu_ip
     [ -z "$menu_ip" ] && menu_ip=$v6
-    readp "输入自定义Reserved值 (格式：数字,数字,数字)，如无值则回车跳过：" menu_res
+    readp "输入自定义 Reserved 值 (格式：数字,数字,数字)，如无值则回车跳过:" menu_res
     if [ -z "$menu_res" ]; then
       menu_res="0,0,0"
     fi
@@ -5227,21 +5225,21 @@ changewg() {
 
     green "网络检测结果：当前服务器为【$net_type】"
     echo
-    yellow "1：手动输入自定义对端 IP/域名 和 端口"
-    yellow "2：自动获取优选warp-wireguard对端IP"
+    yellow "1: 手动输入自定义对端 IP/域名 和 端口"
+    yellow "2: 自动获取优选 WARP-WireGuard 对端 IP"
     if [ -n "$opt_v4_idx" ]; then
-      yellow "${opt_v4_idx}：更换至 IPv4 Endpoint (162.159.192.1)"
+      yellow "${opt_v4_idx}: 更换至 IPv4 Endpoint (162.159.192.1)"
     fi
     if [ -n "$opt_v6_idx" ]; then
-      yellow "${opt_v6_idx}：更换至 IPv6 Endpoint (2606:4700:d0::a29f:c001)"
+      yellow "${opt_v6_idx}: 更换至 IPv6 Endpoint (2606:4700:d0::a29f:c001)"
     fi
-    yellow "0：返回上层"
-    readp "请选择【0-${max_idx}】：" sub_menu
+    yellow "0: 返回上层"
+    readp "请选择【0-${max_idx}】:" sub_menu
 
     if [ "$sub_menu" = "1" ]; then
-      readp "输入自定义对端IP或域名 [当前: $wgip] (回车保持不变)：" menu_endip
+      readp "输入自定义对端 IP 或域名 [当前: $wgip] (回车保持不变):" menu_endip
       [ -z "$menu_endip" ] && menu_endip=$wgip
-      readp "输入自定义对端端口Port [当前: ${wgpo:-2408}] (回车保持不变)：" menu_endpo
+      readp "输入自定义对端端口 Port [当前: ${wgpo:-2408}] (回车保持不变):" menu_endpo
       [ -z "$menu_endpo" ] && menu_endpo=${wgpo:-2408}
       
       jq --arg ip "$menu_endip" --argjson port "$menu_endpo" \
@@ -5322,10 +5320,11 @@ changeym() {
   echo
   green "1：新增协议"
   green "2：修改现有协议配置"
-  green "3：SSL 证书设置"
-  green "4：删除协议"
+  green "3：更换/重置现有全协议 UUID 与密码"
+  green "4：SSL 证书设置"
+  green "5：删除协议"
   green "0：返回上层"
-  readp "请选择【0-4】：" menu
+  readp "请选择【0-5】:" menu
   
   if [ "$menu" = "1" ]; then
     add_protocol
@@ -5334,9 +5333,12 @@ changeym() {
     modify_protocol_config
     changeym
   elif [ "$menu" = "3" ]; then
-    ssl_certificate_settings
+    changeuuid
     changeym
   elif [ "$menu" = "4" ]; then
+    ssl_certificate_settings
+    changeym
+  elif [ "$menu" = "5" ]; then
     delete_protocol
     changeym
   else
@@ -5372,11 +5374,11 @@ config_apply_cert() {
 ssl_deploy_menu() {
   echo
   green "部署/更新证书："
-  echo "1：部署/更新 自签证书"
-  echo "2：部署/更新 纯 IP 证书"
-  echo "3：部署/更新 域名证书"
-  echo "0：返回上层"
-  readp "请选择【0-3】：" opt
+  echo "1: 部署/更新 自签证书"
+  echo "2: 部署/更新 纯 IP 证书"
+  echo "3: 部署/更新 域名证书"
+  echo "0: 返回上层"
+  readp "请选择【0-3】:" opt
   case "$opt" in
     1)
       cert_type="self"
@@ -5384,13 +5386,13 @@ ssl_deploy_menu() {
       local new_self_dom="$cur_self_dom"
       if [[ -s "/var/Sing-Box-DuolaD/self_cert.pem" && -s "/var/Sing-Box-DuolaD/self_private.key" ]]; then
         echo -e "当前自签证书伪装域名为: ${cyan}$cur_self_dom${plain}"
-        readp "是否需要修改自签证书伪装域名？[y/N] (默认不修改) ：" change_dom_choice
+        readp "是否需要修改自签证书伪装域名？[Y/N] (默认不修改):" change_dom_choice
         if [[ "$change_dom_choice" =~ ^[Yy]$ ]]; then
-          readp "请输入新的自签证书伪装域名 (回车使用 $cur_self_dom)：" input_self_dom
+          readp "请输入新的自签证书伪装域名 (回车使用 $cur_self_dom):" input_self_dom
           new_self_dom=${input_self_dom:-$cur_self_dom}
         fi
       else
-        readp "请输入自签证书伪装域名 (回车默认使用 dl.delivery.mp.microsoft.com)：" input_self_dom
+        readp "请输入自签证书伪装域名 (回车默认使用 dl.delivery.mp.microsoft.com):" input_self_dom
         new_self_dom=${input_self_dom:-dl.delivery.mp.microsoft.com}
       fi
       mkdir -p /var/Sing-Box-DuolaD
@@ -5445,7 +5447,7 @@ ssl_deploy_menu() {
       
       echo
       while true; do
-        readp "请输入解析或需要申请证书的域名 (如 sub.domain.com 或 *.domain.com)：" ym_domain
+        readp "请输入解析或需要申请证书的域名 (如 sub.domain.com 或 *.domain.com):" ym_domain
         if [[ -z "$ym_domain" ]]; then
           red "域名不能为空，请重新输入！"
         else
@@ -5467,19 +5469,19 @@ ssl_deploy_menu() {
       else
         echo
         green "请选择域名证书验证模式："
-        echo "1：HTTP 80 端口 / Caddy 反代验证模式 (推荐，零 API 密钥配置，默认)"
-        echo "2：DNS API 验证模式 (需配置 Cloudflare / DNSPod / 阿里云 API 密钥)"
-        readp "请选择【1-2】(默认回车选择 1)：" acme_mode_choice
+        echo "1: HTTP 80 端口 / Caddy 反代验证模式 (推荐，零 API 密钥配置，默认)"
+        echo "2: DNS API 验证模式 (需配置 Cloudflare / DNSPod / 阿里云 API 密钥)"
+        readp "请选择【1-2】 (默认回车选择 1):" acme_mode_choice
         acme_mode_choice=${acme_mode_choice:-1}
       fi
 
       if [[ "$acme_mode_choice" == "2" ]]; then
         echo
         green "请选择托管域名解析服务商："
-        echo "1：Cloudflare"
-        echo "2：腾讯云 DNSPod"
-        echo "3：阿里云 Aliyun"
-        readp "请选择【1-3】：" dns_prov_choice
+        echo "1: Cloudflare"
+        echo "2: 腾讯云 DNSPod"
+        echo "3: 阿里云 Aliyun"
+        readp "请选择【1-3】:" dns_prov_choice
         local dns_provider=""
         case "$dns_prov_choice" in
           1)
@@ -5487,7 +5489,7 @@ ssl_deploy_menu() {
             yellow "请选择 Cloudflare DNS API 验证方式："
             yellow "1. API Token (推荐)"
             yellow "2. Global API Key"
-            readp "请选择【1-2】(默认1)：" cf_choice
+            readp "请选择【1-2】 (默认 1):" cf_choice
             cf_choice=${cf_choice:-1}
             if [[ "$cf_choice" == "1" ]]; then
               readp "请输入 Cloudflare Account ID (账户ID)：" cf_acc_id
@@ -5529,7 +5531,7 @@ ssl_deploy_menu() {
         local vps_ip=$(get_server_ip)
         if [[ "$resolved_ip" != "$vps_ip" ]]; then
           yellow "警告：域名解析IP ($resolved_ip) 与本机IP ($vps_ip) 不符！"
-          readp "是否强行继续申请？[y/N] (默认不继续) ：" force_req
+          readp "是否强行继续申请？[Y/N] (默认不继续):" force_req
           if [[ "$force_req" =~ ^[Yy]$ ]]; then
             :
           else
@@ -5555,11 +5557,11 @@ ssl_deploy_menu() {
 ssl_uninstall_menu() {
   echo
   green "卸载证书："
-  echo "1：卸载 自签证书"
-  echo "2：卸载 纯 IP 证书"
-  echo "3：卸载 域名证书"
-  echo "0：返回上层"
-  readp "请选择【0-3】：" opt
+  echo "1: 卸载 自签证书"
+  echo "2: 卸载 纯 IP 证书"
+  echo "3: 卸载 域名证书"
+  echo "0: 返回上层"
+  readp "请选择【0-3】:" opt
   
   local target_type=""
   local target_name=""
@@ -5619,7 +5621,7 @@ ssl_uninstall_menu() {
     return
   fi
 
-  readp "确认卸载 $target_name 吗？[y/N] (默认不卸载)：" confirm_uninst
+  readp "确认卸载 $target_name 吗？[Y/N] (默认不卸载):" confirm_uninst
   if [[ ! "$confirm_uninst" =~ ^[Yy]$ ]]; then
     return
   fi
@@ -5646,11 +5648,11 @@ ssl_preset_default_menu() {
   green "切换预设默认依赖证书："
   yellow "说明：此选项将对后续新增的协议生效，对当前已有的协议不生效。"
   echo
-  echo "1：后续默认使用 自签证书"
-  echo "2：后续默认使用 纯 IP 证书"
-  echo "3：后续默认使用 域名证书"
-  echo "0：返回上层"
-  readp "请选择【0-3】：" opt
+  echo "1: 后续默认使用 自签证书"
+  echo "2: 后续默认使用 纯 IP 证书"
+  echo "3: 后续默认使用 域名证书"
+  echo "0: 返回上层"
+  readp "请选择【0-3】:" opt
   
   local target_type=""
   local target_name=""
@@ -5666,7 +5668,7 @@ ssl_preset_default_menu() {
     return
   fi
 
-  readp "确认将后续新增协议的默认证书切换为 $target_name 吗？[y/N] (默认不切换)：" confirm_opt
+  readp "确认将后续新增协议的默认证书切换为 $target_name 吗？[Y/N] (默认不切换):" confirm_opt
   if [[ ! "$confirm_opt" =~ ^[Yy]$ ]]; then
     return
   fi
@@ -5681,11 +5683,11 @@ ssl_switch_all_protocols_menu() {
   green "切换当前全部协议依赖证书："
   yellow "说明：此选项将对当前已有的所有协议生效。"
   echo
-  echo "1：将所有现有协议证书切换至 自签证书"
-  echo "2：将所有现有协议证书切换至 纯 IP 证书"
-  echo "3：将所有现有协议证书切换至 域名证书"
-  echo "0：返回上层"
-  readp "请选择【0-3】：" opt
+  echo "1: 将所有现有协议证书切换至 自签证书"
+  echo "2: 将所有现有协议证书切换至 纯 IP 证书"
+  echo "3: 将所有现有协议证书切换至 域名证书"
+  echo "0: 返回上层"
+  readp "请选择【0-3】:" opt
 
   local target_type=""
   local target_name=""
@@ -5701,7 +5703,7 @@ ssl_switch_all_protocols_menu() {
     return
   fi
 
-  readp "确认将所有现有协议的证书切换为 $target_name 吗？[y/N] (默认不切换)：" confirm_opt
+  readp "确认将所有现有协议的证书切换为 $target_name 吗？[Y/N] (默认不切换):" confirm_opt
   if [[ ! "$confirm_opt" =~ ^[Yy]$ ]]; then
     return
   fi
@@ -5810,12 +5812,12 @@ ssl_certificate_settings() {
   echo -e "当前预设默认依赖证书类型: ${cyan}$active_type${plain}"
   echo
 
-  echo "1：部署/更新证书"
-  echo "2：卸载证书"
-  echo "3：切换预设默认依赖证书"
-  echo "4：切换当前全部协议依赖证书"
-  echo "0：返回上层"
-  readp "请选择【0-4】：" main_opt
+  echo "1: 部署/更新证书"
+  echo "2: 卸载证书"
+  echo "3: 切换预设默认依赖证书"
+  echo "4: 切换当前全部协议依赖证书"
+  echo "0: 返回上层"
+  readp "请选择【0-4】:" main_opt
 
   case "$main_opt" in
     1) ssl_deploy_menu; ssl_certificate_settings ;;
@@ -5830,7 +5832,7 @@ modify_protocol_config() {
   result_vl_vm_hy_tu
   local clean_json=$(strip_json_comments "$SBFOLDER/sb.json")
 
-  local proto_names=("VLESS-Reality" "VLESS-WS-TLS" "VLESS-HTTPUpgrade-TLS" "VLESS-H2-TLS" "VLESS-HTTP2-REALITY" "VMess-WS" "VMess-WS-TLS" "VMess-HTTPUpgrade-TLS" "VMess-TCP" "VMess-HTTP" "VMess-QUIC" "VMess-H2-TLS" "Trojan-TLS" "Trojan-WS-TLS" "Trojan-HTTPUpgrade-TLS" "Trojan-H2-TLS" "Shadowsocks" "Hysteria 2" "Tuic-v5" "AnyTLS" "Socks")
+  local proto_names=("VLESS-Reality" "VLESS-WS-TLS" "VLESS-HTTPUpgrade-TLS" "VLESS-H2-TLS" "VLESS-HTTP2-REALITY" "VMess-WS" "VMess-WS-TLS" "VMess-HTTPUpgrade-TLS" "VMess-TCP" "VMess-HTTP" "VMess-QUIC" "VMess-H2-TLS" "Trojan-TLS" "Trojan-WS-TLS" "Trojan-HTTPUpgrade-TLS" "Trojan-H2-TLS" "Shadowsocks" "Hysteria2" "TUIC" "AnyTLS" "Socks")
   local proto_tags=("vless-reality-sb" "vless-ws-tls-sb" "vless-hu-tls-sb" "vless-h2-tls-sb" "vless-h2-reality-sb" "vmess-ws-sb" "vmess-ws-tls-sb" "vmess-hu-tls-sb" "vmess-tcp-sb" "vmess-http-sb" "vmess-quic-sb" "vmess-h2-tls-sb" "trojan-tls-sb" "trojan-ws-tls-sb" "trojan-hu-tls-sb" "trojan-h2-tls-sb" "shadowsocks-sb" "hy2-sb" "tuic5-sb" "anytls-sb" "socks-sb")
   local proto_vars=("vl_re" "vl_ws_tls" "vl_hu_tls" "vl_h2_tls" "vl_h2_re" "vm_ws" "vm_ws_tls" "vm_hu_tls" "vm_tcp" "vm_http" "vm_quic" "vm_h2_tls" "tr_tls" "tr_ws_tls" "tr_hu_tls" "tr_h2_tls" "ss" "hy2" "tu" "an" "socks")
 
@@ -5860,7 +5862,7 @@ modify_protocol_config() {
     echo -e "$((i+1))：${active_names[$i]}"
   done
   echo "0：返回上层"
-  readp "请选择【0-${#active_names[@]}】：" choice
+  readp "请选择【0-${#active_names[@]}】:" choice
   if [[ -z "$choice" || "$choice" == "0" ]]; then
     return
   fi
@@ -5990,13 +5992,13 @@ modify_protocol_config() {
   fi
 
   if $need_ssl; then
-    echo "${opt_num}：更改绑定的 SSL 证书类型 (自签/IP/域名)"
+    echo "${opt_num}: 更改绑定的 SSL 证书类型 (自签/IP/域名)"
     map_opts+=("change_ssl_type")
     opt_num=$((opt_num+1))
   fi
 
-  echo "0：返回上层"
-  readp "请选择【0-$((opt_num-1))】：" edit_choice
+  echo "0: 返回上层"
+  readp "请选择【0-$((opt_num-1))】:" edit_choice
   if [[ -z "$edit_choice" || "$edit_choice" == "0" ]]; then
     return
   fi
@@ -6087,7 +6089,7 @@ modify_protocol_config() {
         fi
         if is_port_in_use_local "$new_port"; then
           yellow "警告：端口 $new_port 已被占用或与其它协议冲突！"
-          readp "是否继续强制使用该端口？[y/N] (默认不使用)：" force_p
+          readp "是否继续强制使用该端口？[Y/N] (默认不使用):" force_p
           if [[ ! "$force_p" =~ ^[Yy]$ ]]; then
             return
           fi
@@ -6181,14 +6183,14 @@ modify_protocol_config() {
       green "请选择 Shadowsocks 加密方式 (当前为: $current_method)："
       local ss_methods=("aes-128-gcm" "aes-256-gcm" "chacha20-ietf-poly1305" "xchacha20-ietf-poly1305" "2022-blake3-aes-128-gcm" "2022-blake3-aes-256-gcm" "2022-blake3-chacha20-poly1305")
       for ((i=0; i<${#ss_methods[@]}; i++)); do
-        echo "$((i+1))：${ss_methods[$i]}"
+        echo "$((i+1)): ${ss_methods[$i]}"
       done
-      readp "请选择【1-${#ss_methods[@]}】：" sm_choice
+      readp "请选择【1-${#ss_methods[@]}】:" sm_choice
       if [[ -n "$sm_choice" && "$sm_choice" -ge 1 && "$sm_choice" -le ${#ss_methods[@]} ]]; then
         local new_method="${ss_methods[$((sm_choice-1))]}"
         jq --arg m "$new_method" '.inbounds[0].method = $m' "$file_path" > /tmp/tmp.json && mv /tmp/tmp.json "$file_path"
         config_changed=true
-        blue "Shadowsocks加密方式已变更为: $new_method"
+        blue "Shadowsocks 加密方式已变更为: $new_method"
       else
         red "选择无效！"
       fi
@@ -6196,23 +6198,23 @@ modify_protocol_config() {
 
     socks_username)
       local current_user=$(jq -r '.inbounds[0].users[0].username // empty' "$file_path")
-      readp "请输入新 Socks 用户名 (当前为: $current_user)：" new_user
+      readp "请输入新 Socks 用户名 (当前为: $current_user):" new_user
       if [[ -n "$new_user" ]]; then
         jq --arg u "$new_user" '.inbounds[0].users[0].username = $u' "$file_path" > /tmp/tmp.json && mv /tmp/tmp.json "$file_path"
         config_changed=true
-        blue "Socks用户名修改完成"
+        blue "Socks 用户名修改完成"
       fi
       ;;
 
     socks_password)
       local current_pwd=$(jq -r '.inbounds[0].users[0].password // empty' "$file_path")
-      readp "请输入新 Socks 密码 (当前为: $current_pwd, 回车自动生成随机密码)：" new_pwd
+      readp "请输入新 Socks 密码 (当前为: $current_pwd, 回车自动生成随机密码):" new_pwd
       if [[ -z "$new_pwd" ]]; then
         new_pwd=$(cat /proc/sys/kernel/random/uuid 2>/dev/null || cat /proc/sys/kernel/random/uuid)
       fi
       jq --arg p "$new_pwd" '.inbounds[0].users[0].password = $p' "$file_path" > /tmp/tmp.json && mv /tmp/tmp.json "$file_path"
       config_changed=true
-      blue "Socks密码修改完成"
+      blue "Socks 密码修改完成"
       ;;
 
     change_ssl_type)
@@ -6234,24 +6236,24 @@ modify_protocol_config() {
       local cert_num=1
       local cert_map=()
       if $has_self; then
-        echo "${cert_num}：自签证书 ($(get_self_domain))"
+        echo "${cert_num}: 自签证书 ($(get_self_domain))"
         cert_map+=("self")
         cert_num=$((cert_num+1))
       fi
       if $has_ip; then
         local ip_val=$(get_server_ip)
-        echo "${cert_num}：纯 IP 证书 (IP: $ip_val)"
+        echo "${cert_num}: 纯 IP 证书 (IP: $ip_val)"
         cert_map+=("ip")
         cert_num=$((cert_num+1))
       fi
       if $has_domain; then
         local dm_val=$(cat /var/Sing-Box-DuolaD/domain.log 2>/dev/null)
-        echo "${cert_num}：域名证书 (域名: ${dm_val:-未知})"
+        echo "${cert_num}: 域名证书 (域名: ${dm_val:-未知})"
         cert_map+=("domain")
         cert_num=$((cert_num+1))
       fi
-      echo "0：取消修改"
-      readp "请选择【0-$((cert_num-1))】：" choice_cert
+      echo "0: 取消修改"
+      readp "请选择【0-$((cert_num-1))】:" choice_cert
       if [[ -z "$choice_cert" || "$choice_cert" == "0" ]]; then
         return
       fi
@@ -6379,8 +6381,8 @@ add_protocol() {
   yellow "20：AnyTLS $state"
   [[ -f "$SBFOLDER/conf/socks-sb.json" ]] && state="${green}[已安装]${plain}" || state="${yellow}[未安装]${plain}"
   yellow "21：Socks (Socks5 代理服务) $state"
-  echo " 0：返回上层"
-  readp "请选择【0-21】：" select_proto
+  echo " 0: 返回上层"
+  readp "请选择【0-21】:" select_proto
   if [[ -z "$select_proto" || "$select_proto" == "0" ]]; then
     return
   fi
@@ -6511,7 +6513,7 @@ add_protocol() {
       if [[ "$custom_p" -ge 1 && "$custom_p" -le 65535 ]]; then
         if is_port_in_use "$custom_p"; then
           yellow "警告：端口 $custom_p 已被占用！"
-          readp "是否继续强制使用该端口？[y/N] (默认不使用)：" force_p
+          readp "是否继续强制使用该端口？[Y/N] (默认不使用):" force_p
           if [[ "$force_p" =~ ^[Yy]$ ]]; then
             port="$custom_p"
           else
@@ -6697,10 +6699,10 @@ delete_protocol() {
   echo
   green "请选择要删除的协议（可选择以下列表中已安装的协议，用空格分隔，如 1 2）："
   for ((i=0; i<${#active_names[@]}; i++)); do
-    echo -e "$((i+1))：${active_names[$i]}"
+    echo -e "$((i+1)): ${active_names[$i]}"
   done
-  echo "0：返回上层"
-  readp "请选择【0-${#active_names[@]}】：" choice_str
+  echo "0: 返回上层"
+  readp "请选择【0-${#active_names[@]}】:" choice_str
   if [[ -z "$choice_str" || "$choice_str" == "0" ]]; then
     return
   fi
@@ -6736,7 +6738,7 @@ delete_protocol() {
   for name in "${to_del_names[@]}"; do
     yellow " - $name"
   done
-  readp "确认删除？[y/N] (默认不删除)：" confirm_del
+  readp "确认删除？[Y/N] (默认不删除):" confirm_del
   if [[ ! "$confirm_del" =~ ^[Yy]$ ]]; then
     return
   fi
@@ -6784,7 +6786,7 @@ delete_protocol() {
   if $caddy_active && ! $has_caddy_remaining; then
     echo
     yellow "检测到删除后已无任何协议需要使用 443 Caddy 反代。"
-    readp "是否需要自动关闭并完全卸载 Caddy？[Y/n] (默认卸载)：" uninstall_caddy
+    readp "是否需要自动关闭并完全卸载 Caddy？[Y/N] (默认卸载):" uninstall_caddy
     if [[ -z "$uninstall_caddy" || "$uninstall_caddy" =~ ^[Yy]$ ]]; then
       blue "正在卸载 Caddy..."
       if command -v apk >/dev/null 2>&1; then
@@ -6807,13 +6809,13 @@ delete_protocol() {
   if ! $has_tls_remaining; then
     echo
     yellow "检测到删除后已无任何协议使用 SSL 证书。"
-    readp "是否删除已有的 SSL 证书？[y/N] (默认不删除)：" del_certs
+    readp "是否删除已有的 SSL 证书？[Y/N] (默认不删除):" del_certs
     if [[ "$del_certs" =~ ^[Yy]$ ]]; then
       blue "正在清理 SSL 证书..."
       rm -rf /var/Sing-Box-DuolaD
       rm -f "$SBFOLDER/cert.pem" "$SBFOLDER/private.key" "$SBFOLDER/ca.pem"
       if command -v ~/.acme.sh/acme.sh &>/dev/null; then
-        readp "是否同时彻底卸载 acme.sh 证书申请工具？[y/N] (默认不删除)：" del_acme
+        readp "是否同时彻底卸载 acme.sh 证书申请工具？[Y/N] (默认不删除):" del_acme
         if [[ "$del_acme" =~ ^[Yy]$ ]]; then
           ~/.acme.sh/acme.sh --uninstall >/dev/null 2>&1
           rm -rf ~/.acme.sh
@@ -7660,57 +7662,57 @@ changef() {
     done < "$DNS_SNI_INST_FILE"
   fi
 
-  green "0：返回上层"
+  green "0: 返回上层"
   echo
-  readp "请选择：" menu
+  readp "请选择:" menu
   
   if [ "$menu" = "1" ]; then
-    readp "1：使用后缀域名方式\n2：使用geosite方式\n3：返回上层\n请选择：" menu
+    readp "1: 使用后缀域名方式\n2: 使用 geosite 方式\n3: 返回上层\n请选择:" menu
     if [ "$menu" = "1" ]; then
-      readp "每个域名之间留空格，回车跳过表示重置清空warp-wireguard-ipv4的分流通道：" w4flym
+      readp "每个域名之间留空格，回车跳过表示重置清空 WARP-WireGuard IPv4 的分流通道:" w4flym
       update_routing_rule "w4" "domain_suffix" "$w4flym"
       restartsb && changef
     elif [ "$menu" = "2" ]; then
-      readp "每个域名之间留空格，回车跳过表示重置清空warp-wireguard-ipv4的分流通道：" w4flym
+      readp "每个域名之间留空格，回车跳过表示重置清空 WARP-WireGuard IPv4 的分流通道:" w4flym
       update_routing_rule "w4" "geosite" "$w4flym"
       restartsb && changef
     else
       changef
     fi
   elif [ "$menu" = "2" ]; then
-    readp "1：使用后缀域名方式\n2：使用geosite方式\n3：返回上层\n请选择：" menu
+    readp "1: 使用后缀域名方式\n2: 使用 geosite 方式\n3: 返回上层\n请选择:" menu
     if [ "$menu" = "1" ]; then
-      readp "每个域名之间留空格，回车跳过表示重置清空warp-wireguard-ipv6的分流通道：" w6flym
+      readp "每个域名之间留空格，回车跳过表示重置清空 WARP-WireGuard IPv6 的分流通道:" w6flym
       update_routing_rule "w6" "domain_suffix" "$w6flym"
       restartsb && changef
     elif [ "$menu" = "2" ]; then
-      readp "每个域名之间留空格，回车跳过表示重置清空warp-wireguard-ipv6的分流通道：" w6flym
+      readp "每个域名之间留空格，回车跳过表示重置清空 WARP-WireGuard IPv6 的分流通道:" w6flym
       update_routing_rule "w6" "geosite" "$w6flym"
       restartsb && changef
     else
       changef
     fi
   elif [ "$menu" = "3" ]; then
-    readp "1：使用后缀域名方式\n2：使用geosite方式\n3：返回上层\n请选择：" menu
+    readp "1: 使用后缀域名方式\n2: 使用 geosite 方式\n3: 返回上层\n请选择:" menu
     if [ "$menu" = "1" ]; then
-      readp "每个域名之间留空格，回车跳过表示重置清空VPS本地ipv4的分流通道：" ad4flym
+      readp "每个域名之间留空格，回车跳过表示重置清空 VPS 本地 IPv4 的分流通道:" ad4flym
       update_routing_rule "ad4" "domain_suffix" "$ad4flym"
       restartsb && changef
     elif [ "$menu" = "2" ]; then
-      readp "每个域名之间留空格，回车跳过表示重置清空VPS本地ipv4的分流通道：" ad4flym
+      readp "每个域名之间留空格，回车跳过表示重置清空 VPS 本地 IPv4 的分流通道:" ad4flym
       update_routing_rule "ad4" "geosite" "$ad4flym"
       restartsb && changef
     else
       changef
     fi
   elif [ "$menu" = "4" ]; then
-    readp "1：使用后缀域名方式\n2：使用geosite方式\n3：返回上层\n请选择：" menu
+    readp "1: 使用后缀域名方式\n2: 使用 geosite 方式\n3: 返回上层\n请选择:" menu
     if [ "$menu" = "1" ]; then
-      readp "每个域名之间留空格，回车跳过表示重置清空VPS本地ipv6的分流通道：" ad6flym
+      readp "每个域名之间留空格，回车跳过表示重置清空 VPS 本地 IPv6 的分流通道:" ad6flym
       update_routing_rule "ad6" "domain_suffix" "$ad6flym"
       restartsb && changef
     elif [ "$menu" = "2" ]; then
-      readp "每个域名之间留空格，回车跳过表示重置清空VPS本地ipv6的分流通道：" ad6flym
+      readp "每个域名之间留空格，回车跳过表示重置清空 VPS 本地 IPv6 的分流通道:" ad6flym
       update_routing_rule "ad6" "geosite" "$ad6flym"
       restartsb && changef
     else
@@ -7722,13 +7724,13 @@ changef() {
     local kind="${inst_kinds[$menu]}"
 
     if [[ "$kind" == "socks" || "$kind" == "shadowsocks" || "$kind" == "wireguard" ]]; then
-      readp "1：使用后缀域名方式\n2：使用geosite方式\n3：返回上层\n请选择：" menu_type
+      readp "1: 使用后缀域名方式\n2: 使用 geosite 方式\n3: 返回上层\n请选择:" menu_type
       if [ "$menu_type" = "1" ]; then
-        readp "每个域名之间留空格，回车跳过表示重置清空 [$target_desc] 的分流通道：" dyn_flym
+        readp "每个域名之间留空格，回车跳过表示重置清空 [$target_desc] 的分流通道:" dyn_flym
         update_routing_rule "$target_tag" "domain_suffix" "$dyn_flym"
         restartsb && changef
       elif [ "$menu_type" = "2" ]; then
-        readp "每个域名之间留空格，回车跳过表示重置清空 [$target_desc] 的分流通道：" dyn_flym
+        readp "每个域名之间留空格，回车跳过表示重置清空 [$target_desc] 的分流通道:" dyn_flym
         update_routing_rule "$target_tag" "geosite" "$dyn_flym"
         restartsb && changef
       else
@@ -7750,7 +7752,7 @@ changef() {
         local dom_str=$(echo "$r_domains" | tr ',' ' ')
         local geo_str=$(echo "$r_geosites" | tr ',' ' ')
 
-        readp "1：使用后缀域名方式\n2：使用geosite方式\n3：返回上层\n请选择：" menu_type
+        readp "1: 使用后缀域名方式\n2: 使用 geosite 方式\n3: 返回上层\n请选择:" menu_type
 
         if [ "$menu_type" = "1" ]; then
           readp "每个域名之间留空格，回车跳过表示重置清空 [$target_desc] 的分流通道：" raw_doms
@@ -7806,11 +7808,11 @@ stclre() {
   echo
   green "关闭/重启 Sing-box："
   echo
-  green " 1. 重启 Sing-box"
-  green " 2. 关闭 Sing-box"
-  green " 0. 返回主菜单"
+  green "1: 重启 Sing-box"
+  green "2: 关闭 Sing-box"
+  green "0: 返回主菜单"
   echo
-  readp "请选择【0-2】： " menu
+  readp "请选择【0-2】:" menu
   case "$menu" in
     1 )
       restartsb
@@ -8210,14 +8212,14 @@ parse_ss_link() {
 
   add_new_instance() {
     echo -e "\n${blue}【添加新的出站/分流规则】${plain}"
-    yellow "1：本地 WARP VPN  (Usque / WARP-cli)"
-    yellow "2：多地区 Psiphon VPN / Psiphon VPN + WARP VPN"
-    yellow "3：DNS代理"
-    yellow "4：SNI反向代理"
-    yellow "5：Shadowsocks 远程代理节点"
-    yellow "6：WireGuard 远程代理节点"
-    yellow "0：返回"
-    readp "请选择【0-6】：" sub_mode
+    yellow "1: 本地 WARP VPN (Usque / WARP-cli)"
+    yellow "2: 多地区 Psiphon VPN / Psiphon VPN + WARP VPN"
+    yellow "3: DNS 代理"
+    yellow "4: SNI 反向代理"
+    yellow "5: Shadowsocks 远程代理节点"
+    yellow "6: WireGuard 远程代理节点"
+    yellow "0: 返回"
+    readp "请选择【0-6】:" sub_mode
 
     local inst_type=""
     local inst_country="local"
@@ -8228,7 +8230,7 @@ parse_ss_link() {
       blue "请选择本地 WARP 代理方案："
       green "1. Usque (开源轻量客户端，默认，支持 MASQUE 协议)"
       green "2. WARP-cli (官方客户端)"
-      readp "请选择【1-2】（默认 1）：" warp_choice
+      readp "请选择【1-2】 (默认 1):" warp_choice
       warp_choice=${warp_choice:-1}
       inst_type="usque"
       [[ "$warp_choice" == "2" ]] && inst_type="warp-cli"
@@ -8236,10 +8238,10 @@ parse_ss_link() {
     elif [ "$sub_mode" = "2" ]; then
       echo
       blue "请选择多地区代理方案："
-      green "1：Psiphon VPN直连"
-      green "2：Psiphon VPN + WARP VPN"
-      green "0：返回"
-      readp "请选择【0-2】：" cfon_choice
+      green "1: Psiphon VPN直连"
+      green "2: Psiphon VPN + WARP VPN"
+      green "0: 返回"
+      readp "请选择【0-2】:" cfon_choice
 
       if [ "$cfon_choice" = "1" ]; then
         inst_type="psiphon"
@@ -8259,7 +8261,7 @@ parse_ss_link() {
 波兰（PL）      葡萄牙（PT）      罗马尼亚 (RO)   塞尔维亚（RS）
 瑞典（SE）      新加坡 (SG)       斯洛伐克（SK）  美国（US）
 '
-      readp "输入目标国家/地区代码（如 US、JP、SG，默认 US）：" inst_country
+      readp "输入目标国家/地区代码 (如 US、JP、SG，默认 US):" inst_country
       inst_country=${inst_country:-US}
       inst_country=$(echo "$inst_country" | tr 'a-z' 'A-Z')
 
@@ -8296,7 +8298,7 @@ parse_ss_link() {
       green "1: 粘贴 ss:// 链接一键解析导入 (推荐)"
       green "2: 手动输入配置参数 (IP/域名、端口、加密算法、密码)"
       green "0: 返回"
-      readp "请选择输入方式【0-2】（默认 1）：" ss_input_mode
+      readp "请选择输入方式【0-2】 (默认 1):" ss_input_mode
       ss_input_mode=${ss_input_mode:-1}
 
       local ss_server=""
@@ -8306,7 +8308,7 @@ parse_ss_link() {
       local ss_custom_tag=""
 
       if [ "$ss_input_mode" = "1" ]; then
-        readp "请粘贴 ss:// 链接：" ss_link_str
+        readp "请粘贴 ss:// 链接:" ss_link_str
         [[ -z "$ss_link_str" ]] && red "链接不能为空！" && return
         
         local parsed=$(parse_ss_link "$ss_link_str")
@@ -8343,7 +8345,7 @@ parse_ss_link() {
         green "4: 2022-blake3-aes-256-gcm"
         green "5: aes-256-gcm"
         green "6: 手动输入自定义加密算法"
-        readp "请选择【1-6】（默认 1）：" ss_method_choice
+        readp "请选择【1-6】 (默认 1):" ss_method_choice
         ss_method_choice=${ss_method_choice:-1}
         
         ss_method="2022-blake3-aes-128-gcm"
@@ -8378,7 +8380,7 @@ parse_ss_link() {
       green "1: 导入服务器已有的 WireGuard 配置文件 (.conf) (推荐)"
       green "2: 手动输入配置参数 (PrivateKey, Address, Endpoint, PublicKey)"
       green "0: 返回"
-      readp "请选择输入方式【0-2】（默认 1）：" wg_input_mode
+      readp "请选择输入方式【0-2】 (默认 1):" wg_input_mode
       wg_input_mode=${wg_input_mode:-1}
 
       local wg_pvk=""
@@ -9134,7 +9136,7 @@ EOF
     echo -e "${yellow}4 : 停止并删除指定编号的出栈${plain}"
     echo -e "${yellow}5 : 停止并清空所有出栈${plain}"
     echo -e "${yellow}0 : 返回主菜单${plain}"
-    readp "请选择【0-5】：" m_choice
+    readp "请选择【0-5】:" m_choice
     case "$m_choice" in
       1)
         return_to_main_flag=0
@@ -9167,38 +9169,38 @@ EOF
 # --- CDN configuration ---
 vmesscfadd() {
   echo
-  green "推荐使用稳定的世界大厂或组织的官方CDN域名作为CDN优选地址："
+  green "推荐使用稳定的世界大厂或组织的官方 CDN 域名作为 CDN 优选地址："
   blue "cloudflare-ech.com"
   blue "www.visa.com.sg"
   blue "www.wto.org"
   blue "www.web.com"
   echo
-  yellow "1：自定义Vmess-ws(tls)主协议节点的CDN优选地址"
-  yellow "2：针对选项1，重置客户端host/sni域名(IP解析到CF上的域名)"
-  yellow "3：自定义Vmess-ws(tls)-Argo节点的CDN优选地址"
-  yellow "0：返回上层"
-  readp "请选择【0-3】：" menu
+  yellow "1: 自定义 VMess-WS(TLS) 主协议节点的 CDN 优选地址"
+  yellow "2: 针对选项 1，重置客户端 host/sni 域名 (IP 解析到 CF 上的域名)"
+  yellow "3: 自定义 VMess-WS(TLS)-Argo 节点的 CDN 优选地址"
+  yellow "0: 返回上层"
+  readp "请选择【0-3】:" menu
   if [ "$menu" = "1" ]; then
     echo
-    green "请确保VPS的IP已解析到Cloudflare的域名上"
+    green "请确保 VPS 的 IP 已解析到 Cloudflare 的域名上"
     if [[ ! -f "$SBFOLDER/cfymjx.txt" ]] 2>/dev/null; then
-      readp "输入客户端host/sni域名(IP解析到CF上的域名)：" menu
+      readp "输入客户端 host/sni 域名 (IP 解析到 CF 上的域名):" menu
       echo "$menu" > "$SBFOLDER/cfymjx.txt"
     fi
     echo
-    readp "输入自定义的优选IP/域名：" menu
+    readp "输入自定义的优选 IP/域名:" menu
     echo "$menu" > "$SBFOLDER/cfvmadd_local.txt"
     sbshare > /dev/null 2>&1
-    green "设置成功，选择主菜单9进行节点配置更新" && sleep 2 && vmesscfadd
+    green "设置成功，选择主菜单 9 进行节点配置更新" && sleep 2 && vmesscfadd
   elif [ "$menu" = "2" ]; then
     rm -rf "$SBFOLDER/cfymjx.txt"
     sbshare > /dev/null 2>&1
-    green "重置成功，可选择1重新设置" && sleep 2 && vmesscfadd
+    green "重置成功，可选择 1 重新设置" && sleep 2 && vmesscfadd
   elif [ "$menu" = "3" ]; then
-    readp "输入自定义的优选IP/域名：" menu
+    readp "输入自定义的优选 IP/域名:" menu
     echo "$menu" > "$SBFOLDER/cfvmadd_argo.txt"
     sbshare > /dev/null 2>&1
-    green "设置成功，选择主菜单9进行节点配置更新" && sleep 2 && vmesscfadd
+    green "设置成功，选择主菜单 9 进行节点配置更新" && sleep 2 && vmesscfadd
   else
     changeserv
   fi
@@ -9223,11 +9225,11 @@ upsbcroe() {
   sbactive
   lapre
   [[ $inscore =~ ^[0-9.]+$ ]] && lat="【已安装v$inscore】" || pre="【已安装v$inscore】"
-  green "1：升级/切换Sing-box最新正式版 v$latcore  ${bblue}${lat}${plain}"
-  green "2：升级/切换Sing-box最新测试版 v$precore  ${bblue}${pre}${plain}"
-  green "3：切换Sing-box某个正式版或测试版，需指定版本号 (建议1.11.0及以上版本)"
-  green "0：返回上层"
-  readp "请选择【0-3】：" menu
+  green "1: 升级/切换 Sing-box 最新正式版 v$latcore  ${bblue}${lat}${plain}"
+  green "2: 升级/切换 Sing-box 最新测试版 v$precore  ${bblue}${pre}${plain}"
+  green "3: 切换 Sing-box 某个正式版或测试版，需指定版本号 (建议 1.11.0 及以上版本)"
+  green "0: 返回上层"
+  readp "请选择【0-3】:" menu
   if [ "$menu" = "1" ]; then
     upcore=$(curl -Ls https://github.com/SagerNet/sing-box/releases/latest | grep -oP 'tag/v\K[0-9.]+' | head -n 1)
   elif [ "$menu" = "2" ]; then
@@ -9304,7 +9306,7 @@ upsbyg() {
 
 # --- Uninstall logic ---
 unins() {
-  readp "是否确认卸载Sing-box？\n1、是，确认卸载\n2、否，取消返回\n请选择【1-2】：" choose
+  readp "是否确认卸载 Sing-box？\n1: 是，确认卸载\n2: 否，取消返回\n请选择【1-2】:" choose
   if [[ "$choose" != "1" ]]; then
     red "已取消卸载！"
     sb
@@ -9393,7 +9395,7 @@ sbactive() {
 sbsm() {
   echo
   green "Sing-Box 五协议共存一键安装管理脚本"
-  blue "支持协议：Vless-reality-vision、Vmess-ws(tls)+Argo、Hysteria2、Tuic5、Anytls"
+  blue "支持协议：VLESS-Reality-Vision、VMess-WS(TLS)+Argo、Hysteria2、TUIC、AnyTLS"
   blue "脚本特色：集成多协议，支持 Acme 证书自动申请，提供双栈分流支持以及 WARP 代理支持"
   echo
 }
@@ -9758,7 +9760,7 @@ showprotocol() {
 }
 
 # --- Main Entry and Interface ---
-instsllsingbox() {
+installsingbox() {
   if [[ -f "$SBFOLDER/sb.json" ]]; then
     yellow "Sing-box 已安装，切勿重复安装！" && sleep 2 && sb
     return
@@ -9780,8 +9782,8 @@ instsllsingbox() {
   use_tr_ws_tls=false    # 8: Trojan-WS-TLS
   use_tr_hu_tls=false    # 9: Trojan-HTTPUpgrade-TLS
   use_ss=false           # 10: Shadowsocks
-  use_hy2=false          # 11: Hysteria 2
-  use_tu=false           # 12: Tuic-v5
+  use_hy2=false          # 11: Hysteria2
+  use_tu=false           # 12: TUIC
   use_an=false           # 13: AnyTLS
   use_vm_tcp=false       # 14: VMess-TCP
   use_vm_http=false      # 15: VMess-HTTP
@@ -9793,13 +9795,13 @@ instsllsingbox() {
   use_socks=false        # 21: Socks
 
   echo
-  green "中国大陆直连推荐协议：Hysteria 2、Tuic-v5、VLESS-Reality、VMess-WS、VLESS-WS-TLS"
+  green "中国大陆直连推荐协议：Hysteria2、TUIC、VLESS-Reality、VMess-WS、VLESS-WS-TLS"
   green "海外直连推荐协议：Shadowsocks、Socks、VMess-WS、VLESS-WS-TLS"
   echo
   yellow "1：中国大陆推荐协议（回车默认）"
   yellow "2：海外直连推荐协议"
   yellow "3：自定义"
-  readp "请选择【1-3】： " preset_choice
+  readp "请选择【1-3】:" preset_choice
   if [[ -z "$preset_choice" || "$preset_choice" == "1" ]]; then
     use_hy2=true
     use_tu=true
@@ -9835,11 +9837,11 @@ instsllsingbox() {
     yellow "16：Trojan-H2-TLS (Trojan over HTTP/2 + TLS)"
     green "--- 其他经典/高速协议 ---"
     yellow "17：Shadowsocks (Shadowsocks 多种加密)"
-    yellow "18：Hysteria 2 (QUIC/UDP)"
-    yellow "19：Tuic-v5 (QUIC/UDP)"
+    yellow "18：Hysteria2 (QUIC/UDP)"
+    yellow "19：TUIC (QUIC/UDP)"
     yellow "20：AnyTLS"
     yellow "21：Socks (Socks5 代理服务)"
-    readp "请选择【1-21】：" select_proto
+    readp "请选择【1-21】:" select_proto
     if [[ -z "$select_proto" ]]; then
       use_vl_re=true
       use_vm_ws=true
@@ -9885,7 +9887,7 @@ instsllsingbox() {
         "$use_vm_tcp" = "false" && "$use_vm_http" = "false" && "$use_vm_quic" = "false" && \
         "$use_vm_h2_tls" = "false" && "$use_vl_h2_tls" = "false" && "$use_tr_h2_tls" = "false" && \
         "$use_vl_h2_re" = "false" && "$use_socks" = "false" ]]; then
-    yellow "未选择任何协议，默认启用 VLESS-Reality 和 Hysteria 2"
+    yellow "未选择任何协议，默认启用 VLESS-Reality 和 Hysteria2"
     use_vl_re=true
     use_hy2=true
   fi
@@ -9900,7 +9902,7 @@ instsllsingbox() {
     yellow "5：aes-256-gcm"
     yellow "6：chacha20-ietf-poly1305"
     yellow "7：xchacha20-ietf-poly1305"
-    readp "请选择【1-7】：" ss_method_choice
+    readp "请选择【1-7】:" ss_method_choice
     case "$ss_method_choice" in
       2) ss_method="2022-blake3-aes-256-gcm" ;;
       3) ss_method="2022-blake3-chacha20-poly1305" ;;
@@ -9950,9 +9952,9 @@ instsllsingbox() {
       green "是否选择不使用 443 标准端口，转而直连 Sing-Box？"
       yellow "1：是，不使用 443 标准端口，转而直连 Sing-Box (回车默认)"
       yellow "2：否，回到协议选择界面"
-      readp "请选择【1-2】：" caddy_choice
+      readp "请选择【1-2】:" caddy_choice
       if [[ "$caddy_choice" = "2" ]]; then
-        instsllsingbox
+        installsingbox
         return
       else
         use_caddy=false
@@ -9967,10 +9969,10 @@ instsllsingbox() {
       local cur_self_dom=$(get_self_domain)
       echo
       green "请选择 SSL 证书类型："
-      yellow "1：自签证书 ($cur_self_dom) (回车默认)"
-      yellow "2：纯 IP 证书 (由 Let's Encrypt 签发，需确保 VPS 80 端口开放且未被防火墙阻断)"
-      yellow "3：域名证书 (自动 ACME 申请，自备已解析的域名)"
-      readp "请选择【1-3】：" cert_menu
+      yellow "1: 自签证书 ($cur_self_dom) (回车默认)"
+      yellow "2: 纯 IP 证书 (由 Let's Encrypt 签发，需确保 VPS 80 端口开放且未被防火墙阻断)"
+      yellow "3: 域名证书 (自动 ACME 申请，自备已解析的域名)"
+      readp "请选择【1-3】:" cert_menu
       case "$cert_menu" in
         2)
           cert_type="ip"
@@ -9979,7 +9981,7 @@ instsllsingbox() {
         3)
           cert_type="domain"
           while true; do
-            readp "请输入解析至当前 VPS 的域名：" ym_domain
+            readp "请输入解析至当前 VPS 的域名:" ym_domain
             if [[ -z "$ym_domain" ]]; then
               red "域名不能为空，请重新输入！"
             else
@@ -9991,7 +9993,7 @@ instsllsingbox() {
               if [[ -z "$resolved_ip" || "$resolved_ip" != "$server_ip" ]]; then
                 red "检测到域名 $ym_domain 未解析到当前 VPS 外部 IP $server_ip (解析到的 IP 是: ${resolved_ip:-无})。"
                 yellow "请先确保域名解析生效，或者输入 y 忽略并强制继续："
-                readp "忽略并继续？[y/N]：" force_dns
+                readp "忽略并继续？[Y/N]:" force_dns
                 if [[ "$force_dns" =~ ^[Yy]$ ]]; then
                   break
                 fi
@@ -10006,7 +10008,7 @@ instsllsingbox() {
           ;;
         *)
           cert_type="self"
-          readp "请输入自签证书伪装域名 (回车默认使用 $cur_self_dom)：" custom_self_dom
+          readp "请输入自签证书伪装域名 (回车默认使用 $cur_self_dom):" custom_self_dom
           local self_dom=${custom_self_dom:-$cur_self_dom}
           mkdir -p /var/Sing-Box-DuolaD
           echo "$self_dom" > /var/Sing-Box-DuolaD/self_domain.log
@@ -10017,7 +10019,7 @@ instsllsingbox() {
 
   if [[ "$use_vl_re" = "true" || "$use_vl_h2_re" = "true" ]]; then
     echo
-    readp "请输入 Reality 伪装域名/SNI (回车默认使用 www.samsung.com)：" input_vl_re
+    readp "请输入 Reality 伪装域名/SNI (回车默认使用 www.samsung.com):" input_vl_re
     ym_vl_re=${input_vl_re:-www.samsung.com}
     # Reality public/private keys
     reality_keys=$("$SBFOLDER/sing-box" generate reality-keypair)
@@ -10065,7 +10067,7 @@ instsllsingbox() {
 sb() {
   clear
   detect_system
-  white "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" 
+  white "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" 
   echo -e "${bblue}   _____ _             _                  ${plain}"
   echo -e "${bblue}  / ____(_)           | |                 ${plain}"
   echo -e "${bblue} | (___  _ _ __   __ _| |__   _____  __   ${plain}"
@@ -10074,29 +10076,29 @@ sb() {
   echo -e "${bblue} |_____/|_|_| |_|\\__, |_.__/ \\___/_/\\_\\   ${plain}"
   echo -e "${bblue}                  __/ |                   ${plain}"
   echo -e "${bblue}                 |___/                    ${plain}"
-  white "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" 
-  white "Vless-reality-vision、Vmess-ws(tls)+Argo、Hy2、Tuic、Anytls 五协议共存脚本"
+  white "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" 
+  white "VLESS-Reality-Vision、VMess-WS(TLS)+Argo、Hysteria2、TUIC、AnyTLS 五协议共存脚本"
   white "脚本快捷方式：sb"
-  red "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+  red "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
   green " 1. 一键安装 Sing-box" 
   green " 2. 删除卸载 Sing-box"
-  white "----------------------------------------------------------------------------------"
-  green " 3. 变更配置 【双证书TLS/UUID路径/Argo/IP优先/Warp/CDN优选】" 
+  white "--------------------------------------------------------------------------------"
+  green " 3. 变更高级配置【协议/证书/Argo/IP优先/WARP/CDN】" 
   green " 4. 更改主端口/添加多端口跳跃复用" 
   green " 5. 三通道域名分流"
   green " 6. 关闭/重启 Sing-box"   
   green " 7. 更新 Sing-box 脚本"
   green " 8. 更新/切换/指定 Sing-box 内核版本"
-  white "----------------------------------------------------------------------------------"
+  white "--------------------------------------------------------------------------------"
   green " 9. 刷新并查看节点 【Mihomo/SFA+SFI+SFW三合一配置/分享链接】"
   green "10. 查看 Sing-box 运行日志"
   green "11. 更改 BBR 设置"
   green "12. 管理 Cloudflare WARP"
   green "13. 管理出栈设置"
-  green "14. 更换IP刷新本地IP、调整IPV4/IPV6配置输出"
-  white "----------------------------------------------------------------------------------"
+  green "14. 更换IP刷新本地IP、调整 IPv4 / IPv6 配置输出"
+  white "--------------------------------------------------------------------------------"
   green " 0. 退出脚本"
-  red "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+  red "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
   
   if [ -f "$SBFOLDER/v" ]; then
     insV=$(cat "$SBFOLDER/v" 2>/dev/null)
@@ -10140,7 +10142,7 @@ sb() {
     echo -e "当前 Sing-box 最新测试版内核：${bblue}${precore}${plain}"
   fi
   
-  red "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+  red "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
   echo -e "VPS状态如下："
   echo -e "系统:$blue$op$plain  \c";echo -e "内核:$blue$version$plain  \c";echo -e "处理器:$blue$cpu$plain  \c";echo -e "虚拟化:$blue$vi$plain  \c";echo -e "BBR算法:$blue$bbr$plain"
   v4v6
@@ -10150,10 +10152,10 @@ sb() {
   if [[ "$v4" == "104.28"* ]]; then
     w4="【WARP】"
   fi
-  [[ -z $v4 ]] && showv4='IPV4地址丢失，请切换至IPV6或者重装Sing-box' || showv4=$v4$w4
-  [[ -z $v6 ]] && showv6='IPV6地址丢失，请切换至IPV4或者重装Sing-box' || showv6=$v6$w6
+  [[ -z $v4 ]] && showv4='IPv4地址丢失，请切换至IPv6或者重装Sing-box' || showv4=$v4$w4
+  [[ -z $v6 ]] && showv6='IPv6地址丢失，请切换至IPv4或者重装Sing-box' || showv6=$v6$w6
   if [[ -z $v4 ]]; then
-    vps_ipv4='无IPV4'      
+    vps_ipv4='无 IPv4'      
     vps_ipv6="$v6"
     location="$v6dq"
   elif [[ -n $v4 &&  -n $v6 ]]; then
@@ -10162,10 +10164,10 @@ sb() {
     location="$v4dq"
   else
     vps_ipv4="$v4"    
-    vps_ipv6='无IPV6'
+    vps_ipv6='无 IPv6'
     location="$v4dq"
   fi
-  echo -e "本地IPV4地址：$blue$vps_ipv4$w4$plain   本地IPV6地址：$blue$vps_ipv6$w6$plain"
+  echo -e "本地 IPv4 地址：$blue$vps_ipv4$w4$plain   本地 IPv6 地址：$blue$vps_ipv6$w6$plain"
   echo -e "服务器地区：$blue$location$plain"
   
   if [ -f "$SBFOLDER/sb.json" ]; then
@@ -10179,13 +10181,13 @@ sb() {
       ] | map(select(. != null and . != "")) | first // empty
     ' 2>/dev/null)
     if [[ $rpip = 'prefer_ipv6' ]]; then
-      v4_6="IPV6优先出站($showv6)"
+      v4_6="IPv6 优先出站($showv6)"
     elif [[ $rpip = 'prefer_ipv4' ]]; then
-      v4_6="IPV4优先出站($showv4)"
+      v4_6="IPv4 优先出站($showv4)"
     elif [[ $rpip = 'ipv4_only' ]]; then
-      v4_6="仅IPV4出站($showv4)"
+      v4_6="仅 IPv4 出站($showv4)"
     elif [[ $rpip = 'ipv6_only' ]]; then
-      v4_6="仅IPV6出站($showv6)"
+      v4_6="仅 IPv6 出站($showv6)"
     else
       v4_6="默认/未设置"
     fi
@@ -10208,15 +10210,15 @@ sb() {
     echo -e "Sing-box状态：$red未安装$plain"
   fi
   
-  red "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+  red "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
   if [ -f "$SBFOLDER/sb.json" ]; then
     showprotocol
   fi
-  red "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+  red "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
   echo
   readp "请输入数字【0-14】:" Input
   case "$Input" in  
-     1 ) instsllsingbox ;;
+     1 ) installsingbox ;;
      2 ) unins ;;
      3 ) changeserv ;;
      4 ) changeport ;;
