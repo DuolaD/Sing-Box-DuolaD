@@ -727,7 +727,7 @@ inssbjsonser() {
   fi
 
   : ${ym_domain:=$(get_self_domain)}
-  : ${ym_vl_re:="apple.com"}
+  : ${ym_vl_re:="www.samsung.com"}
   : ${certificatec:="/var/Sing-Box-DuolaD/cert.pem"}
   : ${certificatep:="/var/Sing-Box-DuolaD/private.key"}
 
@@ -745,11 +745,11 @@ inssbjsonser() {
     ],
     "tls": {
       "enabled": true,
-      "server_name": "'"${ym_vl_re:-apple.com}"'",
+      "server_name": "'"${ym_vl_re:-www.samsung.com}"'",
       "reality": {
         "enabled": true,
         "handshake": {
-          "server": "'"${ym_vl_re:-apple.com}"'",
+          "server": "'"${ym_vl_re:-www.samsung.com}"'",
           "server_port": 443
         },
         "private_key": "'"${private_key}"'",
@@ -1162,16 +1162,16 @@ inssbjsonser() {
     ],
     "transport": {
       "type": "http",
-      "host": ["'"${ym_vl_re:-apple.com}"'"],
+      "host": ["'"${ym_vl_re:-www.samsung.com}"'"],
       "path": "/'"${uuid_vl_h2_re}"'"
     },
     "tls": {
       "enabled": true,
-      "server_name": "'"${ym_vl_re:-apple.com}"'",
+      "server_name": "'"${ym_vl_re:-www.samsung.com}"'",
       "reality": {
         "enabled": true,
         "handshake": {
-          "server": "'"${ym_vl_re:-apple.com}"'",
+          "server": "'"${ym_vl_re:-www.samsung.com}"'",
           "server_port": 443
         },
         "private_key": "'"${private_key}"'",
@@ -5907,8 +5907,8 @@ modify_protocol_config() {
 
     reality_domain)
       local current_dom=$(jq -r '.inbounds[0].tls.server_name // empty' "$file_path")
-      readp "请输入新 Reality 伪装域名/SNI (当前为: $current_dom, 回车默认 apple.com)：" new_dom
-      [[ -z "$new_dom" ]] && new_dom="apple.com"
+      readp "请输入新 Reality 伪装域名/SNI (当前为: $current_dom, 回车默认 www.samsung.com)：" new_dom
+      [[ -z "$new_dom" ]] && new_dom="www.samsung.com"
       jq --arg d "$new_dom" '.inbounds[0].tls.server_name = $d | .inbounds[0].tls.reality.handshake.server = $d' "$file_path" > /tmp/tmp.json && mv /tmp/tmp.json "$file_path"
       config_changed=true
       blue "Reality伪装域名修改完成，新域名为: $new_dom"
@@ -9428,6 +9428,9 @@ instsllsingbox() {
   fi
 
   if [[ "$use_vl_re" = "true" || "$use_vl_h2_re" = "true" ]]; then
+    echo
+    readp "请输入 Reality 伪装域名/SNI (回车默认使用 www.samsung.com)：" input_vl_re
+    ym_vl_re=${input_vl_re:-www.samsung.com}
     # Reality public/private keys
     reality_keys=$("$SBFOLDER/sing-box" generate reality-keypair)
     private_key=$(echo "$reality_keys" | awk '/PrivateKey/{print $NF}' | tr -d '"')
