@@ -8483,7 +8483,9 @@ parse_ss_link() {
         ;;
       psiphon)
         ensure_warp_plus
-        nohup "$SBFOLDER/warp-plus" -b "127.0.0.1:$inst_port" --cfon --country "$inst_country" -$sw46 --endpoint 162.159.192.1:2408 >/dev/null 2>&1 &
+        local warp_dir="$SBFOLDER/warp_inst_${inst_port}"
+        mkdir -p "$warp_dir"
+        (cd "$warp_dir" && nohup "$SBFOLDER/warp-plus" -b "127.0.0.1:$inst_port" --cfon --country "$inst_country" -$sw46 --endpoint 162.159.192.1:2408 >/dev/null 2>&1 &)
         ;;
       chain)
         ensure_usque
@@ -8500,7 +8502,9 @@ parse_ss_link() {
 
         jq --argjson gp "$gost_p" '.endpoint_h2_v4 = "127.0.0.1" | .endpoint_h2_v6 = "::1"' "$inst_usque_conf" > "$inst_usque_conf.tmp" && mv -f "$inst_usque_conf.tmp" "$inst_usque_conf"
 
-        nohup "$SBFOLDER/warp-plus" -b "127.0.0.1:$vwarp_p" --cfon --country "$inst_country" -$sw46 --endpoint 162.159.192.1:2408 >/dev/null 2>&1 &
+        local warp_dir="$SBFOLDER/warp_inst_${inst_port}"
+        mkdir -p "$warp_dir"
+        (cd "$warp_dir" && nohup "$SBFOLDER/warp-plus" -b "127.0.0.1:$vwarp_p" --cfon --country "$inst_country" -$sw46 --endpoint 162.159.192.1:2408 >/dev/null 2>&1 &)
         sleep 5
         nohup /usr/local/bin/gost -D -L "tcp://127.0.0.1:$gost_p/162.159.198.2:443" -L "tcp://[::1]:$gost_p/162.159.198.2:443" -F "socks5://127.0.0.1:$vwarp_p" >/dev/null 2>&1 &
         sleep 2
@@ -8518,6 +8522,7 @@ parse_ss_link() {
         echo "$pids" | xargs kill -9 2>/dev/null
       fi
       rm -f "$SBFOLDER/usque_${inst_port}.json"
+      rm -rf "$SBFOLDER/warp_inst_${inst_port}"
       sleep 2
       return 1
     else
@@ -8564,6 +8569,7 @@ parse_ss_link() {
       [[ -n "$pids" ]] && echo "$pids" | xargs kill -9 2>/dev/null
       sed -i "${del_idx}d" "$WARP_INST_FILE"
       rm -f "$SBFOLDER/usque_${del_port}.json"
+      rm -rf "$SBFOLDER/warp_inst_${del_port}"
       jq --arg ob "$del_tag" '.route.rules = [.route.rules[] | select(.outbound != $ob)]' "$SBFOLDER/sb.json" > /tmp/sb.json 2>/dev/null && mv /tmp/sb.json "$SBFOLDER/sb.json"
       green "实例 [$del_tag] 已成功停止并删除！"
     elif [ "$del_idx" -le $((total_socks + total_ss)) ]; then
