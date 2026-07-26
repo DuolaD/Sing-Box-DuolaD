@@ -87,7 +87,7 @@ detect_system() {
 
 # --- Install OS Dependencies ---
 install_dependencies() {
-  if [ ! -f sbyg_update ]; then
+  if [ ! -f sb_update ]; then
     green "首次安装Sing-box脚本必要的依赖……"
     if command -v apk >/dev/null 2>&1; then
       apk update
@@ -138,7 +138,7 @@ install_dependencies() {
         fi
       fi
     done
-    touch sbyg_update
+    touch sb_update
   fi
 }
 
@@ -9457,7 +9457,7 @@ get_script_release_info() {
   [[ -z "$latestV" ]] && latestV="$SCRIPT_VERSION"
 }
 
-upsbyg() {
+upscript() {
   if [[ ! -f "$SCRIPT_SHORTCUT" ]]; then
     red "未正常安装Sing-box" && exit
   fi
@@ -9556,7 +9556,7 @@ unins() {
   rm -f /etc/sysctl.d/99-gost-usque.conf
   sysctl --system >/dev/null 2>&1
   
-  rm -rf "$SBFOLDER" /var/Sing-Box-DuolaD sbyg_update "$SCRIPT_SHORTCUT" /root/geoip.db /root/geosite.db /root/warpapi /root/warpip /root/websbox /root/tcpx.sh
+  rm -rf "$SBFOLDER" /var/Sing-Box-DuolaD sb_update "$SCRIPT_SHORTCUT" /root/geoip.db /root/geosite.db /root/warpapi /root/warpip /root/websbox /root/tcpx.sh
   rm -f /etc/local.d/alpineargo.start /etc/local.d/alpinesub.start /etc/local.d/alpinews5.start /etc/local.d/alpinecaddy.start
   uncronsb
   iptables -t nat -F PREROUTING >/dev/null 2>&1
@@ -10749,7 +10749,7 @@ sb() {
      4 ) changeport ;;
      5 ) changefl ;;
      6 ) stclre ;;
-     7 ) upsbyg ;; 
+     7 ) upscript ;; 
      8 ) upsbcroe ;;
      9 ) clash_sb_share ;;
     10 ) sblog ;;
