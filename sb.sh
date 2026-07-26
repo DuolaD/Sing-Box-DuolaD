@@ -6702,8 +6702,14 @@ rebuild_singbox_outbounds() {
     done < "$WARP_INST_FILE"
   fi
   
-  if [[ $(echo "$socks_outs" | jq 'length' 2>/dev/null || echo 0) -eq 0 ]]; then
-    socks_outs='[{"type":"socks","tag":"socks-out","server":"127.0.0.1","server_port":40000,"version":"5"}]'
+  if ! echo "$socks_outs" | jq -e '.[] | select(.tag == "socks-out")' >/dev/null 2>&1; then
+    local def_socks_port=$(echo "$socks_outs" | jq -r '.[0].server_port // 40000' 2>/dev/null)
+    def_socks_port=${def_socks_port:-40000}
+    [[ "$def_socks_port" == "null" ]] && def_socks_port=40000
+    local socks_out_item=$(jq -n \
+      --argjson port "$def_socks_port" \
+      '{type: "socks", tag: "socks-out", server: "127.0.0.1", server_port: $port, version: "5"}')
+    socks_outs=$(echo "$socks_outs" | jq --argjson item "$socks_out_item" '. + [$item]')
   fi
 
   local ss_outs="[]"
@@ -6751,6 +6757,11 @@ rebuild_singbox_outbounds() {
   fi
   
   local tmp_json=$(echo "$clean_json" | jq --argjson s "$socks_outs" --argjson ss "$ss_outs" --argjson wge "$wg_eps" --argjson b "$base_outs" --argjson e "$base_eps" '.outbounds = ($b + $s + $ss) | .endpoints = ($e + $wge)')
+
+  if ! echo "$tmp_json" | jq -e '(.outbounds[]? | select(.tag == "warp-out")), (.endpoints[]? | select(.tag == "warp-out"))' >/dev/null 2>&1; then
+    local warp_out_item='{"type":"direct","tag":"warp-out"}'
+    tmp_json=$(echo "$tmp_json" | jq --argjson item "$warp_out_item" '.outbounds += [$item]')
+  fi
 
   # 2. 重载 DNS 代理与 SNI 反向代理规则
   if [ -f "$DNS_SNI_INST_FILE" ]; then
@@ -6831,14 +6842,18 @@ rebuild_singbox_outbounds() {
 prune_orphaned_rule_sets() {
   [ ! -f "$SBFOLDER/sb.json" ] && return
   jq '
-    ([.route.rules[]?.rule_set? | if type == "array" then .[] elif type == "string" then . else empty end] +
+    ([.outbounds[]?.tag] + [.endpoints[]?.tag] + ["direct", "dns-out", "block", "bypass"] | map(select(. != null)) | unique) as $valid_outs
+    | ([.route.rules[]?.rule_set? | if type == "array" then .[] elif type == "string" then . else empty end] +
      [.dns.rules[]?.rule_set? | if type == "array" then .[] elif type == "string" then . else empty end]
      | map(select(. != null and . != "")) | unique) as $active_rs
     | .route.rule_set = [(.route.rule_set[]? | select(.tag as $t | $active_rs | index($t) != null))]
     | .route.rules = [(.route.rules[]? | select(
-        has("domain_suffix") or has("rule_set") or has("geosite") or has("geoip") or
-        has("ip_cidr") or has("domain") or has("port") or has("inbound") or
-        has("action") or has("clash_mode")
+        (
+          has("domain_suffix") or has("rule_set") or has("geosite") or has("geoip") or
+          has("ip_cidr") or has("domain") or has("port") or has("inbound") or
+          has("action") or has("clash_mode")
+        ) and
+        (.outbound == null or ($valid_outs | index(.outbound) != null))
       ))]
   ' "$SBFOLDER/sb.json" > /tmp/sb.json 2>/dev/null && mv /tmp/sb.json "$SBFOLDER/sb.json"
 }
@@ -6858,10 +6873,10 @@ update_routing_rule() {
 
   local target_outbound=""
   case "$route_channel" in
-    w4) target_outbound="warp-IPv4-out" ;;
-    w6) target_outbound="warp-IPv6-out" ;;
-    s4) target_outbound="socks-IPv4-out" ;;
-    s6) target_outbound="socks-IPv6-out" ;;
+    w4) target_outbound="warp-out" ;;
+    w6) target_outbound="warp-out" ;;
+    s4) target_outbound="socks-out" ;;
+    s6) target_outbound="socks-out" ;;
     ad4) target_outbound="vps-outbound-v4" ;;
     ad6) target_outbound="vps-outbound-v6" ;;
     *) target_outbound="$route_channel" ;;
