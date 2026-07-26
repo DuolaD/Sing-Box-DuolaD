@@ -8572,7 +8572,7 @@ parse_ss_link() {
         ensure_warp_plus
         local warp_dir="$SBFOLDER/warp_inst_${inst_port}"
         mkdir -p "$warp_dir"
-        (cd "$warp_dir" && nohup "$SBFOLDER/warp-plus" -b "127.0.0.1:$inst_port" --cfon --country "$inst_country" -$sw46 --endpoint 162.159.192.1:2408 >/dev/null 2>&1 &)
+        (cd "$warp_dir" && nohup "$SBFOLDER/warp-plus" -b "127.0.0.1:$inst_port" --cfon --country "$inst_country" -$sw46 --endpoint 162.159.192.1:2408 --cache-dir "$warp_dir" >/dev/null 2>&1 &)
         ;;
       chain)
         ensure_usque
@@ -8591,7 +8591,8 @@ parse_ss_link() {
 
         local warp_dir="$SBFOLDER/warp_inst_${inst_port}"
         mkdir -p "$warp_dir"
-        (cd "$warp_dir" && nohup "$SBFOLDER/warp-plus" -b "127.0.0.1:$vwarp_p" --cfon --country "$inst_country" -$sw46 --endpoint 162.159.192.1:2408 >/dev/null 2>&1 &)
+        echo "$vwarp_p $gost_p" > "$warp_dir/ports.conf"
+        (cd "$warp_dir" && nohup "$SBFOLDER/warp-plus" -b "127.0.0.1:$vwarp_p" --cfon --country "$inst_country" -$sw46 --endpoint 162.159.192.1:2408 --cache-dir "$warp_dir" >/dev/null 2>&1 &)
         sleep 5
         nohup /usr/local/bin/gost -D -L "tcp://127.0.0.1:$gost_p/162.159.198.2:443" -L "tcp://[::1]:$gost_p/162.159.198.2:443" -F "socks5://127.0.0.1:$vwarp_p" >/dev/null 2>&1 &
         sleep 2
@@ -8607,6 +8608,12 @@ parse_ss_link() {
       local pids=$(ss -tunlp 2>/dev/null | grep -w "$inst_port" | grep -oP 'pid=\K[0-9]+' | sort -u)
       if [[ -n "$pids" ]]; then
         echo "$pids" | xargs kill -9 2>/dev/null
+      fi
+      if [ -f "$SBFOLDER/warp_inst_${inst_port}/ports.conf" ]; then
+        read aux_vp aux_gp < "$SBFOLDER/warp_inst_${inst_port}/ports.conf"
+        for aux_p in "$aux_vp" "$aux_gp"; do
+          [[ -n "$aux_p" ]] && ss -tunlp 2>/dev/null | grep -w "$aux_p" | grep -oP 'pid=\K[0-9]+' | xargs kill -9 2>/dev/null
+        done
       fi
       rm -f "$SBFOLDER/usque_${inst_port}.json"
       rm -rf "$SBFOLDER/warp_inst_${inst_port}"
@@ -8681,6 +8688,12 @@ parse_ss_link() {
       green "正在停止端口 $del_port (Tag: $del_tag) 上的代理进程..."
       local pids=$(ss -tunlp 2>/dev/null | grep -w "$del_port" | grep -oP 'pid=\K[0-9]+' | sort -u)
       [[ -n "$pids" ]] && echo "$pids" | xargs kill -9 2>/dev/null
+      if [ -f "$SBFOLDER/warp_inst_${del_port}/ports.conf" ]; then
+        read aux_vp aux_gp < "$SBFOLDER/warp_inst_${del_port}/ports.conf"
+        for aux_p in "$aux_vp" "$aux_gp"; do
+          [[ -n "$aux_p" ]] && ss -tunlp 2>/dev/null | grep -w "$aux_p" | grep -oP 'pid=\K[0-9]+' | xargs kill -9 2>/dev/null
+        done
+      fi
       sed -i "${del_idx}d" "$WARP_INST_FILE"
       rm -f "$SBFOLDER/usque_${del_port}.json"
       rm -rf "$SBFOLDER/warp_inst_${del_port}"
