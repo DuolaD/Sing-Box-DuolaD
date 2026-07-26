@@ -173,10 +173,11 @@ check_proxy_ip_info() {
   local v4="" v6="" v4_loc="" v6_loc=""
   local v4_display="" v6_display=""
 
-  v4=$(curl -s4m4 --socks5 "127.0.0.1:$socks_port" https://icanhazip.com -k 2>/dev/null)
-  [[ -z "$v4" || ! "$v4" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] && v4=$(curl -s4m4 --socks5 "127.0.0.1:$socks_port" https://api.ipify.org 2>/dev/null)
-  [[ -z "$v4" || ! "$v4" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] && v4=$(curl -s4m4 --socks5 "127.0.0.1:$socks_port" https://api64.ipify.org 2>/dev/null)
-  [[ -z "$v4" || ! "$v4" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] && v4=$(curl -s4m4 --socks5 "127.0.0.1:$socks_port" https://checkip.amazonaws.com 2>/dev/null)
+  # 1. Query IPv4 via SOCKS5 (prefer remote DNS resolution via --socks5-hostname)
+  v4=$(curl -sm5 --socks5-hostname "127.0.0.1:$socks_port" https://api4.ipify.org 2>/dev/null)
+  [[ -z "$v4" || ! "$v4" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] && v4=$(curl -sm5 --socks5-hostname "127.0.0.1:$socks_port" https://ipv4.icanhazip.com -k 2>/dev/null)
+  [[ -z "$v4" || ! "$v4" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] && v4=$(curl -sm5 --socks5-hostname "127.0.0.1:$socks_port" https://v4.ident.me 2>/dev/null)
+  [[ -z "$v4" || ! "$v4" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] && v4=$(curl -s4m5 --socks5 "127.0.0.1:$socks_port" https://icanhazip.com -k 2>/dev/null)
   v4=$(echo "$v4" | tr -d '[:space:]')
 
   if [[ -n "$v4" && "$v4" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
@@ -186,10 +187,12 @@ check_proxy_ip_info() {
     v4_display="${yellow}无 / 无法连通${plain}"
   fi
 
-  v6=$(curl -s6m4 --socks5 "127.0.0.1:$socks_port" https://icanhazip.com -k 2>/dev/null)
-  [[ -z "$v6" || ! "$v6" =~ : ]] && v6=$(curl -s6m4 --socks5 "127.0.0.1:$socks_port" https://api6.ipify.org 2>/dev/null)
-  [[ -z "$v6" || ! "$v6" =~ : ]] && v6=$(curl -s6m4 --socks5 "127.0.0.1:$socks_port" https://api64.ipify.org 2>/dev/null)
-  [[ -z "$v6" || ! "$v6" =~ : ]] && v6=$(curl -s6m4 --socks5 "127.0.0.1:$socks_port" https://checkip.amazonaws.com 2>/dev/null)
+  # 2. Query IPv6 via SOCKS5 (remote DNS resolution via --socks5-hostname allows IPv6 lookup even on IPv4-only host VPS)
+  v6=$(curl -sm5 --socks5-hostname "127.0.0.1:$socks_port" https://api6.ipify.org 2>/dev/null)
+  [[ -z "$v6" || ! "$v6" =~ : ]] && v6=$(curl -sm5 --socks5-hostname "127.0.0.1:$socks_port" https://ipv6.icanhazip.com -k 2>/dev/null)
+  [[ -z "$v6" || ! "$v6" =~ : ]] && v6=$(curl -sm5 --socks5-hostname "127.0.0.1:$socks_port" https://v6.ident.me 2>/dev/null)
+  [[ -z "$v6" || ! "$v6" =~ : ]] && v6=$(curl -sm5 -x socks5h://127.0.0.1:$socks_port https://api64.ipify.org 2>/dev/null)
+  [[ -z "$v6" || ! "$v6" =~ : ]] && v6=$(curl -s6m5 --socks5 "127.0.0.1:$socks_port" https://icanhazip.com -k 2>/dev/null)
   v6=$(echo "$v6" | tr -d '[:space:]')
 
   if [[ -n "$v6" && "$v6" =~ : ]]; then
