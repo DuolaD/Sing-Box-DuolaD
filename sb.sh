@@ -141,14 +141,54 @@ install_dependencies() {
 }
 
 # --- Network & Warp Utilities ---
+get_public_ipv4() {
+  local ip=""
+  ip=$(curl -s4m3 https://icanhazip.com -k 2>/dev/null)
+  [[ -z "$ip" || ! "$ip" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] && ip=$(curl -s4m3 https://api.ipify.org 2>/dev/null)
+  [[ -z "$ip" || ! "$ip" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] && ip=$(curl -s4m3 https://api64.ipify.org 2>/dev/null)
+  [[ -z "$ip" || ! "$ip" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] && ip=$(curl -s4m3 https://checkip.amazonaws.com 2>/dev/null)
+  echo "$ip" | tr -d '[:space:]'
+}
+
+get_public_ipv6() {
+  local ip=""
+  ip=$(curl -s6m3 https://icanhazip.com -k 2>/dev/null)
+  [[ -z "$ip" || ! "$ip" =~ : ]] && ip=$(curl -s6m3 https://api6.ipify.org 2>/dev/null)
+  [[ -z "$ip" || ! "$ip" =~ : ]] && ip=$(curl -s6m3 https://api64.ipify.org 2>/dev/null)
+  [[ -z "$ip" || ! "$ip" =~ : ]] && ip=$(curl -s6m3 https://checkip.amazonaws.com 2>/dev/null)
+  echo "$ip" | tr -d '[:space:]'
+}
+
+get_ip_location() {
+  local target_ip="$1"
+  local loc=""
+  if [[ -n "$target_ip" ]]; then
+    loc=$(curl -sm3 "http://ip-api.com/json/${target_ip}?lang=zh-CN" 2>/dev/null | sed -n 's/.*"country":"\([^"]*\)".*"city":"\([^"]*\)".*/\1 \2/p')
+  fi
+  echo "$loc"
+}
+
+get_server_ip() {
+  local ip=$(cat "$SBFOLDER/server_ip.log" 2>/dev/null)
+  if [[ -z "$ip" || "$ip" == "dual" ]]; then
+    ip=$(cat "$SBFOLDER/v4.log" 2>/dev/null)
+    [[ -z "$ip" ]] && ip=$(get_public_ipv4)
+    [[ -z "$ip" ]] && ip=$(cat "$SBFOLDER/v6.log" 2>/dev/null)
+    [[ -z "$ip" ]] && ip=$(get_public_ipv6)
+  fi
+  echo "$ip"
+}
+
 v4v6() {
-  v4=$(curl -s4m2 icanhazip.com -k)
-  v4dq=$(curl -s4m2 -k https://myip.ipip.net | awk -F'来自于：' '{print $2}' 2>/dev/null)
+  v4=$(get_public_ipv4)
+  v4dq=""
+  [[ -n "$v4" ]] && v4dq=$(get_ip_location "$v4")
+  
   v6=""
   v6dq=""
   if ip addr show 2>/dev/null | grep -q "inet6 [23]"; then
-    v6=$(curl -s6m2 icanhazip.com -k)
-    v6dq=$(curl -s6m2 -k https://ip.fm | sed -n 's/.*Location: //p' 2>/dev/null)
+    v6=$(get_public_ipv6)
+    [[ -n "$v6" ]] && v6dq=$(get_ip_location "$v6")
   fi
 }
 
@@ -159,7 +199,7 @@ warpcheck() {
 
 detect_network_settings() {
   v4orv6() {
-    if [ -z "$(curl -s4m5 icanhazip.com -k)" ]; then
+    if [ -z "$(get_public_ipv4)" ]; then
       echo
       red "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
       yellow "检测到 纯IPV6 VPS，添加NAT64"
@@ -375,7 +415,7 @@ inscertificate() {
           if [[ -z "$resolved_ip" ]]; then
             resolved_ip=$(ping -c 1 -W 2 "$ym_domain" 2>/dev/null | head -n 1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+')
           fi
-          local server_ip=$(cat "$SBFOLDER/server_ip.log" 2>/dev/null || curl -s4 ip.sb)
+          local server_ip=$(get_server_ip)
           if [[ -z "$resolved_ip" || "$resolved_ip" != "$server_ip" ]]; then
             red "检测到域名 $ym_domain 未解析到当前 VPS 外部 IP $server_ip (解析到的 IP 是: ${resolved_ip:-无})。"
             yellow "请先确保域名解析生效，或者输入 y 忽略并强制继续："
@@ -1399,7 +1439,7 @@ get_free_acme_port() {
 write_caddyfile() {
   local clean_json=$(strip_json_comments "$SBFOLDER/sb.json")
   
-  local server_ip=$(cat "$SBFOLDER/server_ip.log" 2>/dev/null || curl -s4 ip.sb)
+  local server_ip=$(get_server_ip)
   local ym_domain=$(cat /var/Sing-Box-DuolaD/domain.log 2>/dev/null)
   local acme_port=$(cat /var/Sing-Box-DuolaD/acme_port.log 2>/dev/null || echo "9999")
   local global_cert_type=$(cat /var/Sing-Box-DuolaD/cert_type.log 2>/dev/null || echo "self")
@@ -1499,15 +1539,15 @@ EOF
 }
 
 select_ip_cert_mode() {
-  local server_ip=$(cat "$SBFOLDER/server_ip.log" 2>/dev/null || echo "")
+  local server_ip=$(get_server_ip)
   local v4_addr=$(cat "$SBFOLDER/v4.log" 2>/dev/null)
   local v6_addr=$(cat "$SBFOLDER/v6.log" 2>/dev/null)
 
   if [[ -z "$v4_addr" ]]; then
-    v4_addr=$(curl -s4 --max-time 3 ip.sb 2>/dev/null || curl -s4 --max-time 3 4.ipw.cn 2>/dev/null)
+    v4_addr=$(get_public_ipv4)
   fi
   if [[ -z "$v6_addr" ]]; then
-    v6_addr=$(curl -s6 --max-time 3 ip.sb 2>/dev/null || curl -s6 --max-time 3 6.ipw.cn 2>/dev/null)
+    v6_addr=$(get_public_ipv6)
   fi
 
   local mode="v4"
@@ -1558,10 +1598,10 @@ setup_caddy_cert() {
     local v6_addr=$(cat "$SBFOLDER/v6.log" 2>/dev/null)
     
     if [[ -z "$v4_addr" && "$ip_mode" != "v6" ]]; then
-      v4_addr=$(curl -s4 --max-time 3 ip.sb 2>/dev/null || curl -s4 --max-time 3 4.ipw.cn 2>/dev/null)
+      v4_addr=$(get_public_ipv4)
     fi
     if [[ -z "$v6_addr" && "$ip_mode" != "v4" ]]; then
-      v6_addr=$(curl -s6 --max-time 3 ip.sb 2>/dev/null || curl -s6 --max-time 3 6.ipw.cn 2>/dev/null)
+      v6_addr=$(get_public_ipv6)
     fi
     local acme_ip_args=""
     local main_ip=""
@@ -1575,7 +1615,7 @@ setup_caddy_cert() {
       main_ip="$v6_addr"
       blue "正在使用 acme.sh 申请 IPv6 证书 ($v6_addr)..."
     else
-      local target_v4="${v4_addr:-$(cat "$SBFOLDER/server_ip.log" 2>/dev/null || curl -s4 ip.sb)}"
+      local target_v4="${v4_addr:-$(get_server_ip)}"
       acme_ip_args="-d $target_v4"
       main_ip="$target_v4"
       blue "正在使用 acme.sh 申请 IPv4 证书 ($target_v4)..."
@@ -1871,7 +1911,8 @@ ipuuid() {
       fi
     else
       yellow "VPS并不是双栈VPS，不支持IP配置输出的切换"
-      serip=$(curl -s4m5 icanhazip.com -k || curl -s6m5 icanhazip.com -k)
+      serip=$(get_public_ipv4)
+      [[ -z "$serip" ]] && serip=$(get_public_ipv6)
       if [[ "$serip" =~ : ]]; then
         server_ip="[$serip]"
         server_ipcl="$serip"
@@ -2045,7 +2086,7 @@ result_vl_vm_hy_tu() {
   local cur_cert_type=$(cat /var/Sing-Box-DuolaD/cert_type.log 2>/dev/null)
   if [[ "$cur_cert_type" == "ip" ]]; then
     is_self_signed=false
-    local server_ip=$(cat "$SBFOLDER/server_ip.log" 2>/dev/null || curl -s4 ip.sb)
+    local server_ip=$(get_server_ip)
     tls_sni="$server_ip"
   elif [[ "$cur_cert_type" == "domain" ]]; then
     is_self_signed=false
@@ -2059,7 +2100,7 @@ result_vl_vm_hy_tu() {
       tls_sni="${ym:-$(get_self_domain)}"
     elif [[ -f /var/Sing-Box-DuolaD/ip_cert.pem ]]; then
       is_self_signed=false
-      local server_ip=$(cat "$SBFOLDER/server_ip.log" 2>/dev/null || curl -s4 ip.sb)
+      local server_ip=$(get_server_ip)
       tls_sni="$server_ip"
     else
       is_self_signed=true
@@ -2111,10 +2152,9 @@ result_vl_vm_hy_tu() {
     local target_ip="$ym"
     local target_ipcl="$ym"
     if [[ "$cur_cert_type" == "ip" || -z "$ym" ]]; then
-      local server_ip_val=$(cat "$SBFOLDER/server_ip.log" 2>/dev/null || curl -s4 ip.sb)
-      [[ "$server_ip_val" == "dual" ]] && server_ip_val=$(cat "$SBFOLDER/v4.log" 2>/dev/null || curl -s4 ip.sb)
-      local server_ipcl_val=$(cat "$SBFOLDER/server_ipcl.log" 2>/dev/null || echo "$server_ip_val")
-      [[ "$server_ipcl_val" == "dual" ]] && server_ipcl_val=$(cat "$SBFOLDER/v4.log" 2>/dev/null || echo "$server_ip_val")
+      local server_ip_val=$(get_server_ip)
+      local server_ipcl_val=$(cat "$SBFOLDER/server_ipcl.log" 2>/dev/null)
+      [[ -z "$server_ipcl_val" || "$server_ipcl_val" == "dual" ]] && server_ipcl_val="$server_ip_val"
       target_sni="$server_ip_val"
       target_ip="$server_ip_val"
       target_ipcl="$server_ipcl_val"
@@ -3120,7 +3160,7 @@ $extra_yaml\n\n"
       elif [[ "$server_ipcl" = "dual" ]]; then
         echo "v4|$v4_addr v6|$v6_addr"
       else
-        local server_ip=$(cat "$SBFOLDER/server_ip.log" 2>/dev/null || curl -s4 ip.sb)
+        local server_ip=$(get_server_ip)
         echo "single|${server_ip:-$default_server}"
       fi
     fi
@@ -5025,10 +5065,10 @@ changewg() {
     echo
     red "⚠️ 提示：对端 IP/Endpoint 为 WARP 连接通讯的关键入口，非特殊网络需求不建议随意改动！"
     echo
-    local check_v4=$(curl -s4m3 icanhazip.com -k)
+    local check_v4=$(get_public_ipv4)
     local check_v6=""
     if ip addr show 2>/dev/null | grep -q "inet6 [23]"; then
-      check_v6=$(curl -s6m3 icanhazip.com -k)
+      check_v6=$(get_public_ipv6)
     fi
 
     local net_type="unknown"
@@ -5082,7 +5122,7 @@ changewg() {
       green "warp-wireguard对端IP/Endpoint设置结束"
     elif [ "$sub_menu" = "2" ]; then
       green "正在获取优选对端IP，请稍等..."
-      if [ -z "$(curl -s4m5 icanhazip.com -k)" ]; then
+      if [ -z "$(get_public_ipv4)" ]; then
         curl -sSL https://gitlab.com/rwkgyg/CFwarp/raw/main/point/endip.sh -o /tmp/endip.sh && chmod +x /tmp/endip.sh && (echo -e "1\n2\n") | bash /tmp/endip.sh > /dev/null 2>&1
         nwgip=$(awk -F, 'NR==2 {print $1}' /root/result.csv 2>/dev/null | grep -o '\[.*\]' | tr -d '[]')
         nwgpo=$(awk -F, 'NR==2 {print $1}' /root/result.csv 2>/dev/null | awk -F "]" '{print $2}' | tr -d ':')
@@ -5349,7 +5389,7 @@ ssl_deploy_menu() {
         if [[ -z "$resolved_ip" ]]; then
           resolved_ip=$(ping -c 1 -W 2 "$ym_domain" 2>/dev/null | head -n 1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+')
         fi
-        local vps_ip=$(curl -s4 ip.sb || curl -s6 ip.sb)
+        local vps_ip=$(get_server_ip)
         if [[ "$resolved_ip" != "$vps_ip" ]]; then
           yellow "警告：域名解析IP ($resolved_ip) 与本机IP ($vps_ip) 不符！"
           readp "是否强行继续申请？[y/N] (默认不继续) ：" force_req
@@ -5449,7 +5489,7 @@ ssl_uninstall_menu() {
 
   rm -f "/var/Sing-Box-DuolaD/${target_type}_cert.pem" "/var/Sing-Box-DuolaD/${target_type}_private.key"
   if [[ "$target_type" == "ip" ]]; then
-    local server_ip=$(cat "$SBFOLDER/server_ip.log" 2>/dev/null || curl -s4 ip.sb)
+    local server_ip=$(get_server_ip)
     if command -v ~/.acme.sh/acme.sh &>/dev/null; then
       ~/.acme.sh/acme.sh --remove -d "$server_ip" >/dev/null 2>&1
     fi
@@ -5618,7 +5658,7 @@ ssl_certificate_settings() {
   fi
   
   if $has_ip; then
-    local ip_val=$(cat "$SBFOLDER/server_ip.log" 2>/dev/null || curl -s4 ip.sb)
+    local ip_val=$(get_server_ip)
     echo -e " - ${green}纯 IP 证书${plain}: ${green}已部署${plain} (IP: $ip_val)"
   else
     echo -e " - ${green}纯 IP 证书${plain}: ${yellow}未部署${plain}"
@@ -6006,7 +6046,7 @@ modify_protocol_config() {
         cert_num=$((cert_num+1))
       fi
       if $has_ip; then
-        local ip_val=$(cat "$SBFOLDER/server_ip.log" 2>/dev/null || curl -s4 ip.sb)
+        local ip_val=$(get_server_ip)
         echo "${cert_num}：纯 IP 证书 (IP: $ip_val)"
         cert_map+=("ip")
         cert_num=$((cert_num+1))
@@ -9399,7 +9439,7 @@ instsllsingbox() {
               if [[ -z "$resolved_ip" ]]; then
                 resolved_ip=$(ping -c 1 -W 2 "$ym_domain" 2>/dev/null | head -n 1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+')
               fi
-              local server_ip=$(cat "$SBFOLDER/server_ip.log" 2>/dev/null || curl -s4 ip.sb)
+              local server_ip=$(get_server_ip)
               if [[ -z "$resolved_ip" || "$resolved_ip" != "$server_ip" ]]; then
                 red "检测到域名 $ym_domain 未解析到当前 VPS 外部 IP $server_ip (解析到的 IP 是: ${resolved_ip:-无})。"
                 yellow "请先确保域名解析生效，或者输入 y 忽略并强制继续："
