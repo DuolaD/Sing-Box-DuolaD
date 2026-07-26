@@ -33,6 +33,7 @@ SBFOLDER="/var/Sing-Box-DuolaD"
 SBFILES="$SBFOLDER/sb.json"
 SCRIPT_URL="https://raw.githubusercontent.com/DuolaD/Sing-Box-DuolaD/main/sb.sh"
 SCRIPT_SHORTCUT="/usr/bin/sb"
+SCRIPT_VERSION="v26.4.11"
 
 # --- Detect Operating System ---
 detect_system() {
@@ -9452,6 +9453,7 @@ get_script_release_info() {
       release_body="请访问 https://github.com/DuolaD/Sing-Box-DuolaD/releases/tag/${latestV} 查看更新日志。"
     fi
   fi
+  [[ -z "$latestV" ]] && latestV="$SCRIPT_VERSION"
 }
 
 upsbyg() {
@@ -10561,7 +10563,7 @@ installsingbox() {
   sbservice
   caddyservice
   get_script_release_info
-  [[ -n "$latestV" ]] && echo "$latestV" > "$SBFOLDER/v"
+  [[ -n "$SCRIPT_VERSION" ]] && echo "$SCRIPT_VERSION" > "$SBFOLDER/v" || ([[ -n "$latestV" ]] && echo "$latestV" > "$SBFOLDER/v")
   lnsb
   cronsb
   
