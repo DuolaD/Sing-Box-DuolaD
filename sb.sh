@@ -5269,9 +5269,8 @@ changewg() {
   green "Reserved值：$wgres"
   green "对端IP：$wgip:$wgpo"
   echo
-  yellow "1：更换warp-wireguard账户"
   yellow "1: 更换注册 WARP-WireGuard 账户"
-  yellow "2: 更换/优选 WARP-WireGuard 对端 IP 与端口 (不建议随意改动)"
+  yellow "2: 更换 WARP-WireGuard 对端 IP 与端口 (不建议随意改动)"
   yellow "3: 测试 WireGuard 出站连通性 (204 响应)"
   yellow "4: 测试 WARP-WireGuard IP (IPv4/IPv6 & 地区)"
   yellow "0: 返回上层"
@@ -5309,32 +5308,31 @@ changewg() {
     local net_type="unknown"
     local opt_v4_idx=""
     local opt_v6_idx=""
-    local max_idx=2
+    local max_idx=1
 
     if [ -n "$check_v4" ] && [ -n "$check_v6" ]; then
       net_type="双栈网络 (IPv4 + IPv6)"
-      opt_v4_idx="3"
-      opt_v6_idx="4"
-      max_idx=4
-    elif [ -n "$check_v4" ]; then
-      net_type="IPv4 Only"
-      opt_v4_idx="3"
-      max_idx=3
-    elif [ -n "$check_v6" ]; then
-      net_type="IPv6 Only"
+      opt_v4_idx="2"
       opt_v6_idx="3"
       max_idx=3
+    elif [ -n "$check_v4" ]; then
+      net_type="IPv4 Only"
+      opt_v4_idx="2"
+      max_idx=2
+    elif [ -n "$check_v6" ]; then
+      net_type="IPv6 Only"
+      opt_v6_idx="2"
+      max_idx=2
     else
       net_type="未识别 (默认允许双栈切换)"
-      opt_v4_idx="3"
-      opt_v6_idx="4"
-      max_idx=4
+      opt_v4_idx="2"
+      opt_v6_idx="3"
+      max_idx=3
     fi
 
     green "网络检测结果：当前服务器为【$net_type】"
     echo
     yellow "1: 手动输入自定义对端 IP/域名 和 端口"
-    yellow "2: 自动获取优选 WARP-WireGuard 对端 IP"
     if [ -n "$opt_v4_idx" ]; then
       yellow "${opt_v4_idx}: 更换至 IPv4 Endpoint (162.159.192.1)"
     fi
@@ -5355,27 +5353,6 @@ changewg() {
          "$SBFOLDER/sb.json" > /tmp/sb.json && mv /tmp/sb.json "$SBFOLDER/sb.json"
       restartsb
       green "warp-wireguard对端IP/Endpoint设置结束"
-    elif [ "$sub_menu" = "2" ]; then
-      green "正在获取优选对端IP，请稍等..."
-      if [ -z "$(get_public_ipv4)" ]; then
-        curl -sSL https://gitlab.com/rwkgyg/CFwarp/raw/main/point/endip.sh -o /tmp/endip.sh && chmod +x /tmp/endip.sh && (echo -e "1\n2\n") | bash /tmp/endip.sh > /dev/null 2>&1
-        nwgip=$(awk -F, 'NR==2 {print $1}' /root/result.csv 2>/dev/null | grep -o '\[.*\]' | tr -d '[]')
-        nwgpo=$(awk -F, 'NR==2 {print $1}' /root/result.csv 2>/dev/null | awk -F "]" '{print $2}' | tr -d ':')
-      else
-        curl -sSL https://gitlab.com/rwkgyg/CFwarp/raw/main/point/endip.sh -o /tmp/endip.sh && chmod +x /tmp/endip.sh && (echo -e "1\n1\n") | bash /tmp/endip.sh > /dev/null 2>&1
-        nwgip=$(awk -F, 'NR==2 {print $1}' /root/result.csv 2>/dev/null | awk -F: '{print $1}')
-        nwgpo=$(awk -F, 'NR==2 {print $1}' /root/result.csv 2>/dev/null | awk -F: '{print $2}')
-      fi
-      rm -f /tmp/endip.sh
-      if [ -n "$nwgip" ] && [ -n "$nwgpo" ]; then
-        jq --arg ip "$nwgip" --argjson port "$nwgpo" \
-           '(.endpoints[]? | select(.type == "wireguard")) |= (.peers[0].address = $ip | .peers[0].port = $port)' \
-           "$SBFOLDER/sb.json" > /tmp/sb.json && mv /tmp/sb.json "$SBFOLDER/sb.json"
-        restartsb
-        green "自动优选 Warp 对端 IP 成功：$nwgip:$nwgpo"
-      else
-        red "获取优选对端 IP 失败，未更改配置"
-      fi
     elif [ -n "$opt_v4_idx" ] && [ "$sub_menu" = "$opt_v4_idx" ]; then
       local target_port=${wgpo:-2408}
       jq --arg ip "162.159.192.1" --argjson port "$target_port" \
