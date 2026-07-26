@@ -168,6 +168,41 @@ get_ip_location() {
   echo "$loc"
 }
 
+check_proxy_ip_info() {
+  local socks_port="$1"
+  local v4="" v6="" v4_loc="" v6_loc=""
+  local v4_display="" v6_display=""
+
+  v4=$(curl -s4m4 --socks5 "127.0.0.1:$socks_port" https://icanhazip.com -k 2>/dev/null)
+  [[ -z "$v4" || ! "$v4" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] && v4=$(curl -s4m4 --socks5 "127.0.0.1:$socks_port" https://api.ipify.org 2>/dev/null)
+  [[ -z "$v4" || ! "$v4" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] && v4=$(curl -s4m4 --socks5 "127.0.0.1:$socks_port" https://api64.ipify.org 2>/dev/null)
+  [[ -z "$v4" || ! "$v4" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] && v4=$(curl -s4m4 --socks5 "127.0.0.1:$socks_port" https://checkip.amazonaws.com 2>/dev/null)
+  v4=$(echo "$v4" | tr -d '[:space:]')
+
+  if [[ -n "$v4" && "$v4" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    v4_loc=$(get_ip_location "$v4")
+    v4_display="${green}${v4}${v4_loc:+ ($v4_loc)}${plain}"
+  else
+    v4_display="${yellow}无 / 无法连通${plain}"
+  fi
+
+  v6=$(curl -s6m4 --socks5 "127.0.0.1:$socks_port" https://icanhazip.com -k 2>/dev/null)
+  [[ -z "$v6" || ! "$v6" =~ : ]] && v6=$(curl -s6m4 --socks5 "127.0.0.1:$socks_port" https://api6.ipify.org 2>/dev/null)
+  [[ -z "$v6" || ! "$v6" =~ : ]] && v6=$(curl -s6m4 --socks5 "127.0.0.1:$socks_port" https://api64.ipify.org 2>/dev/null)
+  [[ -z "$v6" || ! "$v6" =~ : ]] && v6=$(curl -s6m4 --socks5 "127.0.0.1:$socks_port" https://checkip.amazonaws.com 2>/dev/null)
+  v6=$(echo "$v6" | tr -d '[:space:]')
+
+  if [[ -n "$v6" && "$v6" =~ : ]]; then
+    v6_loc=$(get_ip_location "$v6")
+    v6_display="${green}${v6}${v6_loc:+ ($v6_loc)}${plain}"
+  else
+    v6_display="${yellow}无 / 无法连通${plain}"
+  fi
+
+  echo -e "  ├── IPv4 出口: ${v4_display}"
+  echo -e "  └── IPv6 出口: ${v6_display}"
+}
+
 get_server_ip() {
   local ip=$(cat "$SBFOLDER/server_ip.log" 2>/dev/null)
   if [[ -z "$ip" || "$ip" == "dual" ]]; then
@@ -4966,6 +5001,71 @@ EOF
   fi
 }
 
+test_warp_ip() {
+  local clean_json=$(strip_json_comments "$SBFOLDER/sb.json")
+  local ep_json=$(echo "$clean_json" | jq '.endpoints // []' 2>/dev/null)
+  
+  if [ -z "$ep_json" ] || [ "$ep_json" = "[]" ]; then
+    echo -e "  ├── IPv4 出口: ${red}未配置 (不存在 WireGuard 出站)${plain}"
+    echo -e "  └── IPv6 出口: ${red}未配置 (不存在 WireGuard 出站)${plain}"
+    return
+  fi
+
+  local sb_bin=""
+  if [ -f "$SBFOLDER/sing-box" ]; then
+    sb_bin="$SBFOLDER/sing-box"
+  elif command -v sing-box >/dev/null 2>&1; then
+    sb_bin="sing-box"
+  elif [ -f "/var/Sing-Box-DuolaD/sing-box" ]; then
+    sb_bin="/var/Sing-Box-DuolaD/sing-box"
+  fi
+
+  if [ -z "$sb_bin" ]; then
+    echo -e "  ├── IPv4 出口: ${red}未找到 sing-box 内核${plain}"
+    echo -e "  └── IPv6 出口: ${red}未找到 sing-box 内核${plain}"
+    return
+  fi
+
+  cat <<EOF > /tmp/sb_warp_test.json
+{
+  "log": { "disabled": true },
+  "inbounds": [
+    {
+      "type": "socks",
+      "tag": "socks-test",
+      "listen": "127.0.0.1",
+      "listen_port": 49151
+    }
+  ],
+  "endpoints": $ep_json,
+  "outbounds": [
+    {
+      "type": "direct",
+      "tag": "direct"
+    }
+  ],
+  "route": {
+    "rules": [
+      {
+        "outbound": "warp-out"
+      }
+    ]
+  }
+}
+EOF
+
+  "$sb_bin" run -c /tmp/sb_warp_test.json >/dev/null 2>&1 &
+  local test_pid=$!
+  sleep 1.5
+
+  check_proxy_ip_info 49151
+
+  kill -9 $test_pid >/dev/null 2>&1
+  wait $test_pid 2>/dev/null
+  rm -f /tmp/sb_warp_test.json
+}
+
+
 test_ss_204() {
   local ss_tag="$1"
   local clean_json=$(strip_json_comments "$SBFOLDER/sb.json")
@@ -5064,8 +5164,9 @@ changewg() {
   yellow "1：更换warp-wireguard账户"
   yellow "2：更换/优选warp-wireguard对端IP与端口 (不建议随意改动)"
   yellow "3：测试WireGuard出站连通性 (204响应)"
+  yellow "4：测试Warp-wireguard IP (IPv4/IPv6 & 地区)"
   yellow "0：返回上层"
-  readp "请选择【0-3】：" menu
+  readp "请选择【0-4】：" menu
   if [ "$menu" = "1" ]; then
     green "最新随机生成普通warp-wireguard账户如下"
     warpwg
@@ -5192,6 +5293,14 @@ changewg() {
     else
       red "测试结果：$test_res"
     fi
+    echo
+    readp "按回车键返回..." temp_input
+    changewg
+  elif [ "$menu" = "4" ]; then
+    echo
+    green "正在进行 WireGuard 出站 IP 及地区检测..."
+    echo
+    test_warp_ip
     echo
     readp "按回车键返回..." temp_input
     changewg
@@ -8727,41 +8836,6 @@ EOF
         sleep 1
       fi
     done
-  }
-
-  check_proxy_ip_info() {
-    local socks_port="$1"
-    local v4="" v6="" v4_loc="" v6_loc=""
-    local v4_display="" v6_display=""
-
-    v4=$(curl -s4m4 --socks5 "127.0.0.1:$socks_port" https://icanhazip.com -k 2>/dev/null)
-    [[ -z "$v4" || ! "$v4" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] && v4=$(curl -s4m4 --socks5 "127.0.0.1:$socks_port" https://api.ipify.org 2>/dev/null)
-    [[ -z "$v4" || ! "$v4" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] && v4=$(curl -s4m4 --socks5 "127.0.0.1:$socks_port" https://api64.ipify.org 2>/dev/null)
-    [[ -z "$v4" || ! "$v4" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] && v4=$(curl -s4m4 --socks5 "127.0.0.1:$socks_port" https://checkip.amazonaws.com 2>/dev/null)
-    v4=$(echo "$v4" | tr -d '[:space:]')
-
-    if [[ -n "$v4" && "$v4" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-      v4_loc=$(get_ip_location "$v4")
-      v4_display="${green}${v4}${v4_loc:+ ($v4_loc)}${plain}"
-    else
-      v4_display="${yellow}无 / 无法连通${plain}"
-    fi
-
-    v6=$(curl -s6m4 --socks5 "127.0.0.1:$socks_port" https://icanhazip.com -k 2>/dev/null)
-    [[ -z "$v6" || ! "$v6" =~ : ]] && v6=$(curl -s6m4 --socks5 "127.0.0.1:$socks_port" https://api6.ipify.org 2>/dev/null)
-    [[ -z "$v6" || ! "$v6" =~ : ]] && v6=$(curl -s6m4 --socks5 "127.0.0.1:$socks_port" https://api64.ipify.org 2>/dev/null)
-    [[ -z "$v6" || ! "$v6" =~ : ]] && v6=$(curl -s6m4 --socks5 "127.0.0.1:$socks_port" https://checkip.amazonaws.com 2>/dev/null)
-    v6=$(echo "$v6" | tr -d '[:space:]')
-
-    if [[ -n "$v6" && "$v6" =~ : ]]; then
-      v6_loc=$(get_ip_location "$v6")
-      v6_display="${green}${v6}${v6_loc:+ ($v6_loc)}${plain}"
-    else
-      v6_display="${yellow}无 / 无法连通${plain}"
-    fi
-
-    echo -e "  ├── IPv4 出口: ${v4_display}"
-    echo -e "  └── IPv6 出口: ${v6_display}"
   }
 
   test_ss_ip() {
