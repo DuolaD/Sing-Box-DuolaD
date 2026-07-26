@@ -7064,7 +7064,7 @@ rebuild_singbox_outbounds() {
         add_dns_rules=$(echo "$add_dns_rules" | jq --argjson item "$dom_d_rule" '. + [$item]')
       fi
 
-      # 2. 处理 geosite 规则 (rule_set)
+      # 2. 处理 规则集/rule-set 规则 (rule_set)
       if [[ -n "$r_geosites" ]]; then
         local rs_names="[]"
         while read -r raw_gname; do
@@ -7611,12 +7611,12 @@ changefl() {
   blue "VPS本地出站分流 (选项3与4)"
   blue "动态代理与高级分流通道 (选项5及以上)"
   echo
-  blue "当前Sing-box内核支持后缀域名与geosite/rule_set分流方式"
+  blue "当前Sing-box内核支持后缀域名与规则集/rule-set分流方式"
   echo
   yellow "注意："
   yellow "一、后缀域名方式只能填域名 (例：谷歌网站填写：google.com googleapis.com)"
-  yellow "二、geosite方式须填写geosite规则名 (例：奈飞填写netflix ；迪士尼填写disney ；ChatGPT填写openai ；全局且绕过中国填写geolocation-!cn)"
-  yellow "三、同一个完整域名或者geosite切勿重复分流"
+  yellow "二、规则集/rule-set方式须填写规则集/rule-set规则名 (例：奈飞填写netflix ；迪士尼填写disney ；ChatGPT填写openai ；全局且绕过中国填写geolocation-!cn)"
+  yellow "三、同一个完整域名或者规则集/rule-set切勿重复分流"
   yellow "四、如分流通道中有个别通道无网络，所填分流为黑名单模式，即屏蔽该网站访问"
   changef
 }
@@ -7752,7 +7752,7 @@ changef() {
   readp "请选择:" menu
   
   if [ "$menu" = "1" ]; then
-    readp "1: 使用后缀域名方式\n2: 使用 geosite 方式\n3: 返回上层\n请选择:" menu
+    readp "1: 使用后缀域名方式\n2: 使用 规则集/rule-set 方式\n3: 返回上层\n请选择:" menu
     if [ "$menu" = "1" ]; then
       readp "每个域名之间留空格，回车跳过表示重置清空 WARP-WireGuard IPv4 的分流通道:" w4flym
       update_routing_rule "w4" "domain_suffix" "$w4flym"
@@ -7765,7 +7765,7 @@ changef() {
       changef
     fi
   elif [ "$menu" = "2" ]; then
-    readp "1: 使用后缀域名方式\n2: 使用 geosite 方式\n3: 返回上层\n请选择:" menu
+    readp "1: 使用后缀域名方式\n2: 使用 规则集/rule-set 方式\n3: 返回上层\n请选择:" menu
     if [ "$menu" = "1" ]; then
       readp "每个域名之间留空格，回车跳过表示重置清空 WARP-WireGuard IPv6 的分流通道:" w6flym
       update_routing_rule "w6" "domain_suffix" "$w6flym"
@@ -7778,7 +7778,7 @@ changef() {
       changef
     fi
   elif [ "$menu" = "3" ]; then
-    readp "1: 使用后缀域名方式\n2: 使用 geosite 方式\n3: 返回上层\n请选择:" menu
+    readp "1: 使用后缀域名方式\n2: 使用 规则集/rule-set 方式\n3: 返回上层\n请选择:" menu
     if [ "$menu" = "1" ]; then
       readp "每个域名之间留空格，回车跳过表示重置清空 VPS 本地 IPv4 的分流通道:" ad4flym
       update_routing_rule "ad4" "domain_suffix" "$ad4flym"
@@ -7791,7 +7791,7 @@ changef() {
       changef
     fi
   elif [ "$menu" = "4" ]; then
-    readp "1: 使用后缀域名方式\n2: 使用 geosite 方式\n3: 返回上层\n请选择:" menu
+    readp "1: 使用后缀域名方式\n2: 使用 规则集/rule-set 方式\n3: 返回上层\n请选择:" menu
     if [ "$menu" = "1" ]; then
       readp "每个域名之间留空格，回车跳过表示重置清空 VPS 本地 IPv6 的分流通道:" ad6flym
       update_routing_rule "ad6" "domain_suffix" "$ad6flym"
@@ -7809,7 +7809,7 @@ changef() {
     local kind="${inst_kinds[$menu]}"
 
     if [[ "$kind" == "socks" || "$kind" == "shadowsocks" || "$kind" == "wireguard" ]]; then
-      readp "1: 使用后缀域名方式\n2: 使用 geosite 方式\n3: 返回上层\n请选择:" menu_type
+      readp "1: 使用后缀域名方式\n2: 使用 规则集/rule-set 方式\n3: 返回上层\n请选择:" menu_type
       if [ "$menu_type" = "1" ]; then
         readp "每个域名之间留空格，回车跳过表示重置清空 [$target_desc] 的分流通道:" dyn_flym
         update_routing_rule "$target_tag" "domain_suffix" "$dyn_flym"
@@ -7837,7 +7837,7 @@ changef() {
         local dom_str=$(echo "$r_domains" | tr ',' ' ')
         local geo_str=$(echo "$r_geosites" | tr ',' ' ')
 
-        readp "1: 使用后缀域名方式\n2: 使用 geosite 方式\n3: 返回上层\n请选择:" menu_type
+        readp "1: 使用后缀域名方式\n2: 使用 规则集/rule-set 方式\n3: 返回上层\n请选择:" menu_type
 
         if [ "$menu_type" = "1" ]; then
           readp "每个域名之间留空格，回车跳过表示重置清空 [$target_desc] 的分流通道：" raw_doms
