@@ -8729,14 +8729,329 @@ EOF
     done
   }
 
+  check_proxy_ip_info() {
+    local socks_port="$1"
+    local v4="" v6="" v4_loc="" v6_loc=""
+    local v4_display="" v6_display=""
+
+    v4=$(curl -s4m4 --socks5 "127.0.0.1:$socks_port" https://icanhazip.com -k 2>/dev/null)
+    [[ -z "$v4" || ! "$v4" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] && v4=$(curl -s4m4 --socks5 "127.0.0.1:$socks_port" https://api.ipify.org 2>/dev/null)
+    [[ -z "$v4" || ! "$v4" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] && v4=$(curl -s4m4 --socks5 "127.0.0.1:$socks_port" https://api64.ipify.org 2>/dev/null)
+    [[ -z "$v4" || ! "$v4" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] && v4=$(curl -s4m4 --socks5 "127.0.0.1:$socks_port" https://checkip.amazonaws.com 2>/dev/null)
+    v4=$(echo "$v4" | tr -d '[:space:]')
+
+    if [[ -n "$v4" && "$v4" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+      v4_loc=$(get_ip_location "$v4")
+      v4_display="${green}${v4}${v4_loc:+ ($v4_loc)}${plain}"
+    else
+      v4_display="${yellow}无 / 无法连通${plain}"
+    fi
+
+    v6=$(curl -s6m4 --socks5 "127.0.0.1:$socks_port" https://icanhazip.com -k 2>/dev/null)
+    [[ -z "$v6" || ! "$v6" =~ : ]] && v6=$(curl -s6m4 --socks5 "127.0.0.1:$socks_port" https://api6.ipify.org 2>/dev/null)
+    [[ -z "$v6" || ! "$v6" =~ : ]] && v6=$(curl -s6m4 --socks5 "127.0.0.1:$socks_port" https://api64.ipify.org 2>/dev/null)
+    [[ -z "$v6" || ! "$v6" =~ : ]] && v6=$(curl -s6m4 --socks5 "127.0.0.1:$socks_port" https://checkip.amazonaws.com 2>/dev/null)
+    v6=$(echo "$v6" | tr -d '[:space:]')
+
+    if [[ -n "$v6" && "$v6" =~ : ]]; then
+      v6_loc=$(get_ip_location "$v6")
+      v6_display="${green}${v6}${v6_loc:+ ($v6_loc)}${plain}"
+    else
+      v6_display="${yellow}无 / 无法连通${plain}"
+    fi
+
+    echo -e "  ├── IPv4 出口: ${v4_display}"
+    echo -e "  └── IPv6 出口: ${v6_display}"
+  }
+
+  test_ss_ip() {
+    local ss_tag="$1"
+    local clean_json=$(strip_json_comments "$SBFOLDER/sb.json")
+    local ss_outbound=$(echo "$clean_json" | jq --arg tag "$ss_tag" '.outbounds[]? | select(.tag == $tag)' 2>/dev/null)
+    if [ -z "$ss_outbound" ] || [ "$ss_outbound" = "null" ]; then
+      echo -e "  ├── IPv4 出口: ${red}未配置 ($ss_tag)${plain}"
+      echo -e "  └── IPv6 出口: ${red}未配置 ($ss_tag)${plain}"
+      return
+    fi
+
+    local sb_bin=""
+    if [ -f "$SBFOLDER/sing-box" ]; then
+      sb_bin="$SBFOLDER/sing-box"
+    elif command -v sing-box >/dev/null 2>&1; then
+      sb_bin="sing-box"
+    elif [ -f "/var/Sing-Box-DuolaD/sing-box" ]; then
+      sb_bin="/var/Sing-Box-DuolaD/sing-box"
+    fi
+
+    if [ -z "$sb_bin" ]; then
+      echo -e "  ├── IPv4 出口: ${red}未找到 sing-box 内核${plain}"
+      echo -e "  └── IPv6 出口: ${red}未找到 sing-box 内核${plain}"
+      return
+    fi
+
+    cat <<EOF > /tmp/sb_ss_test.json
+{
+  "log": { "disabled": true, "level": "warn" },
+  "inbounds": [
+    {
+      "type": "socks",
+      "tag": "socks-test",
+      "listen": "127.0.0.1",
+      "listen_port": 49152
+    }
+  ],
+  "outbounds": [
+    $ss_outbound,
+    {
+      "type": "direct",
+      "tag": "direct"
+    }
+  ],
+  "route": {
+    "rules": [
+      {
+        "outbound": "$ss_tag"
+      }
+    ]
+  }
+}
+EOF
+
+    "$sb_bin" run -c /tmp/sb_ss_test.json > /tmp/sb_ss_test.log 2>&1 &
+    local test_pid=$!
+    sleep 1.2
+
+    check_proxy_ip_info 49152
+
+    kill -9 $test_pid >/dev/null 2>&1
+    wait $test_pid 2>/dev/null
+    rm -f /tmp/sb_ss_test.json /tmp/sb_ss_test.log
+  }
+
+  test_wg_custom_ip() {
+    local wg_tag="$1"
+    local clean_json=$(strip_json_comments "$SBFOLDER/sb.json")
+    local wg_endpoint=$(echo "$clean_json" | jq --arg tag "$wg_tag" '.outbounds[]? | select(.tag == $tag)' 2>/dev/null)
+    if [ -z "$wg_endpoint" ] || [ "$wg_endpoint" = "null" ]; then
+      wg_endpoint=$(echo "$clean_json" | jq --arg tag "$wg_tag" '.endpoints[]? | select(.tag == $tag)' 2>/dev/null)
+    fi
+    if [ -z "$wg_endpoint" ] || [ "$wg_endpoint" = "null" ]; then
+      echo -e "  ├── IPv4 出口: ${red}未配置 ($wg_tag)${plain}"
+      echo -e "  └── IPv6 出口: ${red}未配置 ($wg_tag)${plain}"
+      return
+    fi
+
+    local sb_bin=""
+    if [ -f "$SBFOLDER/sing-box" ]; then
+      sb_bin="$SBFOLDER/sing-box"
+    elif command -v sing-box >/dev/null 2>&1; then
+      sb_bin="sing-box"
+    elif [ -f "/var/Sing-Box-DuolaD/sing-box" ]; then
+      sb_bin="/var/Sing-Box-DuolaD/sing-box"
+    fi
+
+    if [ -z "$sb_bin" ]; then
+      echo -e "  ├── IPv4 出口: ${red}未找到 sing-box 内核${plain}"
+      echo -e "  └── IPv6 出口: ${red}未找到 sing-box 内核${plain}"
+      return
+    fi
+
+    cat <<EOF > /tmp/sb_wg_test.json
+{
+  "log": { "disabled": true, "level": "warn" },
+  "inbounds": [
+    {
+      "type": "socks",
+      "tag": "socks-test",
+      "listen": "127.0.0.1",
+      "listen_port": 49153
+    }
+  ],
+  "endpoints": [
+    $wg_endpoint
+  ],
+  "outbounds": [
+    {
+      "type": "direct",
+      "tag": "direct"
+    }
+  ],
+  "route": {
+    "rules": [
+      {
+        "outbound": "$wg_tag"
+      }
+    ]
+  }
+}
+EOF
+
+    "$sb_bin" run -c /tmp/sb_wg_test.json > /tmp/sb_wg_test.log 2>&1 &
+    local test_pid=$!
+    sleep 1.8
+
+    check_proxy_ip_info 49153
+
+    kill -9 $test_pid >/dev/null 2>&1
+    wait $test_pid 2>/dev/null
+    rm -f /tmp/sb_wg_test.json /tmp/sb_wg_test.log
+  }
+
+  test_outbound_ip_menu() {
+    local socks_list=()
+    local tag_list=()
+    local type_list=()
+    local target_list=()
+    local count=0
+
+    if [ -s "$WARP_INST_FILE" ]; then
+      while IFS='|' read -r i_port i_type i_country i_tag i_status; do
+        [ -z "$i_port" ] && continue
+        count=$((count + 1))
+        socks_list+=("$i_port")
+        tag_list+=("$i_tag")
+        local t_str="Socks5"
+        [[ "$i_type" != "NONE" && -n "$i_type" ]] && t_str="Socks5($i_type)"
+        type_list+=("$t_str")
+        target_list+=("端口: $i_port")
+      done < "$WARP_INST_FILE"
+    fi
+
+    if [ -s "$SS_INST_FILE" ]; then
+      while IFS='|' read -r s_server s_port s_method s_password s_tag s_status; do
+        [ -z "$s_server" ] && continue
+        count=$((count + 1))
+        socks_list+=("ss_${s_tag}")
+        tag_list+=("$s_tag")
+        type_list+=("Shadowsocks")
+        target_list+=("目标: ${s_server}:${s_port}")
+      done < "$SS_INST_FILE"
+    fi
+
+    if [ -s "$WG_INST_FILE" ]; then
+      while IFS='|' read -r w_endpoint w_pvk w_addrs w_pbk w_psk w_res w_tag w_status; do
+        [ -z "$w_endpoint" ] && continue
+        count=$((count + 1))
+        socks_list+=("wg_${w_tag}")
+        tag_list+=("$w_tag")
+        type_list+=("WireGuard")
+        target_list+=("目标: ${w_endpoint}")
+      done < "$WG_INST_FILE"
+    fi
+
+    if [ -s "$DNS_SNI_INST_FILE" ]; then
+      while IFS='|' read -r r_mode r_port r_target r_domains r_tag r_status r_rule_type; do
+        [ -z "$r_mode" ] && continue
+        count=$((count + 1))
+        socks_list+=("dns_${r_tag}")
+        tag_list+=("$r_tag")
+        local display_type="DNS代理"
+        [[ "$r_mode" == "sni" ]] && display_type="SNI反代"
+        type_list+=("$display_type")
+        target_list+=("目标: $r_target")
+      done < "$DNS_SNI_INST_FILE"
+    fi
+
+    if [ $count -eq 0 ]; then
+      echo
+      yellow "当前暂无已启动的出栈代理节点可供测试！"
+      sleep 2
+      return
+    fi
+
+    while true; do
+      echo
+      echo -e "${blue}==================================================================================${plain}"
+      echo -e "${blue}【出栈 IP 及地区检测 (IPv4 / IPv6)】${plain}"
+      echo
+      for ((i=0; i<count; i++)); do
+        local idx=$((i + 1))
+        local target_str="${target_list[$i]}"
+        local tag_str="Tag: ${tag_list[$i]}"
+        [[ ${#target_str} -gt 28 ]] && target_str="${target_str:0:25}..."
+        [[ ${#tag_str} -gt 28 ]] && tag_str="${tag_str:0:25}..."
+        printf " ${green}[%-2d]${plain}  %-16s  %-28s  %-28s\n" "$idx" "${type_list[$i]}" "$target_str" "$tag_str"
+      done
+      echo -e "${blue}----------------------------------------------------------------------------------${plain}"
+      echo -e " ${yellow}[ A]  检测所有出栈 (全选)${plain}"
+      echo -e " ${yellow}[ 0]  返回上层${plain}"
+      echo -e "${blue}==================================================================================${plain}"
+      readp "请输入要检测的出栈编号 [1-${count}] 或 A (全选)，支持单选/多选(如 1 3 或 1,3 或 1-3)，返回输入 0：" t_choice
+
+      if [ "$t_choice" = "0" ] || [ -z "$t_choice" ]; then
+        break
+      fi
+
+      local selected_indices=()
+      if [[ "$t_choice" =~ ^[Aa]$ ]] || [[ "$t_choice" =~ ^[Aa][Ll][Ll]$ ]]; then
+        for ((i=0; i<count; i++)); do
+          selected_indices+=("$i")
+        done
+      else
+        local clean_choice=$(echo "$t_choice" | tr ',' ' ')
+        for token in $clean_choice; do
+          if [[ "$token" =~ ^[0-9]+-[0-9]+$ ]]; then
+            local start_idx=$(echo "$token" | cut -d'-' -f1)
+            local end_idx=$(echo "$token" | cut -d'-' -f2)
+            if [ "$start_idx" -le "$end_idx" ]; then
+              for ((k=start_idx; k<=end_idx; k++)); do
+                if [ "$k" -ge 1 ] && [ "$k" -le "$count" ]; then
+                  selected_indices+=("$((k - 1))")
+                fi
+              done
+            fi
+          elif [[ "$token" =~ ^[0-9]+$ ]]; then
+            if [ "$token" -ge 1 ] && [ "$token" -le "$count" ]; then
+              selected_indices+=("$((token - 1))")
+            fi
+          fi
+        done
+      fi
+
+      if [ ${#selected_indices[@]} -eq 0 ]; then
+        red "无效的选项！"
+        sleep 1
+        continue
+      fi
+
+      local unique_indices=($(printf "%s\n" "${selected_indices[@]}" | sort -n -u))
+
+      echo
+      green "正在对选中的 ${#unique_indices[@]} 个出栈进行 IP 及地区检测..."
+      echo
+
+      for i in "${unique_indices[@]}"; do
+        local p="${socks_list[$i]}"
+        local t="${tag_list[$i]}"
+        local typ="${type_list[$i]}"
+
+        echo -e "检测 [${t}] (${typ}) ... "
+        if [[ "$p" == "dns_"* ]] || [[ "$p" == "sni_"* ]]; then
+          yellow "  ├── [DNS/SNI 代理不支持 IP 检测]"
+          yellow "  └── [DNS/SNI 代理不支持 IP 检测]"
+        elif [[ "$p" == "ss_"* ]]; then
+          test_ss_ip "$t"
+        elif [[ "$p" == "wg_"* ]]; then
+          test_wg_custom_ip "$t"
+        else
+          check_proxy_ip_info "$p"
+        fi
+        echo
+      done
+
+      readp "检测完毕，按回车键继续..." temp_input
+    done
+  }
+
   while true; do
     list_warp_instances
     echo -e "${yellow}1 : 添加新的出栈${plain}"
     echo -e "${yellow}2 : 测试出栈连通性 (204响应)${plain}"
-    echo -e "${yellow}3 : 停止并删除指定编号的出栈${plain}"
-    echo -e "${yellow}4 : 停止并清空所有出栈${plain}"
+    echo -e "${yellow}3 : 出栈 IP 检测 (IPv4/IPv6 & 地区)${plain}"
+    echo -e "${yellow}4 : 停止并删除指定编号的出栈${plain}"
+    echo -e "${yellow}5 : 停止并清空所有出栈${plain}"
     echo -e "${yellow}0 : 返回主菜单${plain}"
-    readp "请选择【0-4】：" m_choice
+    readp "请选择【0-5】：" m_choice
     case "$m_choice" in
       1)
         return_to_main_flag=0
@@ -8744,8 +9059,9 @@ EOF
         [[ "$return_to_main_flag" == "1" ]] && break
         ;;
       2) test_outbound_connectivity ;;
-      3) remove_instance ;;
-      4)
+      3) test_outbound_ip_menu ;;
+      4) remove_instance ;;
+      5)
         sed -i 'd' "$WARP_INST_FILE"
         sed -i 'd' "$DNS_SNI_INST_FILE"
         sed -i 'd' "$SS_INST_FILE"
