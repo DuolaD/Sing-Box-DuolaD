@@ -8667,6 +8667,33 @@ parse_ss_link() {
       return
     fi
 
+    local pre_del_tag=""
+    if [ "$del_idx" -le "$total_socks" ]; then
+      pre_del_tag=$(sed -n "${del_idx}p" "$WARP_INST_FILE" | cut -d'|' -f4)
+    elif [ "$del_idx" -le $((total_socks + total_ss)) ]; then
+      local ss_idx=$((del_idx - total_socks))
+      pre_del_tag=$(sed -n "${ss_idx}p" "$SS_INST_FILE" | cut -d'|' -f5)
+    elif [ "$del_idx" -le $((total_socks + total_ss + total_wg)) ]; then
+      local wg_idx=$((del_idx - total_socks - total_ss))
+      pre_del_tag=$(sed -n "${wg_idx}p" "$WG_INST_FILE" | cut -d'|' -f7)
+    else
+      local dns_sni_idx=$((del_idx - total_socks - total_ss - total_wg))
+      pre_del_tag=$(sed -n "${dns_sni_idx}p" "$DNS_SNI_INST_FILE" | cut -d'|' -f5)
+    fi
+
+    local confirm_del=""
+    if [[ -n "$pre_del_tag" ]]; then
+      readp "确认要停止并删除编号 [$del_idx] ($pre_del_tag) 的出栈吗？[y/N] (默认否):" confirm_del
+    else
+      readp "确认要停止并删除编号 [$del_idx] 的出栈吗？[y/N] (默认否):" confirm_del
+    fi
+
+    if [[ ! "$confirm_del" =~ ^[Yy]$ ]]; then
+      red "已取消删除。"
+      sleep 1
+      return
+    fi
+
     if [ "$del_idx" -le "$total_socks" ]; then
       local target_line=$(sed -n "${del_idx}p" "$WARP_INST_FILE")
       local del_port=$(echo "$target_line" | cut -d'|' -f1)
@@ -9253,6 +9280,13 @@ EOF
       3) test_outbound_ip_menu ;;
       4) remove_instance ;;
       5)
+        local confirm_clear=""
+        readp "确认要停止并清空所有出栈吗？[y/N] (默认否):" confirm_clear
+        if [[ ! "$confirm_clear" =~ ^[Yy]$ ]]; then
+          red "已取消删除。"
+          sleep 1
+          continue
+        fi
         sed -i 'd' "$WARP_INST_FILE"
         sed -i 'd' "$DNS_SNI_INST_FILE"
         sed -i 'd' "$SS_INST_FILE"
