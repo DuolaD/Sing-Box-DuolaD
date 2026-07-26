@@ -5256,11 +5256,11 @@ EOF
 
 changewg() {
   local clean_json=$(strip_json_comments "$SBFOLDER/sb.json")
-  wgipv6=$(echo "$clean_json" | jq -r '.endpoints[]? | select(.type == "wireguard") | .address[1] | split("/")[0]' 2>/dev/null)
-  wgprkey=$(echo "$clean_json" | jq -r '.endpoints[]? | select(.type == "wireguard") | .private_key' 2>/dev/null)
-  wgres=$(echo "$clean_json" | jq -c '.endpoints[]? | select(.type == "wireguard") | .peers[0].reserved' 2>/dev/null)
-  wgip=$(echo "$clean_json" | jq -r '.endpoints[]? | select(.type == "wireguard") | .peers[0].address' 2>/dev/null)
-  wgpo=$(echo "$clean_json" | jq -r '.endpoints[]? | select(.type == "wireguard") | .peers[0].port' 2>/dev/null)
+  wgipv6=$(echo "$clean_json" | jq -r 'first((.endpoints[]? | select(.tag == "warp-out")), (.outbounds[]? | select(.tag == "warp-out")), (.endpoints[]? | select(.type == "wireguard")), (.outbounds[]? | select(.type == "wireguard"))) | (.address[1] // .local_address[1] // "") | split("/")[0]' 2>/dev/null)
+  wgprkey=$(echo "$clean_json" | jq -r 'first((.endpoints[]? | select(.tag == "warp-out")), (.outbounds[]? | select(.tag == "warp-out")), (.endpoints[]? | select(.type == "wireguard")), (.outbounds[]? | select(.type == "wireguard"))) | .private_key // empty' 2>/dev/null)
+  wgres=$(echo "$clean_json" | jq -c 'first((.endpoints[]? | select(.tag == "warp-out")), (.outbounds[]? | select(.tag == "warp-out")), (.endpoints[]? | select(.type == "wireguard")), (.outbounds[]? | select(.type == "wireguard"))) | (.peers[0].reserved // .reserved // empty)' 2>/dev/null)
+  wgip=$(echo "$clean_json" | jq -r 'first((.endpoints[]? | select(.tag == "warp-out")), (.outbounds[]? | select(.tag == "warp-out")), (.endpoints[]? | select(.type == "wireguard")), (.outbounds[]? | select(.type == "wireguard"))) | (.peers[0].address // .server // empty)' 2>/dev/null)
+  wgpo=$(echo "$clean_json" | jq -r 'first((.endpoints[]? | select(.tag == "warp-out")), (.outbounds[]? | select(.tag == "warp-out")), (.endpoints[]? | select(.type == "wireguard")), (.outbounds[]? | select(.type == "wireguard"))) | (.peers[0].port // .server_port // empty)' 2>/dev/null)
 
   echo
   green "当前warp-wireguard可更换的参数如下："
@@ -5290,7 +5290,7 @@ changewg() {
     
     # Use JQ for clean and robust updates on sb.json
     jq --arg key "$menu_key" --arg ip "$menu_ip/128" --argjson res "[$menu_res]" \
-       '(.endpoints[]? | select(.type == "wireguard")) |= (.private_key = $key | .address[1] = $ip | .peers[0].reserved = $res)' \
+       '(if any(.endpoints[]?; .tag == "warp-out") then (.endpoints[] | select(.tag == "warp-out")) else (.endpoints[] | select(.type == "wireguard")) end) |= (.private_key = $key | .address[1] = $ip | .peers[0].reserved = $res)' \
        "$SBFOLDER/sb.json" > /tmp/sb.json && mv /tmp/sb.json "$SBFOLDER/sb.json"
         
     restartsb
@@ -5349,21 +5349,21 @@ changewg() {
       [ -z "$menu_endpo" ] && menu_endpo=${wgpo:-2408}
       
       jq --arg ip "$menu_endip" --argjson port "$menu_endpo" \
-         '(.endpoints[]? | select(.type == "wireguard")) |= (.peers[0].address = $ip | .peers[0].port = $port)' \
+         '(if any(.endpoints[]?; .tag == "warp-out") then (.endpoints[] | select(.tag == "warp-out")) else (.endpoints[] | select(.type == "wireguard")) end) |= (.peers[0].address = $ip | .peers[0].port = $port)' \
          "$SBFOLDER/sb.json" > /tmp/sb.json && mv /tmp/sb.json "$SBFOLDER/sb.json"
       restartsb
       green "warp-wireguard对端IP/Endpoint设置结束"
     elif [ -n "$opt_v4_idx" ] && [ "$sub_menu" = "$opt_v4_idx" ]; then
       local target_port=${wgpo:-2408}
       jq --arg ip "162.159.192.1" --argjson port "$target_port" \
-         '(.endpoints[]? | select(.type == "wireguard")) |= (.peers[0].address = $ip | .peers[0].port = $port)' \
+         '(if any(.endpoints[]?; .tag == "warp-out") then (.endpoints[] | select(.tag == "warp-out")) else (.endpoints[] | select(.type == "wireguard")) end) |= (.peers[0].address = $ip | .peers[0].port = $port)' \
          "$SBFOLDER/sb.json" > /tmp/sb.json && mv /tmp/sb.json "$SBFOLDER/sb.json"
       restartsb
       green "已成功更改为 IPv4 Endpoint：162.159.192.1:$target_port (端口保持不变)"
     elif [ -n "$opt_v6_idx" ] && [ "$sub_menu" = "$opt_v6_idx" ]; then
       local target_port=${wgpo:-2408}
       jq --arg ip "2606:4700:d0::a29f:c001" --argjson port "$target_port" \
-         '(.endpoints[]? | select(.type == "wireguard")) |= (.peers[0].address = $ip | .peers[0].port = $port)' \
+         '(if any(.endpoints[]?; .tag == "warp-out") then (.endpoints[] | select(.tag == "warp-out")) else (.endpoints[] | select(.type == "wireguard")) end) |= (.peers[0].address = $ip | .peers[0].port = $port)' \
          "$SBFOLDER/sb.json" > /tmp/sb.json && mv /tmp/sb.json "$SBFOLDER/sb.json"
       restartsb
       green "已成功更改为 IPv6 Endpoint：[2606:4700:d0::a29f:c001]:$target_port (端口保持不变)"
