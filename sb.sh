@@ -2,6 +2,7 @@
 
 # ====================================================================
 # Sing-Box Multi-Protocol Installation Script (Refactored Replicated Version)
+# Author: 哆啦D夢|DuolaD (https://github.com/DuolaD)
 # ====================================================================
 # A clean, modular, and robust replication of sing-box installation script.
 # Focuses on code readability, robust JSON manipulation via jq,
@@ -10588,6 +10589,9 @@ sb() {
   echo -e "${bblue}                  __/ |                   ${plain}"
   echo -e "${bblue}                 |___/                    ${plain}"
   white "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" 
+  white "脚本作者: 哆啦D夢|DuolaD"
+  white "GitHub主页: https://github.com/DuolaD"
+  white "--------------------------------------------------------------------------------"
   white "可能是你用过功能最强大的Sing-Box部署脚本"
   white "脚本快捷方式：sb"
   red "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
