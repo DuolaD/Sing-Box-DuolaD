@@ -7605,6 +7605,45 @@ restartsb() {
   fi
 }
 
+stclre() {
+  if [ ! -f "$SBFOLDER/sb.json" ]; then
+    red "未正常安装 Sing-box" && sleep 2 && sb
+    return
+  fi
+  echo
+  green "关闭/重启 Sing-box："
+  echo
+  green " 1. 重启 Sing-box"
+  green " 2. 关闭 Sing-box"
+  green " 0. 返回主菜单"
+  echo
+  readp "请选择【0-2】： " menu
+  case "$menu" in
+    1 )
+      restartsb
+      green "Sing-box 服务已重启\n" && sleep 2 && sb
+      ;;
+    2 )
+      if command -v apk >/dev/null 2>&1; then
+        rc-service sing-box stop
+        rc-service caddy stop 2>/dev/null
+      else
+        systemctl stop sing-box
+        systemctl disable sing-box >/dev/null 2>&1
+        systemctl stop caddy 2>/dev/null
+      fi
+      green "Sing-box 服务已关闭\n" && sleep 2 && sb
+      ;;
+    0 )
+      sb
+      ;;
+    * )
+      stclre
+      ;;
+  esac
+}
+
+
 # --- Local WARP plus Socks5 Proxy Manager (Multi-Instance) ---
 inswarpplus() {
   sbactive
@@ -9688,7 +9727,7 @@ sb() {
      3 ) changeserv ;;
      4 ) changeport ;;
      5 ) changefl ;;
-     6 ) restartsb ;;
+     6 ) stclre ;;
      7 ) upsbyg ;; 
      8 ) upsbcroe ;;
      9 ) clash_sb_share ;;
