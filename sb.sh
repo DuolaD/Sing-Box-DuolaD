@@ -4298,18 +4298,124 @@ EOF
   fi
 }
 
+# --- Main Display Items Configuration ---
+load_display_settings() {
+  SHOW_VER_INFO=1
+  SHOW_VPS_INFO=1
+  SHOW_OUTBOUND_INFO=1
+  SHOW_PROTO_INFO=1
+  SHOW_ROUTE_INFO=1
+  if [[ -f "$SBFOLDER/main_display.conf" ]]; then
+    while IFS='=' read -r key val; do
+      val=$(echo "$val" | tr -d '\r' | xargs)
+      case "$key" in
+        SHOW_VER_INFO) SHOW_VER_INFO="$val" ;;
+        SHOW_VPS_INFO) SHOW_VPS_INFO="$val" ;;
+        SHOW_OUTBOUND_INFO) SHOW_OUTBOUND_INFO="$val" ;;
+        SHOW_PROTO_INFO) SHOW_PROTO_INFO="$val" ;;
+        SHOW_ROUTE_INFO) SHOW_ROUTE_INFO="$val" ;;
+      esac
+    done < "$SBFOLDER/main_display.conf"
+  fi
+}
+
+save_display_settings() {
+  mkdir -p "$SBFOLDER"
+  cat << EOF | tr -d '\r' > "$SBFOLDER/main_display.conf"
+SHOW_VER_INFO=$SHOW_VER_INFO
+SHOW_VPS_INFO=$SHOW_VPS_INFO
+SHOW_OUTBOUND_INFO=$SHOW_OUTBOUND_INFO
+SHOW_PROTO_INFO=$SHOW_PROTO_INFO
+SHOW_ROUTE_INFO=$SHOW_ROUTE_INFO
+EOF
+}
+
+set_main_display() {
+  load_display_settings
+  while true; do
+    clear
+    green "========================================================"
+    green "            主界面信息显示开关设置                      "
+    green "========================================================"
+    white "（说明：关闭不需要的信息板块可大幅提高主界面的启动速度）"
+    echo
+    local s1=$([[ "$SHOW_VER_INFO" == "1" ]] && echo -e "${green}【已开启】${plain}" || echo -e "${red}【已关闭】${plain}")
+    local s2=$([[ "$SHOW_VPS_INFO" == "1" ]] && echo -e "${green}【已开启】${plain}" || echo -e "${red}【已关闭】${plain}")
+    local s3=$([[ "$SHOW_OUTBOUND_INFO" == "1" ]] && echo -e "${green}【已开启】${plain}" || echo -e "${red}【已关闭】${plain}")
+    local s4=$([[ "$SHOW_PROTO_INFO" == "1" ]] && echo -e "${green}【已开启】${plain}" || echo -e "${red}【已关闭】${plain}")
+    local s5=$([[ "$SHOW_ROUTE_INFO" == "1" ]] && echo -e "${green}【已开启】${plain}" || echo -e "${red}【已关闭】${plain}")
+
+    echo -e "1：Sing-Box 脚本/内核版本信息         $s1"
+    echo -e "2：VPS状态信息（系统/IP/地区等）      $s2 ${yellow}(关闭后仍显示Sing-Box运行状态)${plain}"
+    echo -e "3：出栈配置信息                       $s3"
+    echo -e "4：协议配置信息                       $s4"
+    echo -e "5：分流配置信息                       $s5"
+    white "--------------------------------------------------------"
+    green "6：一键全部开启"
+    yellow "7：一键全部关闭"
+    green "0：返回上层"
+    echo
+    readp "请选择【0-7】:" choice
+    case "$choice" in
+      1)
+        [[ "$SHOW_VER_INFO" == "1" ]] && SHOW_VER_INFO=0 || SHOW_VER_INFO=1
+        save_display_settings
+        ;;
+      2)
+        [[ "$SHOW_VPS_INFO" == "1" ]] && SHOW_VPS_INFO=0 || SHOW_VPS_INFO=1
+        save_display_settings
+        ;;
+      3)
+        [[ "$SHOW_OUTBOUND_INFO" == "1" ]] && SHOW_OUTBOUND_INFO=0 || SHOW_OUTBOUND_INFO=1
+        save_display_settings
+        ;;
+      4)
+        [[ "$SHOW_PROTO_INFO" == "1" ]] && SHOW_PROTO_INFO=0 || SHOW_PROTO_INFO=1
+        save_display_settings
+        ;;
+      5)
+        [[ "$SHOW_ROUTE_INFO" == "1" ]] && SHOW_ROUTE_INFO=0 || SHOW_ROUTE_INFO=1
+        save_display_settings
+        ;;
+      6)
+        SHOW_VER_INFO=1
+        SHOW_VPS_INFO=1
+        SHOW_OUTBOUND_INFO=1
+        SHOW_PROTO_INFO=1
+        SHOW_ROUTE_INFO=1
+        save_display_settings
+        ;;
+      7)
+        SHOW_VER_INFO=0
+        SHOW_VPS_INFO=0
+        SHOW_OUTBOUND_INFO=0
+        SHOW_PROTO_INFO=0
+        SHOW_ROUTE_INFO=0
+        save_display_settings
+        ;;
+      0)
+        changeserv
+        break
+        ;;
+      *)
+        ;;
+    esac
+  done
+}
+
 # --- Settings & Customizations Menu ---
 changeserv() {
   sbactive
   echo
   green "Sing-box配置变更选择如下:"
-  readp "1：管理协议与证书（域名伪装/Acme证书/TLS开关）\n2：设置 Cloudflare Argo 隧道（临时/固定隧道）\n3：切换 IPv4 / IPv6 代理出站优先级\n4：管理 WARP WireGuard 出站（更换账户/对端 IP Endpoint）\n5：设置 VMess 节点 CDN 优选地址\n0：返回上层\n请选择【0-5】:" menu
+  readp "1：管理协议与证书（域名伪装/Acme证书/TLS开关）\n2：设置 Cloudflare Argo 隧道（临时/固定隧道）\n3：切换 IPv4 / IPv6 代理出站优先级\n4：管理 WARP WireGuard 出站（更换账户/对端 IP Endpoint）\n5：设置 VMess 节点 CDN 优选地址\n6：设置主界面信息显示开关（可提高主界面加载速度）\n0：返回上层\n请选择【0-6】:" menu
   case "$menu" in
     1) changeym ;;
     2) cfargo_ym ;;
     3) changeip ;;
     4) changewg ;;
     5) vmesscfadd ;;
+    6) set_main_display ;;
     *) sb ;;
   esac
 }
@@ -9491,271 +9597,599 @@ bbr() {
   fi
 }
 
+# --- 系统工具与依赖抽象 ---
+has_cmd() { command -v "$1" >/dev/null 2>&1; }
+
+detect_pkg_manager() {
+  if has_cmd apt-get; then echo "apt"
+  elif has_cmd dnf;    then echo "dnf"
+  elif has_cmd yum;    then echo "yum"
+  elif has_cmd apk;    then echo "apk"
+  else                     echo "unknown"
+  fi
+}
+
+detect_init_system() {
+  if has_cmd systemctl && systemctl --version >/dev/null 2>&1; then echo "systemd"
+  elif has_cmd rc-service; then echo "openrc"
+  else                          echo "unknown"
+  fi
+}
+
+pkg_installed() {
+  local pkg="$1"
+  local pm="${PKG_MANAGER:-$(detect_pkg_manager)}"
+  case "$pm" in
+    apt) [ "$(dpkg-query -W -f='${db:Status-Status}' "$pkg" 2>/dev/null || true)" = "installed" ] ;;
+    apk) apk info -e "$pkg" >/dev/null 2>&1 ;;
+    yum|dnf) rpm -q "$pkg" >/dev/null 2>&1 ;;
+    *)   return 1 ;;
+  esac
+}
+
+pkg_update_once() {
+  local stamp="/tmp/.sb_pkg_updated"
+  [ -f "$stamp" ] && return 0
+  local pm="${PKG_MANAGER:-$(detect_pkg_manager)}"
+  case "$pm" in
+    apt) apt-get update -y >/dev/null 2>&1 ;;
+    apk) apk update -q >/dev/null 2>&1 ;;
+    yum) yum makecache -y >/dev/null 2>&1 ;;
+    dnf) dnf makecache -y >/dev/null 2>&1 ;;
+  esac
+  touch "$stamp"
+}
+
+install_pkg() {
+  local pkg="$1"
+  pkg_installed "$pkg" && return 0
+  pkg_update_once
+  local pm="${PKG_MANAGER:-$(detect_pkg_manager)}"
+  case "$pm" in
+    apt) apt-get install -y "$pkg" >/dev/null 2>&1 || { red "依赖安装失败：$pkg"; return 1; } ;;
+    apk) apk add -q "$pkg" >/dev/null 2>&1 || { red "依赖安装失败：$pkg"; return 1; } ;;
+    yum) yum install -y "$pkg" >/dev/null 2>&1 || { red "依赖安装失败：$pkg"; return 1; } ;;
+    dnf) dnf install -y "$pkg" >/dev/null 2>&1 || { red "依赖安装失败：$pkg"; return 1; } ;;
+    *)   red "不支持的包管理器，请手动安装: $pkg"; return 1 ;;
+  esac
+}
+
+openrc_service_exists() {
+  local service="$1"
+  [ -e "/etc/init.d/$service" ] || rc-service -e "$service" >/dev/null 2>&1
+}
+
+openrc_service_enabled() {
+  local service="$1" runlevel="${2:-default}"
+  rc-update show "$runlevel" 2>/dev/null | awk -v svc="$service" '$1 == svc {found=1} END {exit !found}'
+}
+
+openrc_enable_service() {
+  local service="$1" runlevel="${2:-default}"
+  openrc_service_enabled "$service" "$runlevel" && return 0
+  rc-update add "$service" "$runlevel"
+}
+
+openrc_disable_service() {
+  local service="$1" runlevel="${2:-default}"
+  openrc_service_enabled "$service" "$runlevel" || return 0
+  rc-update del "$service" "$runlevel"
+}
+
+openrc_service_running() {
+  local service="$1"
+  rc-service "$service" status >/dev/null 2>&1
+}
+
+openrc_start_service() {
+  local service="$1"
+  openrc_service_running "$service" && return 0
+  rc-service "$service" start
+}
+
+openrc_stop_service() {
+  local service="$1"
+  openrc_service_running "$service" || return 0
+  rc-service "$service" stop
+}
+
+run_with_timeout() {
+  local seconds="$1"
+  shift
+  if has_cmd timeout; then
+    timeout "$seconds" "$@"
+  else
+    "$@"
+  fi
+}
+
+# --- Chrony 系统时间同步控制套件 ---
+chrony_service_name() {
+  local init_sys="${INIT_SYSTEM:-$(detect_init_system)}"
+  case "$init_sys" in
+    systemd)
+      if systemctl cat chrony >/dev/null 2>&1; then
+        echo "chrony"
+      elif systemctl cat chronyd >/dev/null 2>&1; then
+        echo "chronyd"
+      else
+        echo "chrony"
+      fi
+      ;;
+    openrc)
+      if openrc_service_exists chronyd; then
+        echo "chronyd"
+      elif openrc_service_exists chrony; then
+        echo "chrony"
+      fi
+      ;;
+  esac
+}
+
+chrony_service_running() {
+  local service="$1"
+  local init_sys="${INIT_SYSTEM:-$(detect_init_system)}"
+  case "$init_sys" in
+    systemd) systemctl is-active --quiet "$service" 2>/dev/null ;;
+    openrc)  openrc_service_running "$service" ;;
+    *)       return 1 ;;
+  esac
+}
+
+chrony_service_start() {
+  local service="$1"
+  local init_sys="${INIT_SYSTEM:-$(detect_init_system)}"
+  case "$init_sys" in
+    systemd)
+      systemctl reset-failed "$service" >/dev/null 2>&1 || true
+      systemctl start "$service"
+      ;;
+    openrc)
+      openrc_start_service "$service"
+      ;;
+    *) return 1 ;;
+  esac
+}
+
+chrony_service_enable() {
+  local service="$1"
+  local init_sys="${INIT_SYSTEM:-$(detect_init_system)}"
+  case "$init_sys" in
+    systemd) systemctl enable "$service" >/dev/null 2>&1 || true ;;
+    openrc)  openrc_enable_service "$service" default >/dev/null 2>&1 || true ;;
+  esac
+}
+
+chrony_timeout() {
+  run_with_timeout "$@"
+}
+
+chronyc_tracking_ready() {
+  chrony_timeout 3 chronyc tracking >/dev/null 2>&1
+}
+
+chrony_service_status() {
+  local service="$1"
+  if chrony_service_running "$service"; then
+    green "chrony: 运行中"
+  else
+    yellow "chrony: 未运行"
+  fi
+}
+
+chrony_prepare_for_service_control() {
+  local service="$1"
+  local init_sys="${INIT_SYSTEM:-$(detect_init_system)}"
+  if [ "$init_sys" = "systemd" ]; then
+    systemctl stop systemd-timesyncd >/dev/null 2>&1 || true
+    systemctl disable systemd-timesyncd >/dev/null 2>&1 || true
+    systemctl reset-failed "$service" >/dev/null 2>&1 || true
+  fi
+}
+
+chrony_repair_service() {
+  local service="$1"
+  local init_sys="${INIT_SYSTEM:-$(detect_init_system)}"
+  chrony_prepare_for_service_control "$service"
+  if chrony_service_start "$service" >/dev/null 2>&1; then
+    sleep 1
+    chrony_service_running "$service"
+    return
+  fi
+
+  case "$init_sys" in
+    systemd) systemctl stop "$service" >/dev/null 2>&1 || true ;;
+    openrc)  openrc_stop_service "$service" >/dev/null 2>&1 || true ;;
+  esac
+  pkill -9 chronyd >/dev/null 2>&1 || true
+  rm -f /run/chrony/chronyd.pid >/dev/null 2>&1 || true
+  chrony_service_start "$service" >/dev/null 2>&1 || return 1
+  sleep 1
+  chrony_service_running "$service"
+}
+
+sync_system_time_chrony() {
+  clear
+  red "--- 一键同步系统时间 ---"
+  if ! has_cmd chronyc; then
+    yellow "未检测到 chrony，开始安装..."
+    install_pkg chrony || { red "chrony 安装失败。"; readp "按回车键继续..." unused; return 1; }
+    local installed_service
+    installed_service="$(chrony_service_name)"
+    [ -n "$installed_service" ] && chrony_service_enable "$installed_service"
+  fi
+  has_cmd chronyc || { red "chrony 安装后仍未找到 chronyc，无法继续校时。"; readp "按回车键继续..." unused; return 1; }
+
+  local chrony_service
+  chrony_service="$(chrony_service_name)"
+  if [ -z "$chrony_service" ]; then
+    red "chrony 已安装，但未找到可用服务（OpenRC 通常应为 chronyd）。"
+    yellow "当前可能是 Alpine/LXC 精简环境，缺少 chrony 的 OpenRC 服务脚本。"
+    yellow "如果这是 LXC 容器，请在宿主机校准时间，容器会跟随宿主机时间。"
+    readp "按回车键继续..." unused
+    return 1
+  fi
+
+  if ! chrony_service_running "$chrony_service" || ! chronyc_tracking_ready; then
+    yellow "开始修复 chrony 服务状态..."
+    if ! chrony_repair_service "$chrony_service"; then
+      red "chrony 服务未能启动：${chrony_service}"
+      yellow "当前环境可能不允许容器主动校时，请在宿主机校准时间。"
+      chrony_service_status "$chrony_service"
+      readp "按回车键继续..." unused
+      return 1
+    fi
+    chrony_service_enable "$chrony_service"
+  fi
+
+  if ! chronyc_tracking_ready; then
+    red "chrony 服务已启动，但无法读取同步状态。"
+    yellow "当前环境可能不允许容器主动校时，请在宿主机校准时间。"
+    chrony_service_status "$chrony_service"
+    readp "按回车键继续..." unused
+    return 1
+  fi
+
+  local step_out
+  if step_out="$(chrony_timeout 5 chronyc -a makestep 2>&1)"; then
+    green "时间同步完成。"
+  else
+    yellow "当前环境可能不允许容器主动校时，请在宿主机校准时间。"
+    [ -n "$step_out" ] && echo "$step_out"
+  fi
+  chrony_service_status "$chrony_service"
+  readp "按回车键继续..." unused
+}
+
+# --- 二级菜单：更改系统设置 ---
+system_settings() {
+  while true; do
+    clear
+    white "================================================================================"
+    green "                           更改系统设置                                 "
+    white "================================================================================"
+    local service chrony_st cur_time
+    service="$(chrony_service_name)"
+    if [ -n "$service" ] && chrony_service_running "$service"; then
+      chrony_st="${green}运行中${plain}"
+    else
+      chrony_st="${yellow}未运行${plain}"
+    fi
+    cur_time="$(date '+%Y-%m-%d %H:%M:%S %Z')"
+    echo -e "当前系统时间：$blue$cur_time$plain"
+    echo -e "时间同步服务：$blue${service:-chrony}$plain ($chrony_st)"
+    white "--------------------------------------------------------------------------------"
+    green " 1. 一键校准系统时间"
+    green " 2. 更改 BBR 设置"
+    white "--------------------------------------------------------------------------------"
+    green " 0. 返回主菜单"
+    white "================================================================================"
+    echo
+    readp "请输入数字【0-2】:" sub_choice
+    case "$sub_choice" in
+      1) sync_system_time_chrony ;;
+      2) bbr ;;
+      0|"") sb; break ;;
+      *) yellow "无效选项，请重新选择" ; sleep 1 ;;
+    esac
+  done
+}
+
 showprotocol() {
-  result_vl_vm_hy_tu
-  allports
-  sbymfl
+  load_display_settings
+  if [[ "$SHOW_OUTBOUND_INFO" != "1" && "$SHOW_PROTO_INFO" != "1" && "$SHOW_ROUTE_INFO" != "1" ]]; then
+    return
+  fi
+
+  if [[ "$SHOW_PROTO_INFO" == "1" || "$SHOW_ROUTE_INFO" == "1" ]]; then
+    result_vl_vm_hy_tu
+    allports
+    sbymfl
+  fi
   local clean_json=$(strip_json_comments "$SBFOLDER/sb.json")
-  if [[ "$is_self_signed" = "true" ]]; then
-    hy2_zs="自签证书"
-  else
-    hy2_zs="域名证书"
-  fi
-  # Argo detection
-  argoym="未开启"
-  local temp_argo_active=false
-  local fixed_argo_active=false
-  if [[ -n "$port_vm_ws" && -f "$SBFOLDER/argo.log" && -s "$SBFOLDER/argo.log" ]] && \
-     ps -ef | grep -v grep | grep -q "cloudflared.*localhost:$port_vm_ws"; then
-    temp_argo_active=true
-  fi
-  if [[ -f "$SBFOLDER/sbargoym.log" && -s "$SBFOLDER/sbargoym.log" ]] && \
-     { systemctl is-active --quiet argo 2>/dev/null || rc-service argo status 2>/dev/null | grep -q "started"; }; then
-    fixed_argo_active=true
-  fi
-  if $temp_argo_active || $fixed_argo_active; then
-    argoym="已开启"
+
+  # --- Section 3: Outbound Info ---
+  if [[ "$SHOW_OUTBOUND_INFO" == "1" ]]; then
+    # Check if warp-cli is connected
+    warp_cli_connected=0
+    if command -v warp-cli >/dev/null 2>&1 && warp-cli status 2>/dev/null | grep -qi "connected"; then
+      warp_cli_connected=1
+    fi
+
+    # Check if warp-plus is running
+    warpplus_running=0
+    if [[ -n $(ps -e | grep -E 'warp-plus|sbwpph') ]]; then
+      warpplus_running=1
+    fi
+
+    init_warp_instances_db
+    local has_socks=0
+    local has_ss=0
+    local has_wg=0
+    local has_dns_sni=0
+    [[ -s "$WARP_INST_FILE" ]] && has_socks=1
+    [[ -s "$SS_INST_FILE" ]] && has_ss=1
+    [[ -s "$WG_INST_FILE" ]] && has_wg=1
+    [[ -s "$DNS_SNI_INST_FILE" ]] && has_dns_sni=1
+
+    if [[ $has_socks -eq 0 && $has_ss -eq 0 && $has_wg -eq 0 && $has_dns_sni -eq 0 ]]; then
+      echo -e "已出站通道状态：${yellow}未启动/无代理实例${plain}"
+      if [[ "$SHOW_PROTO_INFO" == "1" || "$SHOW_ROUTE_INFO" == "1" ]]; then
+        echo -e "${blue}----------------------------------------------------------------------------------${plain}"
+      fi
+    else
+      local total_count=0
+      [[ $has_socks -eq 1 ]] && total_count=$((total_count + $(grep -c '|' "$WARP_INST_FILE")))
+      [[ $has_ss -eq 1 ]] && total_count=$((total_count + $(grep -c '|' "$SS_INST_FILE")))
+      [[ $has_wg -eq 1 ]] && total_count=$((total_count + $(grep -c '|' "$WG_INST_FILE")))
+      [[ $has_dns_sni -eq 1 ]] && total_count=$((total_count + $(grep -c '|' "$DNS_SNI_INST_FILE")))
+      echo -e "已出站通道状态：${green}已启动${plain} (共 ${total_count} 个出站通道)"
+      echo -e "${blue}----------------------------------------------------------------------------------${plain}"
+      local count=1
+
+      if [[ $has_socks -eq 1 ]]; then
+        while IFS='|' read -r i_port i_type i_country i_tag i_status; do
+          [[ -z "$i_port" ]] && continue
+          local type_str="Socks5"
+          [[ "$i_type" != "NONE" && -n "$i_type" ]] && type_str="Socks5($i_type)"
+          local target_str="端口: $i_port"
+          local tag_str="Tag: $i_tag"
+          [[ ${#target_str} -gt 28 ]] && target_str="${target_str:0:25}..."
+          [[ ${#tag_str} -gt 28 ]] && tag_str="${tag_str:0:25}..."
+          printf " ${green}[%-2d]${plain}  %-16s  %-28s  %-28s  ${green}%s${plain}\n" \
+            "$count" "$type_str" "$target_str" "$tag_str" "已启动"
+          ((count++))
+        done < "$WARP_INST_FILE"
+      fi
+
+      if [[ $has_ss -eq 1 ]]; then
+        while IFS='|' read -r s_server s_port s_method s_password s_tag s_status; do
+          [[ -z "$s_server" ]] && continue
+          local type_str="Shadowsocks"
+          local target_str="目标: ${s_server}:${s_port}"
+          local tag_str="Tag: $s_tag"
+          [[ ${#target_str} -gt 28 ]] && target_str="${target_str:0:25}..."
+          [[ ${#tag_str} -gt 28 ]] && tag_str="${tag_str:0:25}..."
+          printf " ${green}[%-2d]${plain}  %-16s  %-28s  %-28s  ${green}%s${plain}\n" \
+            "$count" "$type_str" "$target_str" "$tag_str" "已启动"
+          ((count++))
+        done < "$SS_INST_FILE"
+      fi
+
+      if [[ $has_wg -eq 1 ]]; then
+        while IFS='|' read -r w_endpoint w_pvk w_addrs w_pbk w_psk w_res w_tag w_status; do
+          [[ -z "$w_endpoint" ]] && continue
+          local type_str="WireGuard"
+          local target_str="目标: ${w_endpoint}"
+          local tag_str="Tag: $w_tag"
+          [[ ${#target_str} -gt 28 ]] && target_str="${target_str:0:25}..."
+          [[ ${#tag_str} -gt 28 ]] && tag_str="${tag_str:0:25}..."
+          printf " ${green}[%-2d]${plain}  %-16s  %-28s  %-28s  ${green}%s${plain}\n" \
+            "$count" "$type_str" "$target_str" "$tag_str" "已启动"
+          ((count++))
+        done < "$WG_INST_FILE"
+      fi
+
+      if [[ $has_dns_sni -eq 1 ]]; then
+        while IFS='|' read -r r_mode r_port r_target r_domains r_tag r_status r_rule_type; do
+          [[ -z "$r_mode" ]] && continue
+          local display_type="DNS代理"
+          [[ "$r_mode" == "sni" ]] && display_type="SNI反代"
+          local target_str="目标: $r_target"
+          local tag_str="Tag: $r_tag"
+          [[ ${#target_str} -gt 28 ]] && target_str="${target_str:0:25}..."
+          [[ ${#tag_str} -gt 28 ]] && tag_str="${tag_str:0:25}..."
+          printf " ${green}[%-2d]${plain}  %-16s  %-28s  %-28s  ${green}%s${plain}\n" \
+            "$count" "$display_type" "$target_str" "$tag_str" "已启动"
+          ((count++))
+        done < "$DNS_SNI_INST_FILE"
+      fi
+      if [[ "$SHOW_PROTO_INFO" == "1" || "$SHOW_ROUTE_INFO" == "1" ]]; then
+        echo -e "${blue}----------------------------------------------------------------------------------${plain}"
+      fi
+    fi
   fi
 
-  # Check if warp-cli is connected
-  warp_cli_connected=0
-  if command -v warp-cli >/dev/null 2>&1 && warp-cli status 2>/dev/null | grep -qi "connected"; then
-    warp_cli_connected=1
+  # --- Section 4: Protocol Info ---
+  if [[ "$SHOW_PROTO_INFO" == "1" ]]; then
+    if [[ "$is_self_signed" = "true" ]]; then
+      hy2_zs="自签证书"
+    else
+      hy2_zs="域名证书"
+    fi
+    # Argo detection
+    argoym="未开启"
+    local temp_argo_active=false
+    local fixed_argo_active=false
+    if [[ -n "$port_vm_ws" && -f "$SBFOLDER/argo.log" && -s "$SBFOLDER/argo.log" ]] && \
+       ps -ef | grep -v grep | grep -q "cloudflared.*localhost:$port_vm_ws"; then
+      temp_argo_active=true
+    fi
+    if [[ -f "$SBFOLDER/sbargoym.log" && -s "$SBFOLDER/sbargoym.log" ]] && \
+       { systemctl is-active --quiet argo 2>/dev/null || rc-service argo status 2>/dev/null | grep -q "started"; }; then
+      fixed_argo_active=true
+    fi
+    if $temp_argo_active || $fixed_argo_active; then
+      argoym="已开启"
+    fi
+
+    local caddy_active=false
+    if systemctl is-active --quiet caddy 2>/dev/null || rc-service caddy status 2>/dev/null | grep -q "started"; then
+      caddy_active=true
+    fi
+
+    print_protocol_line() {
+      local name="$1"
+      local port="$2"
+      local extra="$3"
+      local is_caddy_proto="${4:-false}"
+      local tag="$5"
+      local disp_port="$port"
+      if $caddy_active && [[ "$is_caddy_proto" == "true" ]]; then
+        local p_mode=$(get_proto_mode "$tag")
+        if [[ "$p_mode" == "caddy" ]]; then
+          disp_port="443 - ${port}"
+        fi
+      fi
+      printf "🚀【 ${green}%-13s${plain} 】 端口:${yellow}%-11s${plain}  %s\n" "$name" "$disp_port" "$extra"
+    }
+
+    if [[ "$SHOW_ROUTE_INFO" == "1" ]]; then
+      echo -e "Sing-box节点关键信息、已分流域名情况如下："
+    else
+      echo -e "Sing-box节点关键信息如下："
+    fi
+
+    if [[ -n "$port_vl_re" ]]; then
+      print_protocol_line "VLESS-Reality" "$port_vl_re" "Reality伪装域名: $vl_name"
+    fi
+    if [[ -n "$port_vl_ws_tls" ]]; then
+      print_protocol_line "VLESS-WS-TLS" "$port_vl_ws_tls" "证书形式:$hy2_zs  路径: /${uuid_vl_ws}" "true" "vless-ws-tls-sb"
+    fi
+    if [[ -n "$port_vl_hu_tls" ]]; then
+      print_protocol_line "VLESS-HU-TLS" "$port_vl_hu_tls" "证书形式:$hy2_zs  路径: /${uuid_vl_hu}" "true" "vless-hu-tls-sb"
+    fi
+    if [[ -n "$port_vm_ws" ]]; then
+      print_protocol_line "VMess-WS" "$port_vm_ws" "不开启 TLS  路径: /${uuid_vm_ws}  Argo状态:$argoym"
+    fi
+    if [[ -n "$port_vm_ws_tls" ]]; then
+      print_protocol_line "VMess-WS-TLS" "$port_vm_ws_tls" "证书形式:$hy2_zs  路径: /${uuid_vm_ws_tls}" "true" "vmess-ws-tls-sb"
+    fi
+    if [[ -n "$port_vm_hu_tls" ]]; then
+      print_protocol_line "VMess-HU-TLS" "$port_vm_hu_tls" "证书形式:$hy2_zs  路径: /${uuid_vm_hu_tls}" "true" "vmess-hu-tls-sb"
+    fi
+    if [[ -n "$port_tr_tls" ]]; then
+      print_protocol_line "Trojan-TLS" "$port_tr_tls" "证书形式:$hy2_zs"
+    fi
+    if [[ -n "$port_tr_ws_tls" ]]; then
+      print_protocol_line "Trojan-WS-TLS" "$port_tr_ws_tls" "证书形式:$hy2_zs  路径: /${uuid_tr_ws_tls}" "true" "trojan-ws-tls-sb"
+    fi
+    if [[ -n "$port_tr_hu_tls" ]]; then
+      print_protocol_line "Trojan-HU-TLS" "$port_tr_hu_tls" "证书形式:$hy2_zs  路径: /${uuid_tr_hu_tls}" "true" "trojan-hu-tls-sb"
+    fi
+    if [[ -n "$port_ss" ]]; then
+      print_protocol_line "Shadowsocks" "$port_ss" "加密: ${ss_method:-2022-blake3-aes-128-gcm}"
+    fi
+    if [[ -n "$port_hy2" ]]; then
+      print_protocol_line "Hysteria 2" "$port_hy2" "证书形式:$hy2_zs  转发多端口: $hy2zfport"
+    fi
+    if [[ -n "$port_tu" ]]; then
+      print_protocol_line "Tuic-v5" "$port_tu" "证书形式:$hy2_zs  转发多端口: $tu5zfport"
+    fi
+    if [[ -n "$port_an" ]]; then
+      print_protocol_line "Anytls" "$port_an" "证书形式:$hy2_zs"
+    fi
+    if [[ -n "$port_vm_tcp" ]]; then
+      print_protocol_line "VMess-TCP" "$port_vm_tcp" "不开启 TLS"
+    fi
+    if [[ -n "$port_vm_http" ]]; then
+      print_protocol_line "VMess-HTTP" "$port_vm_http" "不开启 TLS (HTTP伪装)"
+    fi
+    if [[ -n "$port_vm_quic" ]]; then
+      print_protocol_line "VMess-QUIC" "$port_vm_quic" "证书形式:$hy2_zs"
+    fi
+    if [[ -n "$port_vm_h2_tls" ]]; then
+      print_protocol_line "VMess-H2-TLS" "$port_vm_h2_tls" "证书形式:$hy2_zs  路径: /${uuid_vm_h2_tls}" "true" "vmess-h2-tls-sb"
+    fi
+    if [[ -n "$port_vl_h2_tls" ]]; then
+      print_protocol_line "VLESS-H2-TLS" "$port_vl_h2_tls" "证书形式:$hy2_zs  路径: /${uuid_vl_h2}" "true" "vless-h2-tls-sb"
+    fi
+    if [[ -n "$port_tr_h2_tls" ]]; then
+      print_protocol_line "Trojan-H2-TLS" "$port_tr_h2_tls" "证书形式:$hy2_zs  路径: /${uuid_tr_h2_tls}" "true" "trojan-h2-tls-sb"
+    fi
+    if [[ -n "$port_vl_h2_re" ]]; then
+      print_protocol_line "VLESS-H2-Re" "$port_vl_h2_re" "Reality伪装域名: $vl_name  路径: /${uuid_vl_h2_re}"
+    fi
+    if [[ -n "$port_socks" ]]; then
+      print_protocol_line "Socks" "$port_socks" "用户: ${socks_username}"
+    fi
+
+    if [ "$argoym" = "已开启" ]; then
+      if ps -ef 2>/dev/null | grep -q "[l]ocalhost:$port_vm_ws"; then
+        echo -e "Argo临时域名：${yellow}$(grep -a -o -E '[a-zA-Z0-9.-]+\.trycloudflare\.com' "$SBFOLDER/argo.log" 2>/dev/null | head -n 1)${plain}"
+      fi
+      if ps -ef 2>/dev/null | grep -q '[c]loudflared.*run'; then
+        echo -e "Argo固定域名：${yellow}$(cat "$SBFOLDER/sbargoym.log" 2>/dev/null)${plain}"
+      fi
+    fi
   fi
 
-  # Check if warp-plus is running
-  warpplus_running=0
-  if [[ -n $(ps -e | grep -E 'warp-plus|sbwpph') ]]; then
-    warpplus_running=1
-  fi
+  # --- Section 5: Route Info ---
+  if [[ "$SHOW_ROUTE_INFO" == "1" ]]; then
+    if [[ "$SHOW_PROTO_INFO" == "1" ]]; then
+      echo "------------------------------------------------------------------------------------"
+    elif [[ "$SHOW_OUTBOUND_INFO" != "1" ]]; then
+      echo -e "Sing-box已分流域名情况如下："
+    fi
 
-  init_warp_instances_db
-  local has_socks=0
-  local has_ss=0
-  local has_wg=0
-  local has_dns_sni=0
-  [[ -s "$WARP_INST_FILE" ]] && has_socks=1
-  [[ -s "$SS_INST_FILE" ]] && has_ss=1
-  [[ -s "$WG_INST_FILE" ]] && has_wg=1
-  [[ -s "$DNS_SNI_INST_FILE" ]] && has_dns_sni=1
+    ww4="warp-wireguard-ipv4优先分流域名：$wfl4"
+    ww6="warp-wireguard-ipv6优先分流域名：$wfl6"
+    l4="VPS本地ipv4优先分流域名：$adfl4"
+    l6="VPS本地ipv6优先分流域名：$adfl6"
 
-  if [[ $has_socks -eq 0 && $has_ss -eq 0 && $has_wg -eq 0 && $has_dns_sni -eq 0 ]]; then
-    echo -e "已出站通道状态：${yellow}未启动/无代理实例${plain}"
-    echo -e "${blue}----------------------------------------------------------------------------------${plain}"
-  else
-    local total_count=0
-    [[ $has_socks -eq 1 ]] && total_count=$((total_count + $(grep -c '|' "$WARP_INST_FILE")))
-    [[ $has_ss -eq 1 ]] && total_count=$((total_count + $(grep -c '|' "$SS_INST_FILE")))
-    [[ $has_wg -eq 1 ]] && total_count=$((total_count + $(grep -c '|' "$WG_INST_FILE")))
-    [[ $has_dns_sni -eq 1 ]] && total_count=$((total_count + $(grep -c '|' "$DNS_SNI_INST_FILE")))
-    echo -e "已出站通道状态：${green}已启动${plain} (共 ${total_count} 个出站通道)"
-    echo -e "${blue}----------------------------------------------------------------------------------${plain}"
-    local count=1
+    ymflzu=("ww4" "ww6" "l4" "l6")
+    local all_unset=true
+    for ymfl in "${ymflzu[@]}"; do
+      if [[ ${!ymfl} != *"未"* ]]; then
+        echo -e "${!ymfl}"
+        all_unset=false
+      fi
+    done
 
-    if [[ $has_socks -eq 1 ]]; then
+    if [ -s "$WARP_INST_FILE" ]; then
       while IFS='|' read -r i_port i_type i_country i_tag i_status; do
-        [[ -z "$i_port" ]] && continue
-        local type_str="Socks5"
-        [[ "$i_type" != "NONE" && -n "$i_type" ]] && type_str="Socks5($i_type)"
-        local target_str="端口: $i_port"
-        local tag_str="Tag: $i_tag"
-        [[ ${#target_str} -gt 28 ]] && target_str="${target_str:0:25}..."
-        [[ ${#tag_str} -gt 28 ]] && tag_str="${tag_str:0:25}..."
-        printf " ${green}[%-2d]${plain}  %-16s  %-28s  %-28s  ${green}%s${plain}\n" \
-          "$count" "$type_str" "$target_str" "$tag_str" "已启动"
-        ((count++))
+        [[ -z "$i_port" || "$i_status" != "running" ]] && continue
+        local cur_domain=$(echo "$clean_json" | jq -r --arg ob "$i_tag" "[ .route.rules[] | select(.outbound == \$ob) | $extract_dom_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
+        local cur_geo=$(echo "$clean_json" | jq -r --arg ob "$i_tag" "[ .route.rules[] | select(.outbound == \$ob) | $extract_geo_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
+        local cur_rule=""
+        [[ -n "$cur_domain" ]] && cur_rule="$cur_domain"
+        if [[ -n "$cur_geo" ]]; then
+          [[ -n "$cur_rule" ]] && cur_rule="$cur_rule $cur_geo" || cur_rule="$cur_geo"
+        fi
+        if [[ -n "$cur_rule" ]]; then
+          echo -e "动态 [Socks5代理] 通道 [${i_tag}] 分流域名：${yellow}已分流：$cur_rule${plain}"
+          all_unset=false
+        fi
       done < "$WARP_INST_FILE"
     fi
 
-    if [[ $has_ss -eq 1 ]]; then
-      while IFS='|' read -r s_server s_port s_method s_password s_tag s_status; do
-        [[ -z "$s_server" ]] && continue
-        local type_str="Shadowsocks"
-        local target_str="目标: ${s_server}:${s_port}"
-        local tag_str="Tag: $s_tag"
-        [[ ${#target_str} -gt 28 ]] && target_str="${target_str:0:25}..."
-        [[ ${#tag_str} -gt 28 ]] && tag_str="${tag_str:0:25}..."
-        printf " ${green}[%-2d]${plain}  %-16s  %-28s  %-28s  ${green}%s${plain}\n" \
-          "$count" "$type_str" "$target_str" "$tag_str" "已启动"
-        ((count++))
-      done < "$SS_INST_FILE"
-    fi
-
-    if [[ $has_wg -eq 1 ]]; then
-      while IFS='|' read -r w_endpoint w_pvk w_addrs w_pbk w_psk w_res w_tag w_status; do
-        [[ -z "$w_endpoint" ]] && continue
-        local type_str="WireGuard"
-        local target_str="目标: ${w_endpoint}"
-        local tag_str="Tag: $w_tag"
-        [[ ${#target_str} -gt 28 ]] && target_str="${target_str:0:25}..."
-        [[ ${#tag_str} -gt 28 ]] && tag_str="${tag_str:0:25}..."
-        printf " ${green}[%-2d]${plain}  %-16s  %-28s  %-28s  ${green}%s${plain}\n" \
-          "$count" "$type_str" "$target_str" "$tag_str" "已启动"
-        ((count++))
-      done < "$WG_INST_FILE"
-    fi
-
-    if [[ $has_dns_sni -eq 1 ]]; then
+    if [ -s "$DNS_SNI_INST_FILE" ]; then
       while IFS='|' read -r r_mode r_port r_target r_domains r_tag r_status r_rule_type; do
-        [[ -z "$r_mode" ]] && continue
-        local display_type="DNS代理"
-        [[ "$r_mode" == "sni" ]] && display_type="SNI反代"
-        local target_str="目标: $r_target"
-        local tag_str="Tag: $r_tag"
-        [[ ${#target_str} -gt 28 ]] && target_str="${target_str:0:25}..."
-        [[ ${#tag_str} -gt 28 ]] && tag_str="${tag_str:0:25}..."
-        printf " ${green}[%-2d]${plain}  %-16s  %-28s  %-28s  ${green}%s${plain}\n" \
-          "$count" "$display_type" "$target_str" "$tag_str" "已启动"
-        ((count++))
+        [[ -z "$r_mode" || "$r_status" != "running" ]] && continue
+        r_rule_type=${r_rule_type:-"domain"}
+        local cur_rule=$(echo "$r_domains" | tr ',' ' ')
+        if [[ -n "$cur_rule" ]]; then
+          local kind_desc="DNS代理"
+          [[ "$r_mode" == "sni" ]] && kind_desc="SNI反代"
+          echo -e "动态 [$kind_desc] 通道 [${r_tag}] 分流域名：${yellow}已分流：$cur_rule${plain}"
+          all_unset=false
+        fi
       done < "$DNS_SNI_INST_FILE"
     fi
-    echo -e "${blue}----------------------------------------------------------------------------------${plain}"
-  fi
 
-  local caddy_active=false
-  if systemctl is-active --quiet caddy 2>/dev/null || rc-service caddy status 2>/dev/null | grep -q "started"; then
-    caddy_active=true
-  fi
-
-  print_protocol_line() {
-    local name="$1"
-    local port="$2"
-    local extra="$3"
-    local is_caddy_proto="${4:-false}"
-    local tag="$5"
-    local disp_port="$port"
-    if $caddy_active && [[ "$is_caddy_proto" == "true" ]]; then
-      local p_mode=$(get_proto_mode "$tag")
-      if [[ "$p_mode" == "caddy" ]]; then
-        disp_port="443 - ${port}"
-      fi
+    if $all_unset; then
+      echo -e "未设置域名分流"
     fi
-    printf "🚀【 ${green}%-13s${plain} 】 端口:${yellow}%-11s${plain}  %s\n" "$name" "$disp_port" "$extra"
-  }
-
-  echo -e "Sing-box节点关键信息、已分流域名情况如下："
-  if [[ -n "$port_vl_re" ]]; then
-    print_protocol_line "VLESS-Reality" "$port_vl_re" "Reality伪装域名: $vl_name"
-  fi
-  if [[ -n "$port_vl_ws_tls" ]]; then
-    print_protocol_line "VLESS-WS-TLS" "$port_vl_ws_tls" "证书形式:$hy2_zs  路径: /${uuid_vl_ws}" "true" "vless-ws-tls-sb"
-  fi
-  if [[ -n "$port_vl_hu_tls" ]]; then
-    print_protocol_line "VLESS-HU-TLS" "$port_vl_hu_tls" "证书形式:$hy2_zs  路径: /${uuid_vl_hu}" "true" "vless-hu-tls-sb"
-  fi
-  if [[ -n "$port_vm_ws" ]]; then
-    print_protocol_line "VMess-WS" "$port_vm_ws" "不开启 TLS  路径: /${uuid_vm_ws}  Argo状态:$argoym"
-  fi
-  if [[ -n "$port_vm_ws_tls" ]]; then
-    print_protocol_line "VMess-WS-TLS" "$port_vm_ws_tls" "证书形式:$hy2_zs  路径: /${uuid_vm_ws_tls}" "true" "vmess-ws-tls-sb"
-  fi
-  if [[ -n "$port_vm_hu_tls" ]]; then
-    print_protocol_line "VMess-HU-TLS" "$port_vm_hu_tls" "证书形式:$hy2_zs  路径: /${uuid_vm_hu_tls}" "true" "vmess-hu-tls-sb"
-  fi
-  if [[ -n "$port_tr_tls" ]]; then
-    print_protocol_line "Trojan-TLS" "$port_tr_tls" "证书形式:$hy2_zs"
-  fi
-  if [[ -n "$port_tr_ws_tls" ]]; then
-    print_protocol_line "Trojan-WS-TLS" "$port_tr_ws_tls" "证书形式:$hy2_zs  路径: /${uuid_tr_ws_tls}" "true" "trojan-ws-tls-sb"
-  fi
-  if [[ -n "$port_tr_hu_tls" ]]; then
-    print_protocol_line "Trojan-HU-TLS" "$port_tr_hu_tls" "证书形式:$hy2_zs  路径: /${uuid_tr_hu_tls}" "true" "trojan-hu-tls-sb"
-  fi
-  if [[ -n "$port_ss" ]]; then
-    print_protocol_line "Shadowsocks" "$port_ss" "加密: ${ss_method:-2022-blake3-aes-128-gcm}"
-  fi
-  if [[ -n "$port_hy2" ]]; then
-    print_protocol_line "Hysteria 2" "$port_hy2" "证书形式:$hy2_zs  转发多端口: $hy2zfport"
-  fi
-  if [[ -n "$port_tu" ]]; then
-    print_protocol_line "Tuic-v5" "$port_tu" "证书形式:$hy2_zs  转发多端口: $tu5zfport"
-  fi
-  if [[ -n "$port_an" ]]; then
-    print_protocol_line "Anytls" "$port_an" "证书形式:$hy2_zs"
-  fi
-  if [[ -n "$port_vm_tcp" ]]; then
-    print_protocol_line "VMess-TCP" "$port_vm_tcp" "不开启 TLS"
-  fi
-  if [[ -n "$port_vm_http" ]]; then
-    print_protocol_line "VMess-HTTP" "$port_vm_http" "不开启 TLS (HTTP伪装)"
-  fi
-  if [[ -n "$port_vm_quic" ]]; then
-    print_protocol_line "VMess-QUIC" "$port_vm_quic" "证书形式:$hy2_zs"
-  fi
-  if [[ -n "$port_vm_h2_tls" ]]; then
-    print_protocol_line "VMess-H2-TLS" "$port_vm_h2_tls" "证书形式:$hy2_zs  路径: /${uuid_vm_h2_tls}" "true" "vmess-h2-tls-sb"
-  fi
-  if [[ -n "$port_vl_h2_tls" ]]; then
-    print_protocol_line "VLESS-H2-TLS" "$port_vl_h2_tls" "证书形式:$hy2_zs  路径: /${uuid_vl_h2}" "true" "vless-h2-tls-sb"
-  fi
-  if [[ -n "$port_tr_h2_tls" ]]; then
-    print_protocol_line "Trojan-H2-TLS" "$port_tr_h2_tls" "证书形式:$hy2_zs  路径: /${uuid_tr_h2_tls}" "true" "trojan-h2-tls-sb"
-  fi
-  if [[ -n "$port_vl_h2_re" ]]; then
-    print_protocol_line "VLESS-H2-Re" "$port_vl_h2_re" "Reality伪装域名: $vl_name  路径: /${uuid_vl_h2_re}"
-  fi
-  if [[ -n "$port_socks" ]]; then
-    print_protocol_line "Socks" "$port_socks" "用户: ${socks_username}"
-  fi
-
-  if [ "$argoym" = "已开启" ]; then
-    if ps -ef 2>/dev/null | grep -q "[l]ocalhost:$port_vm_ws"; then
-      echo -e "Argo临时域名：${yellow}$(grep -a -o -E '[a-zA-Z0-9.-]+\.trycloudflare\.com' "$SBFOLDER/argo.log" 2>/dev/null | head -n 1)${plain}"
-    fi
-    if ps -ef 2>/dev/null | grep -q '[c]loudflared.*run'; then
-      echo -e "Argo固定域名：${yellow}$(cat "$SBFOLDER/sbargoym.log" 2>/dev/null)${plain}"
-    fi
-  fi
-
-  echo "------------------------------------------------------------------------------------"
-
-  ww4="warp-wireguard-ipv4优先分流域名：$wfl4"
-  ww6="warp-wireguard-ipv6优先分流域名：$wfl6"
-  l4="VPS本地ipv4优先分流域名：$adfl4"
-  l6="VPS本地ipv6优先分流域名：$adfl6"
-
-  ymflzu=("ww4" "ww6" "l4" "l6")
-  local all_unset=true
-  for ymfl in "${ymflzu[@]}"; do
-    if [[ ${!ymfl} != *"未"* ]]; then
-      echo -e "${!ymfl}"
-      all_unset=false
-    fi
-  done
-
-  if [ -s "$WARP_INST_FILE" ]; then
-    while IFS='|' read -r i_port i_type i_country i_tag i_status; do
-      [[ -z "$i_port" || "$i_status" != "running" ]] && continue
-      local cur_domain=$(echo "$clean_json" | jq -r --arg ob "$i_tag" "[ .route.rules[] | select(.outbound == \$ob) | $extract_dom_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
-      local cur_geo=$(echo "$clean_json" | jq -r --arg ob "$i_tag" "[ .route.rules[] | select(.outbound == \$ob) | $extract_geo_jq ] | flatten | unique | join(\" \")" 2>/dev/null)
-      local cur_rule=""
-      [[ -n "$cur_domain" ]] && cur_rule="$cur_domain"
-      if [[ -n "$cur_geo" ]]; then
-        [[ -n "$cur_rule" ]] && cur_rule="$cur_rule $cur_geo" || cur_rule="$cur_geo"
-      fi
-      if [[ -n "$cur_rule" ]]; then
-        echo -e "动态 [Socks5代理] 通道 [${i_tag}] 分流域名：${yellow}已分流：$cur_rule${plain}"
-        all_unset=false
-      fi
-    done < "$WARP_INST_FILE"
-  fi
-
-  if [ -s "$DNS_SNI_INST_FILE" ]; then
-    while IFS='|' read -r r_mode r_port r_target r_domains r_tag r_status r_rule_type; do
-      [[ -z "$r_mode" || "$r_status" != "running" ]] && continue
-      r_rule_type=${r_rule_type:-"domain"}
-      local cur_rule=$(echo "$r_domains" | tr ',' ' ')
-      if [[ -n "$cur_rule" ]]; then
-        local kind_desc="DNS代理"
-        [[ "$r_mode" == "sni" ]] && kind_desc="SNI反代"
-        echo -e "动态 [$kind_desc] 通道 [${r_tag}] 分流域名：${yellow}已分流：$cur_rule${plain}"
-        all_unset=false
-      fi
-    done < "$DNS_SNI_INST_FILE"
-  fi
-
-  if $all_unset; then
-    echo -e "未设置域名分流"
   fi
 }
 
@@ -10067,6 +10501,7 @@ installsingbox() {
 sb() {
   clear
   detect_system
+  load_display_settings
   white "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" 
   echo -e "${bblue}   _____ _             _                  ${plain}"
   echo -e "${bblue}  / ____(_)           | |                 ${plain}"
@@ -10077,7 +10512,7 @@ sb() {
   echo -e "${bblue}                  __/ |                   ${plain}"
   echo -e "${bblue}                 |___/                    ${plain}"
   white "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" 
-  white "VLESS-Reality-Vision、VMess-WS(TLS)+Argo、Hysteria2、TUIC、AnyTLS 五协议共存脚本"
+  white "可能是你用过功能最强大的Sing-Box部署脚本"
   white "脚本快捷方式：sb"
   red "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
   green " 1. 一键安装 Sing-box" 
@@ -10092,7 +10527,7 @@ sb() {
   white "--------------------------------------------------------------------------------"
   green " 9. 刷新并查看节点 【Mihomo/SFA+SFI+SFW三合一配置/分享链接】"
   green "10. 查看 Sing-box 运行日志"
-  green "11. 更改 BBR 设置"
+  green "11. 更改系统设置"
   green "12. 管理 Cloudflare WARP"
   green "13. 管理出栈设置"
   green "14. 更换IP刷新本地IP、调整 IPv4 / IPv6 配置输出"
@@ -10100,98 +10535,104 @@ sb() {
   green " 0. 退出脚本"
   red "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
   
-  if [ -f "$SBFOLDER/v" ]; then
-    insV=$(cat "$SBFOLDER/v" 2>/dev/null)
-    latestV=$(curl -sL https://raw.githubusercontent.com/DuolaD/Sing-Box-DuolaD/main/version | awk -F "更新内容" '{print $1}' | head -n 1)
-    if [ "$insV" = "$latestV" ]; then
-      echo -e "当前 Sing-box 脚本最新版：${bblue}${insV}${plain} (已安装)"
-    else
-      echo -e "当前 Sing-box 脚本版本号：${bblue}${insV}${plain}"
-      echo -e "检测到最新 Sing-box 脚本版本号：${yellow}${latestV}${plain} (可选择7进行更新)"
-      echo -e "${yellow}$(curl -sL https://raw.githubusercontent.com/DuolaD/Sing-Box-DuolaD/main/version)${plain}"
-    fi
-  else
-    latestV=$(curl -sL https://raw.githubusercontent.com/DuolaD/Sing-Box-DuolaD/main/version | awk -F "更新内容" '{print $1}' | head -n 1)
-    echo -e "当前 Sing-box 脚本版本号：${bblue}${latestV}${plain}"
-    yellow "未安装 Sing-box 脚本！请先选择 1 安装"
-  fi
-  
-  lapre
-  if [ -f "$SBFOLDER/sb.json" ]; then
-    if [[ $inscore =~ ^[0-9.]+$ ]]; then
-      if [ "${inscore}" = "${latcore}" ]; then
-        echo -e "\n当前 Sing-box 最新正式版内核：${bblue}${inscore}${plain} (已安装)"
-        echo -e "当前 Sing-box 最新测试版内核：${bblue}${precore}${plain} (可切换)"
+  if [[ "$SHOW_VER_INFO" == "1" ]]; then
+    if [ -f "$SBFOLDER/v" ]; then
+      insV=$(cat "$SBFOLDER/v" 2>/dev/null)
+      latestV=$(curl -sL https://raw.githubusercontent.com/DuolaD/Sing-Box-DuolaD/main/version | awk -F "更新内容" '{print $1}' | head -n 1)
+      if [ "$insV" = "$latestV" ]; then
+        echo -e "当前 Sing-box 脚本最新版：${bblue}${insV}${plain} (已安装)"
       else
-        echo -e "\n当前 Sing-box 已安装正式版内核：${bblue}${inscore}${plain}"
-        echo -e "检测到最新 Sing-box 正式版内核：${yellow}${latcore}${plain} (可选择8进行更新)"
-        echo -e "\n当前 Sing-box 最新测试版内核：${bblue}${precore}${plain} (可切换)"
+        echo -e "当前 Sing-box 脚本版本号：${bblue}${insV}${plain}"
+        echo -e "检测到最新 Sing-box 脚本版本号：${yellow}${latestV}${plain} (可选择7进行更新)"
+        echo -e "${yellow}$(curl -sL https://raw.githubusercontent.com/DuolaD/Sing-Box-DuolaD/main/version)${plain}"
       fi
     else
-      if [ "${inscore}" = "${precore}" ]; then
-        echo -e "\n当前 Sing-box 最新测试版内核：${bblue}${inscore}${plain} (已安装)"
-        echo -e "当前 Sing-box 最新正式版内核：${bblue}${latcore}${plain} (可切换)"
+      latestV=$(curl -sL https://raw.githubusercontent.com/DuolaD/Sing-Box-DuolaD/main/version | awk -F "更新内容" '{print $1}' | head -n 1)
+      echo -e "当前 Sing-box 脚本版本号：${bblue}${latestV}${plain}"
+      yellow "未安装 Sing-box 脚本！请先选择 1 安装"
+    fi
+    
+    lapre
+    if [ -f "$SBFOLDER/sb.json" ]; then
+      if [[ $inscore =~ ^[0-9.]+$ ]]; then
+        if [ "${inscore}" = "${latcore}" ]; then
+          echo -e "\n当前 Sing-box 最新正式版内核：${bblue}${inscore}${plain} (已安装)"
+          echo -e "当前 Sing-box 最新测试版内核：${bblue}${precore}${plain} (可切换)"
+        else
+          echo -e "\n当前 Sing-box 已安装正式版内核：${bblue}${inscore}${plain}"
+          echo -e "检测到最新 Sing-box 正式版内核：${yellow}${latcore}${plain} (可选择8进行更新)"
+          echo -e "\n当前 Sing-box 最新测试版内核：${bblue}${precore}${plain} (可切换)"
+        fi
       else
-        echo -e "\n当前 Sing-box 已安装测试版内核：${bblue}${inscore}${plain}"
-        echo -e "检测到最新 Sing-box 测试版内核：${yellow}${precore}${plain} (可选择8进行更新)"
-        echo -e "\n当前 Sing-box 最新正式版内核：${bblue}${latcore}${plain} (可切换)"
+        if [ "${inscore}" = "${precore}" ]; then
+          echo -e "\n当前 Sing-box 最新测试版内核：${bblue}${inscore}${plain} (已安装)"
+          echo -e "当前 Sing-box 最新正式版内核：${bblue}${latcore}${plain} (可切换)"
+        else
+          echo -e "\n当前 Sing-box 已安装测试版内核：${bblue}${inscore}${plain}"
+          echo -e "检测到最新 Sing-box 测试版内核：${yellow}${precore}${plain} (可选择8进行更新)"
+          echo -e "\n当前 Sing-box 最新正式版内核：${bblue}${latcore}${plain} (可切换)"
+        fi
       fi
-    fi
-  else
-    echo -e "\n当前 Sing-box 最新正式版内核：${bblue}${latcore}${plain}"
-    echo -e "当前 Sing-box 最新测试版内核：${bblue}${precore}${plain}"
-  fi
-  
-  red "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-  echo -e "VPS状态如下："
-  echo -e "系统:$blue$op$plain  \c";echo -e "内核:$blue$version$plain  \c";echo -e "处理器:$blue$cpu$plain  \c";echo -e "虚拟化:$blue$vi$plain  \c";echo -e "BBR算法:$blue$bbr$plain"
-  v4v6
-  if [[ "$v6" == "2a09"* ]]; then
-    w6="【WARP】"
-  fi
-  if [[ "$v4" == "104.28"* ]]; then
-    w4="【WARP】"
-  fi
-  [[ -z $v4 ]] && showv4='IPv4地址丢失，请切换至IPv6或者重装Sing-box' || showv4=$v4$w4
-  [[ -z $v6 ]] && showv6='IPv6地址丢失，请切换至IPv4或者重装Sing-box' || showv6=$v6$w6
-  if [[ -z $v4 ]]; then
-    vps_ipv4='无 IPv4'      
-    vps_ipv6="$v6"
-    location="$v6dq"
-  elif [[ -n $v4 &&  -n $v6 ]]; then
-    vps_ipv4="$v4"    
-    vps_ipv6="$v6"
-    location="$v4dq"
-  else
-    vps_ipv4="$v4"    
-    vps_ipv6='无 IPv6'
-    location="$v4dq"
-  fi
-  echo -e "本地 IPv4 地址：$blue$vps_ipv4$w4$plain   本地 IPv6 地址：$blue$vps_ipv6$w6$plain"
-  echo -e "服务器地区：$blue$location$plain"
-  
-  if [ -f "$SBFOLDER/sb.json" ]; then
-    local v4_6=""
-    rpip=$(strip_json_comments "$SBFOLDER/sb.json" | jq -r '
-      [
-        (.route.rules[]? | select(.action == "resolve" and .strategy != null and .domain_suffix == null and .rule_set == null and .geosite == null and .domain == null) | .strategy),
-        (.route.rules[]? | select(.strategy != null and .domain_suffix == null and .rule_set == null and .geosite == null and .domain == null) | .strategy),
-        (.dns.strategy? // empty),
-        (.outbounds[]? | select(.domain_strategy != null) | .domain_strategy)
-      ] | map(select(. != null and . != "")) | first // empty
-    ' 2>/dev/null)
-    if [[ $rpip = 'prefer_ipv6' ]]; then
-      v4_6="IPv6 优先出站($showv6)"
-    elif [[ $rpip = 'prefer_ipv4' ]]; then
-      v4_6="IPv4 优先出站($showv4)"
-    elif [[ $rpip = 'ipv4_only' ]]; then
-      v4_6="仅 IPv4 出站($showv4)"
-    elif [[ $rpip = 'ipv6_only' ]]; then
-      v4_6="仅 IPv6 出站($showv6)"
     else
-      v4_6="默认/未设置"
+      echo -e "\n当前 Sing-box 最新正式版内核：${bblue}${latcore}${plain}"
+      echo -e "当前 Sing-box 最新测试版内核：${bblue}${precore}${plain}"
     fi
-    echo -e "代理IP优先级：$blue$v4_6$plain"
+  fi
+  
+  if [[ "$SHOW_VPS_INFO" == "1" ]]; then
+    if [[ "$SHOW_VER_INFO" == "1" ]]; then
+      red "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    fi
+    echo -e "VPS状态如下："
+    echo -e "系统:$blue$op$plain  \c";echo -e "内核:$blue$version$plain  \c";echo -e "处理器:$blue$cpu$plain  \c";echo -e "虚拟化:$blue$vi$plain  \c";echo -e "BBR算法:$blue$bbr$plain"
+    v4v6
+    if [[ "$v6" == "2a09"* ]]; then
+      w6="【WARP】"
+    fi
+    if [[ "$v4" == "104.28"* ]]; then
+      w4="【WARP】"
+    fi
+    [[ -z $v4 ]] && showv4='IPv4地址丢失，请切换至IPv6或者重装Sing-box' || showv4=$v4$w4
+    [[ -z $v6 ]] && showv6='IPv6地址丢失，请切换至IPv4或者重装Sing-box' || showv6=$v6$w6
+    if [[ -z $v4 ]]; then
+      vps_ipv4='无 IPv4'      
+      vps_ipv6="$v6"
+      location="$v6dq"
+    elif [[ -n $v4 &&  -n $v6 ]]; then
+      vps_ipv4="$v4"    
+      vps_ipv6="$v6"
+      location="$v4dq"
+    else
+      vps_ipv4="$v4"    
+      vps_ipv6='无 IPv6'
+      location="$v4dq"
+    fi
+    echo -e "本地 IPv4 地址：$blue$vps_ipv4$w4$plain   本地 IPv6 地址：$blue$vps_ipv6$w6$plain"
+    echo -e "服务器地区：$blue$location$plain"
+    
+    if [ -f "$SBFOLDER/sb.json" ]; then
+      local v4_6=""
+      rpip=$(strip_json_comments "$SBFOLDER/sb.json" | jq -r '
+        [
+          (.route.rules[]? | select(.action == "resolve" and .strategy != null and .domain_suffix == null and .rule_set == null and .geosite == null and .domain == null) | .strategy),
+          (.route.rules[]? | select(.strategy != null and .domain_suffix == null and .rule_set == null and .geosite == null and .domain == null) | .strategy),
+          (.dns.strategy? // empty),
+          (.outbounds[]? | select(.domain_strategy != null) | .domain_strategy)
+        ] | map(select(. != null and . != "")) | first // empty
+      ' 2>/dev/null)
+      if [[ $rpip = 'prefer_ipv6' ]]; then
+        v4_6="IPv6 优先出站($showv6)"
+      elif [[ $rpip = 'prefer_ipv4' ]]; then
+        v4_6="IPv4 优先出站($showv4)"
+      elif [[ $rpip = 'ipv4_only' ]]; then
+        v4_6="仅 IPv4 出站($showv4)"
+      elif [[ $rpip = 'ipv6_only' ]]; then
+        v4_6="仅 IPv6 出站($showv6)"
+      else
+        v4_6="默认/未设置"
+      fi
+      echo -e "代理IP优先级：$blue$v4_6$plain"
+    fi
   fi
   
   if command -v apk >/dev/null 2>&1; then
@@ -10210,9 +10651,11 @@ sb() {
     echo -e "Sing-box状态：$red未安装$plain"
   fi
   
-  red "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-  if [ -f "$SBFOLDER/sb.json" ]; then
-    showprotocol
+  if [[ "$SHOW_OUTBOUND_INFO" == "1" || "$SHOW_PROTO_INFO" == "1" || "$SHOW_ROUTE_INFO" == "1" ]]; then
+    red "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    if [ -f "$SBFOLDER/sb.json" ]; then
+      showprotocol
+    fi
   fi
   red "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
   echo
@@ -10228,7 +10671,7 @@ sb() {
      8 ) upsbcroe ;;
      9 ) clash_sb_share ;;
     10 ) sblog ;;
-    11 ) bbr ;;
+    11 ) system_settings ;;
     12 ) cfwarp ;;
     13 ) inswarpplus ;;
     14 ) wgcfgo && sbshare ;;
