@@ -9435,13 +9435,52 @@ lnsb() {
   chmod +x "$SCRIPT_SHORTCUT"
 }
 
+get_script_release_info() {
+  local api_res
+  api_res=$(curl -Ls --max-time 5 https://api.github.com/repos/DuolaD/Sing-Box-DuolaD/releases/latest 2>/dev/null)
+  if echo "$api_res" | grep -q '"tag_name"'; then
+    latestV=$(echo "$api_res" | jq -r '.tag_name' 2>/dev/null)
+    [[ "$latestV" == "null" || -z "$latestV" ]] && latestV=$(echo "$api_res" | grep -oP '"tag_name":\s*"\K[^"]+')
+    release_body=$(echo "$api_res" | jq -r '.body' 2>/dev/null)
+    [[ "$release_body" == "null" || -z "$release_body" ]] && release_body=$(echo "$api_res" | grep -oP '"body":\s*"\K[^"]+' | sed 's/\\r\\n/\n/g; s/\\n/\n/g')
+  else
+    latestV=$(curl -Ls --max-time 5 https://github.com/DuolaD/Sing-Box-DuolaD/releases/latest | grep -oP 'tag/\K[^"]+' | head -n 1)
+    if [[ -z "$latestV" ]]; then
+      latestV=$(curl -sL --max-time 5 https://raw.githubusercontent.com/DuolaD/Sing-Box-DuolaD/main/version 2>/dev/null | awk -F "更新内容" '{print $1}' | head -n 1)
+      release_body=$(curl -sL --max-time 5 https://raw.githubusercontent.com/DuolaD/Sing-Box-DuolaD/main/version 2>/dev/null)
+    else
+      release_body="请访问 https://github.com/DuolaD/Sing-Box-DuolaD/releases/tag/${latestV} 查看更新日志。"
+    fi
+  fi
+}
+
 upsbyg() {
   if [[ ! -f "$SCRIPT_SHORTCUT" ]]; then
     red "未正常安装Sing-box" && exit
   fi
-  lnsb
-  curl -sL "https://raw.githubusercontent.com/DuolaD/Sing-Box-DuolaD/main/version" | awk -F "更新内容" '{print $1}' | head -n 1 > "$SBFOLDER/v"
-  green "Sing-box安装脚本升级成功" && sleep 5 && sb
+  green "开始检测并下载 Sing-box 最新脚本……"
+  get_script_release_info
+  if [[ -z "$latestV" ]]; then
+    red "无法获取最新版本信息，更新失败！" && sleep 3 && sb
+    return 1
+  fi
+
+  local tmp_script="/tmp/sb_new.sh"
+  curl -L -o "$tmp_script" -# --retry 2 "https://github.com/DuolaD/Sing-Box-DuolaD/releases/download/${latestV}/sb.sh" 2>/dev/null || \
+  curl -L -o "$tmp_script" -# --retry 2 "https://raw.githubusercontent.com/DuolaD/Sing-Box-DuolaD/${latestV}/sb.sh" 2>/dev/null || \
+  curl -L -o "$tmp_script" -# --retry 2 "https://raw.githubusercontent.com/DuolaD/Sing-Box-DuolaD/main/sb.sh" 2>/dev/null
+
+  if [[ -s "$tmp_script" ]] && grep -q "sing-box" "$tmp_script"; then
+    cp -f "$tmp_script" "$0" 2>/dev/null
+    cp -f "$tmp_script" "$SCRIPT_SHORTCUT" 2>/dev/null
+    chmod +x "$SCRIPT_SHORTCUT" "$0" 2>/dev/null
+    echo "$latestV" > "$SBFOLDER/v"
+    rm -f "$tmp_script"
+    green "Sing-box 安装脚本成功升级至：$latestV" && sleep 3 && exec bash "$SCRIPT_SHORTCUT"
+  else
+    rm -f "$tmp_script"
+    red "下载的新脚本损坏或无效，更新失败！" && sleep 3 && sb
+  fi
 }
 
 # --- Uninstall logic ---
@@ -10521,7 +10560,8 @@ installsingbox() {
   inssbjsonser
   sbservice
   caddyservice
-  curl -sL "https://raw.githubusercontent.com/DuolaD/Sing-Box-DuolaD/main/version" | awk -F "更新内容" '{print $1}' | head -n 1 > "$SBFOLDER/v"
+  get_script_release_info
+  [[ -n "$latestV" ]] && echo "$latestV" > "$SBFOLDER/v"
   lnsb
   cronsb
   
@@ -10570,19 +10610,21 @@ sb() {
   red "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
   
   if [[ "$SHOW_VER_INFO" == "1" ]]; then
+    get_script_release_info
     if [ -f "$SBFOLDER/v" ]; then
       insV=$(cat "$SBFOLDER/v" 2>/dev/null)
-      latestV=$(curl -sL https://raw.githubusercontent.com/DuolaD/Sing-Box-DuolaD/main/version | awk -F "更新内容" '{print $1}' | head -n 1)
       if [ "$insV" = "$latestV" ]; then
         echo -e "当前 Sing-box 脚本最新版：${bblue}${insV}${plain} (已安装)"
       else
         echo -e "当前 Sing-box 脚本版本号：${bblue}${insV}${plain}"
         echo -e "检测到最新 Sing-box 脚本版本号：${yellow}${latestV}${plain} (可选择7进行更新)"
-        echo -e "${yellow}$(curl -sL https://raw.githubusercontent.com/DuolaD/Sing-Box-DuolaD/main/version)${plain}"
+        if [ -n "$release_body" ]; then
+          echo -e "${yellow}--- Releases 更新内容 ---${plain}"
+          echo -e "${yellow}${release_body}${plain}"
+        fi
       fi
     else
-      latestV=$(curl -sL https://raw.githubusercontent.com/DuolaD/Sing-Box-DuolaD/main/version | awk -F "更新内容" '{print $1}' | head -n 1)
-      echo -e "当前 Sing-box 脚本版本号：${bblue}${latestV}${plain}"
+      echo -e "当前 Sing-box 脚本最新 Release 版本号：${bblue}${latestV}${plain}"
       yellow "未安装 Sing-box 脚本！请先选择 1 安装"
     fi
     
