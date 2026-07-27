@@ -7123,17 +7123,25 @@ prune_orphaned_rule_sets() {
   [ ! -f "$SBFOLDER/sb.json" ] && return
   jq '
     ([.outbounds[]?.tag] + [.endpoints[]?.tag] + ["direct", "dns-out", "block", "bypass"] | map(select(. != null)) | unique) as $valid_outs
-    | ([.route.rules[]?.rule_set? | if type == "array" then .[] elif type == "string" then . else empty end] +
-     [.dns.rules[]?.rule_set? | if type == "array" then .[] elif type == "string" then . else empty end]
-     | map(select(. != null and . != "")) | unique) as $active_rs
-    | .route.rule_set = [(.route.rule_set[]? | select(.tag as $t | $active_rs | index($t) != null))]
+    | ([
+         (.route.rules[]? | select(.rule_set != null) | .rule_set | if type == "array" then .[] elif type == "string" then . else empty end),
+         (.route.rules[]? | select(.geosite != null) | .geosite | if type == "array" then .[] elif type == "string" then . else empty end | if startswith("geosite-") then . else ("geosite-" + .) end),
+         (.dns.rules[]? | select(.rule_set != null) | .rule_set | if type == "array" then .[] elif type == "string" then . else empty end),
+         (.dns.rules[]? | select(.geosite != null) | .geosite | if type == "array" then .[] elif type == "string" then . else empty end | if startswith("geosite-") then . else ("geosite-" + .) end)
+       ] | map(select(. != null and . != "")) | unique) as $active_rs
+    | .route.rule_set = [(.route.rule_set // [])[]? | select(.tag as $t | $active_rs | index($t) != null)]
     | .route.rules = [(.route.rules[]? | select(
+        .outbound as $ob |
         (
-          has("domain_suffix") or has("rule_set") or has("geosite") or has("geoip") or
-          has("ip_cidr") or has("domain") or has("port") or has("inbound") or
-          has("action") or has("clash_mode")
+          (has("domain_suffix") and .domain_suffix != null and (.domain_suffix | length > 0)) or
+          (has("rule_set") and .rule_set != null and (.rule_set | length > 0)) or
+          (has("geosite") and .geosite != null and (.geosite | length > 0)) or
+          (has("geoip") and .geoip != null and (.geoip | length > 0)) or
+          (has("ip_cidr") and .ip_cidr != null and (.ip_cidr | length > 0)) or
+          (has("domain") and .domain != null and (.domain | length > 0)) or
+          has("port") or has("inbound") or has("clash_mode")
         ) and
-        (.outbound == null or ($valid_outs | index(.outbound) != null))
+        ($ob == null or ($valid_outs | index($ob) != null))
       ))]
   ' "$SBFOLDER/sb.json" > /tmp/sb.json 2>/dev/null && mv /tmp/sb.json "$SBFOLDER/sb.json"
 }
