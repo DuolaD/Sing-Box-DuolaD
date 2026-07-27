@@ -34,7 +34,7 @@ SBFOLDER="/var/Sing-Box-DuolaD"
 SBFILES="$SBFOLDER/sb.json"
 SCRIPT_URL="https://raw.githubusercontent.com/DuolaD/Sing-Box-DuolaD/main/sb.sh"
 SCRIPT_SHORTCUT="/usr/bin/sb"
-SCRIPT_VERSION="v26.4.11"
+SCRIPT_VERSION="DuolaD_DEV"
 
 # --- Detect Operating System ---
 detect_system() {
