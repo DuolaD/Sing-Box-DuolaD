@@ -7042,6 +7042,14 @@ rebuild_singbox_outbounds() {
     local warp_out_item='{"type":"direct","tag":"warp-out"}'
     tmp_json=$(echo "$tmp_json" | jq --argjson item "$warp_out_item" '.outbounds += [$item]')
   fi
+  if ! echo "$tmp_json" | jq -e '.outbounds[]? | select(.tag == "vps-outbound-v4")' >/dev/null 2>&1; then
+    local v4_out_item='{"type":"direct","tag":"vps-outbound-v4","domain_strategy":"prefer_ipv4"}'
+    tmp_json=$(echo "$tmp_json" | jq --argjson item "$v4_out_item" '.outbounds += [$item]')
+  fi
+  if ! echo "$tmp_json" | jq -e '.outbounds[]? | select(.tag == "vps-outbound-v6")' >/dev/null 2>&1; then
+    local v6_out_item='{"type":"direct","tag":"vps-outbound-v6","domain_strategy":"prefer_ipv6"}'
+    tmp_json=$(echo "$tmp_json" | jq --argjson item "$v6_out_item" '.outbounds += [$item]')
+  fi
 
   # 2. 重载 DNS 代理与 SNI 反向代理规则
   if [ -f "$DNS_SNI_INST_FILE" ]; then
@@ -7122,7 +7130,7 @@ rebuild_singbox_outbounds() {
 prune_orphaned_rule_sets() {
   [ ! -f "$SBFOLDER/sb.json" ] && return
   jq '
-    ([.outbounds[]?.tag] + [.endpoints[]?.tag] + ["direct", "dns-out", "block", "bypass"] | map(select(. != null)) | unique) as $valid_outs
+    ([.outbounds[]?.tag] + [.endpoints[]?.tag] + ["direct", "dns-out", "block", "bypass", "vps-outbound-v4", "vps-outbound-v6"] | map(select(. != null)) | unique) as $valid_outs
     | ([
          (.route.rules[]? | select(.rule_set != null) | .rule_set | if type == "array" then .[] elif type == "string" then . else empty end),
          (.route.rules[]? | select(.geosite != null) | .geosite | if type == "array" then .[] elif type == "string" then . else empty end | if startswith("geosite-") then . else ("geosite-" + .) end),
@@ -7156,7 +7164,7 @@ update_routing_rule() {
   if [[ -z "$raw_items" || "$raw_items" == "DuolaD" ]]; then
     json_array='["DuolaD"]'
   else
-    json_array=$(echo "$raw_items" | jq -R 'split(" ")')
+    json_array=$(echo "$raw_items" | jq -R 'split(" ") | map(select(. != "" and . != "0" and . != "DuolaD")) | if length == 0 then ["DuolaD"] else . end')
   fi
 
   local target_outbound=""
