@@ -6967,7 +6967,7 @@ rebuild_singbox_outbounds() {
   [ -z "$clean_json" ] && return
   
   # 1. 重载 Socks5 & Shadowsocks Outbounds & WireGuard Endpoints
-  local base_outs=$(echo "$clean_json" | jq '[.outbounds[] | select(.type != "socks" and (.tag | startswith("ss-out-") | not) and (.tag | startswith("wg-out-") | not))]' 2>/dev/null)
+  local base_outs=$(echo "$clean_json" | jq '[.outbounds[] | del(.domain_strategy) | select(.type != "socks" and (.tag | startswith("ss-out-") | not) and (.tag | startswith("wg-out-") | not))]' 2>/dev/null)
   local base_eps=$(echo "$clean_json" | jq '[.endpoints[]? | select((.tag | startswith("wg-out-")) | not)]' 2>/dev/null)
   local socks_outs="[]"
   
@@ -7043,11 +7043,11 @@ rebuild_singbox_outbounds() {
     tmp_json=$(echo "$tmp_json" | jq --argjson item "$warp_out_item" '.outbounds += [$item]')
   fi
   if ! echo "$tmp_json" | jq -e '.outbounds[]? | select(.tag == "vps-outbound-v4")' >/dev/null 2>&1; then
-    local v4_out_item='{"type":"direct","tag":"vps-outbound-v4","domain_strategy":"prefer_ipv4"}'
+    local v4_out_item='{"type":"direct","tag":"vps-outbound-v4"}'
     tmp_json=$(echo "$tmp_json" | jq --argjson item "$v4_out_item" '.outbounds += [$item]')
   fi
   if ! echo "$tmp_json" | jq -e '.outbounds[]? | select(.tag == "vps-outbound-v6")' >/dev/null 2>&1; then
-    local v6_out_item='{"type":"direct","tag":"vps-outbound-v6","domain_strategy":"prefer_ipv6"}'
+    local v6_out_item='{"type":"direct","tag":"vps-outbound-v6"}'
     tmp_json=$(echo "$tmp_json" | jq --argjson item "$v6_out_item" '.outbounds += [$item]')
   fi
 
