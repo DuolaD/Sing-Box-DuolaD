@@ -1,9 +1,19 @@
-# sing-box
-[Building] A self-use One-click installation of sing-box script.
+# Sing-Box-DuolaD
+A self-use One-click installation of sing-box script.
 
-## 运行命令 / Run Command
+## 普通用户 / Normal User
 
-你可以使用以下命令直接复制粘贴运行该脚本：
+```bash
+bash <(wget -qO- https://github.com/DuolaD/Sing-Box-DuolaD/releases/latest/download/sb.sh)
+```
+
+或者：
+
+```bash
+bash <(curl -Ls https://github.com/DuolaD/Sing-Box-DuolaD/releases/latest/download/sb.sh)
+```
+
+## 开发用途 / Development
 
 ```bash
 bash <(wget -qO- https://raw.githubusercontent.com/DuolaD/Sing-Box-DuolaD/main/sb.sh)
