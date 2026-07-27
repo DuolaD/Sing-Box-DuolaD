@@ -8295,6 +8295,32 @@ parse_ss_link() {
     echo -e "${blue}----------------------------------------------------------------------------------${plain}"
   }
 
+  clean_instance_processes() {
+    local port="$1"
+    local inst_dir="$SBFOLDER/warp_inst_${port}"
+    
+    if [ -d "$inst_dir" ]; then
+      if [ -s "$inst_dir/pids.conf" ]; then
+        while read -r pid; do
+          [[ -n "$pid" ]] && kill -9 "$pid" 2>/dev/null
+        done < "$inst_dir/pids.conf"
+      fi
+
+      if [ -f "$inst_dir/ports.conf" ]; then
+        read aux_vp aux_gp < "$inst_dir/ports.conf"
+        for aux_p in "$aux_vp" "$aux_gp"; do
+          if [[ -n "$aux_p" ]]; then
+            local pids=$(ss -tunlp 2>/dev/null | grep -w "$aux_p" | grep -v "sing-box" | grep -oP 'pid=\K[0-9]+' | sort -u)
+            [[ -n "$pids" ]] && echo "$pids" | xargs kill -9 2>/dev/null
+          fi
+        done
+      fi
+    fi
+
+    local main_pids=$(ss -tunlp 2>/dev/null | grep -w "$port" | grep -v "sing-box" | grep -oP 'pid=\K[0-9]+' | sort -u)
+    [[ -n "$main_pids" ]] && echo "$main_pids" | xargs kill -9 2>/dev/null
+  }
+
   add_new_instance() {
     echo -e "\n${blue}【添加新的出站/分流规则】${plain}"
     yellow "1: 本地 WARP VPN (Usque / WARP-cli)"
@@ -8558,6 +8584,9 @@ parse_ss_link() {
           echo "y" | /usr/local/bin/usque register -c "$inst_usque_conf" >/dev/null 2>&1
         fi
         nohup /usr/local/bin/usque socks -c "$inst_usque_conf" -b 127.0.0.1 -p "$inst_port" >/dev/null 2>&1 &
+        local warp_dir="$SBFOLDER/warp_inst_${inst_port}"
+        mkdir -p "$warp_dir"
+        echo $! >> "$warp_dir/pids.conf"
         ;;
       warp-cli)
         if ! command -v warp-cli >/dev/null 2>&1; then
@@ -8572,7 +8601,7 @@ parse_ss_link() {
         ensure_warp_plus
         local warp_dir="$SBFOLDER/warp_inst_${inst_port}"
         mkdir -p "$warp_dir"
-        (cd "$warp_dir" && nohup "$SBFOLDER/warp-plus" -b "127.0.0.1:$inst_port" --cfon --country "$inst_country" -$sw46 --endpoint 162.159.192.1:2408 --cache-dir "$warp_dir" >/dev/null 2>&1 &)
+        (cd "$warp_dir" && nohup "$SBFOLDER/warp-plus" -b "127.0.0.1:$inst_port" --cfon --country "$inst_country" -$sw46 --endpoint 162.159.192.1:2408 --cache-dir "$warp_dir" >/dev/null 2>&1 & echo $! >> "$warp_dir/pids.conf")
         ;;
       chain)
         ensure_usque
@@ -8592,11 +8621,13 @@ parse_ss_link() {
         local warp_dir="$SBFOLDER/warp_inst_${inst_port}"
         mkdir -p "$warp_dir"
         echo "$vwarp_p $gost_p" > "$warp_dir/ports.conf"
-        (cd "$warp_dir" && nohup "$SBFOLDER/warp-plus" -b "127.0.0.1:$vwarp_p" --cfon --country "$inst_country" -$sw46 --endpoint 162.159.192.1:2408 --cache-dir "$warp_dir" >/dev/null 2>&1 &)
+        (cd "$warp_dir" && nohup "$SBFOLDER/warp-plus" -b "127.0.0.1:$vwarp_p" --cfon --country "$inst_country" -$sw46 --endpoint 162.159.192.1:2408 --cache-dir "$warp_dir" >/dev/null 2>&1 & echo $! >> "$warp_dir/pids.conf")
         sleep 5
         nohup /usr/local/bin/gost -D -L "tcp://127.0.0.1:$gost_p/162.159.198.2:443" -L "tcp://[::1]:$gost_p/162.159.198.2:443" -F "socks5://127.0.0.1:$vwarp_p" >/dev/null 2>&1 &
+        echo $! >> "$warp_dir/pids.conf"
         sleep 2
         nohup /usr/local/bin/usque socks -c "$inst_usque_conf" -b 127.0.0.1 -p "$inst_port" --http2 --connect-port "$gost_p" >/dev/null 2>&1 &
+        echo $! >> "$warp_dir/pids.conf"
         ;;
     esac
 
@@ -8605,18 +8636,12 @@ parse_ss_link() {
     local check_ip=$(curl -sm10 --socks5 "127.0.0.1:$inst_port" ifconfig.me 2>/dev/null || curl -sm10 -x socks5h://127.0.0.1:$inst_port ifconfig.me 2>/dev/null)
     if [[ -z "$check_ip" ]]; then
       red "错误：实例启动超时或 IP 获取失败！已被直接清理，不保存该出站记录。"
-      local pids=$(ss -tunlp 2>/dev/null | grep -w "$inst_port" | grep -oP 'pid=\K[0-9]+' | sort -u)
-      if [[ -n "$pids" ]]; then
-        echo "$pids" | xargs kill -9 2>/dev/null
-      fi
-      if [ -f "$SBFOLDER/warp_inst_${inst_port}/ports.conf" ]; then
-        read aux_vp aux_gp < "$SBFOLDER/warp_inst_${inst_port}/ports.conf"
-        for aux_p in "$aux_vp" "$aux_gp"; do
-          [[ -n "$aux_p" ]] && ss -tunlp 2>/dev/null | grep -w "$aux_p" | grep -oP 'pid=\K[0-9]+' | xargs kill -9 2>/dev/null
-        done
-      fi
+      clean_instance_processes "$inst_port"
       rm -f "$SBFOLDER/usque_${inst_port}.json"
       rm -rf "$SBFOLDER/warp_inst_${inst_port}"
+      if ! systemctl is-active --quiet sing-box 2>/dev/null; then
+        restartsb >/dev/null 2>&1 || true
+      fi
       sleep 2
       return 1
     else
@@ -8686,14 +8711,7 @@ parse_ss_link() {
       local del_tag=$(echo "$target_line" | cut -d'|' -f4)
 
       green "正在停止端口 $del_port (Tag: $del_tag) 上的代理进程..."
-      local pids=$(ss -tunlp 2>/dev/null | grep -w "$del_port" | grep -oP 'pid=\K[0-9]+' | sort -u)
-      [[ -n "$pids" ]] && echo "$pids" | xargs kill -9 2>/dev/null
-      if [ -f "$SBFOLDER/warp_inst_${del_port}/ports.conf" ]; then
-        read aux_vp aux_gp < "$SBFOLDER/warp_inst_${del_port}/ports.conf"
-        for aux_p in "$aux_vp" "$aux_gp"; do
-          [[ -n "$aux_p" ]] && ss -tunlp 2>/dev/null | grep -w "$aux_p" | grep -oP 'pid=\K[0-9]+' | xargs kill -9 2>/dev/null
-        done
-      fi
+      clean_instance_processes "$del_port"
       sed -i "${del_idx}d" "$WARP_INST_FILE"
       rm -f "$SBFOLDER/usque_${del_port}.json"
       rm -rf "$SBFOLDER/warp_inst_${del_port}"
