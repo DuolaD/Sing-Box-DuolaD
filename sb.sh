@@ -9455,10 +9455,7 @@ get_script_release_info() {
     [[ "$release_body" == "null" || -z "$release_body" ]] && release_body=$(echo "$api_res" | grep -oP '"body":\s*"\K[^"]+' | sed 's/\\r\\n/\n/g; s/\\n/\n/g')
   else
     latestV=$(curl -Ls --max-time 5 https://github.com/DuolaD/Sing-Box-DuolaD/releases/latest | grep -oP 'tag/\K[^"]+' | head -n 1)
-    if [[ -z "$latestV" ]]; then
-      latestV=$(curl -sL --max-time 5 https://raw.githubusercontent.com/DuolaD/Sing-Box-DuolaD/main/version 2>/dev/null | awk -F "更新内容" '{print $1}' | head -n 1)
-      release_body=$(curl -sL --max-time 5 https://raw.githubusercontent.com/DuolaD/Sing-Box-DuolaD/main/version 2>/dev/null)
-    else
+    if [[ -n "$latestV" ]]; then
       release_body="请访问 https://github.com/DuolaD/Sing-Box-DuolaD/releases/tag/${latestV} 查看更新日志。"
     fi
   fi
@@ -10625,9 +10622,9 @@ sb() {
   
   if [[ "$SHOW_VER_INFO" == "1" ]]; then
     get_script_release_info
-    if [ -f "$SBFOLDER/v" ]; then
-      insV=$(cat "$SBFOLDER/v" 2>/dev/null)
-      if [ "$insV" = "$latestV" ]; then
+    insV="${SCRIPT_VERSION:-$(cat "$SBFOLDER/v" 2>/dev/null)}"
+    if [ -f "$SBFOLDER/sb.json" ]; then
+      if [ -n "$insV" ] && [ "$insV" = "$latestV" ]; then
         echo -e "当前 Sing-box 脚本最新版：${bblue}${insV}${plain} (已安装)"
       else
         echo -e "当前 Sing-box 脚本版本号：${bblue}${insV}${plain}"
@@ -10638,7 +10635,12 @@ sb() {
         fi
       fi
     else
-      echo -e "当前 Sing-box 脚本最新 Release 版本号：${bblue}${latestV}${plain}"
+      if [ -n "$insV" ] && [ "$insV" != "$latestV" ]; then
+        echo -e "当前 Sing-box 脚本版本号：${bblue}${insV}${plain}"
+        echo -e "检测到最新 Sing-box 脚本 Release 版本号：${yellow}${latestV}${plain}"
+      else
+        echo -e "当前 Sing-box 脚本最新 Release 版本号：${bblue}${latestV}${plain}"
+      fi
       yellow "未安装 Sing-box 脚本！请先选择 1 安装"
     fi
     
