@@ -216,8 +216,18 @@ get_server_ip() {
     [[ -z "$ip" ]] && ip=$(cat "$SBFOLDER/v6.log" 2>/dev/null)
     [[ -z "$ip" ]] && ip=$(get_public_ipv6)
   fi
-  echo "$ip"
+  echo "$ip" | tr -d '[]'
 }
+
+format_uri_host() {
+  local host="$1"
+  if [[ "$host" =~ : && ! "$host" =~ ^\[.*\]$ ]]; then
+    echo "[$host]"
+  else
+    echo "$host"
+  fi
+}
+
 
 v4v6() {
   v4=$(get_public_ipv4)
@@ -1968,7 +1978,7 @@ ipuuid() {
         server_ip="$v4"
         server_ipcl="$v4"
       elif [ "$menu" = "2" ]; then
-        server_ip="[$v6]"
+        server_ip="$v6"
         server_ipcl="$v6"
       else
         server_ip="dual"
@@ -1978,13 +1988,9 @@ ipuuid() {
       yellow "VPS并不是双栈VPS，不支持IP配置输出的切换"
       serip=$(get_public_ipv4)
       [[ -z "$serip" ]] && serip=$(get_public_ipv6)
-      if [[ "$serip" =~ : ]]; then
-        server_ip="[$serip]"
-        server_ipcl="$serip"
-      else
-        server_ip="$serip"
-        server_ipcl="$serip"
-      fi
+      serip=$(echo "$serip" | tr -d '[]')
+      server_ip="$serip"
+      server_ipcl="$serip"
     fi
     echo "$server_ip" > "$SBFOLDER/server_ip.log"
     echo "$server_ipcl" > "$SBFOLDER/server_ipcl.log"
@@ -2071,8 +2077,8 @@ result_vl_vm_hy_tu() {
   fi
   rm -rf "$SBFOLDER"/{vm_ws_argo.txt,vm_ws.txt,vm_ws_tls.txt}
   
-  server_ip=$(cat "$SBFOLDER/server_ip.log" 2>/dev/null)
-  server_ipcl=$(cat "$SBFOLDER/server_ipcl.log" 2>/dev/null)
+  server_ip=$(cat "$SBFOLDER/server_ip.log" 2>/dev/null | tr -d '[]')
+  server_ipcl=$(cat "$SBFOLDER/server_ipcl.log" 2>/dev/null | tr -d '[]')
 
   if [[ -f "$SBFOLDER/cfvmadd_local.txt" ]]; then
     vmadd_local=$(cat "$SBFOLDER/cfvmadd_local.txt" 2>/dev/null)
@@ -2293,7 +2299,7 @@ resvless() {
       echo -e "${yellow}$vl_link_v6${plain}\n"
       print_qr "$vl_link_v6"
     else
-      vl_link="vless://$uuid_vl_re@$server_ip:$port_vl_re?encryption=none&flow=xtls-rprx-vision&security=reality&sni=$vl_name&fp=$re_fp&pbk=$public_key&sid=$short_id&type=tcp&headerType=none#vl-reality-$hostname-$ip_tag"
+      vl_link="vless://$uuid_vl_re@$(format_uri_host "$server_ip"):$port_vl_re?encryption=none&flow=xtls-rprx-vision&security=reality&sni=$vl_name&fp=$re_fp&pbk=$public_key&sid=$short_id&type=tcp&headerType=none#vl-reality-$hostname-$ip_tag"
       echo "$vl_link" > "$SBFOLDER/vl_reality.txt"
       red "🚀【 vless-reality-vision-$ip_tag 】节点信息如下：" && sleep 2
       echo -e "${yellow}$vl_link${plain}\n"
@@ -2317,7 +2323,7 @@ resvless() {
       echo -e "${yellow}$vl_ws_link_v6${plain}\n"
       print_qr "$vl_ws_link_v6"
     else
-      local vl_ws_link="vless://$uuid_vl_ws@$s_ip_ws:$p_vl_ws?encryption=none&security=tls&sni=$tls_sni&type=ws&path=%2F${uuid_vl_ws}&${vl_tls_params}#vl-ws-tls-$hostname-$ip_tag"
+      local vl_ws_link="vless://$uuid_vl_ws@$(format_uri_host "$s_ip_ws"):$p_vl_ws?encryption=none&security=tls&sni=$tls_sni&type=ws&path=%2F${uuid_vl_ws}&${vl_tls_params}#vl-ws-tls-$hostname-$ip_tag"
       echo "$vl_ws_link" > "$SBFOLDER/vl_ws_tls.txt"
       red "🚀【 vless-ws-tls-$ip_tag 】节点信息如下：" && sleep 2
       echo -e "${yellow}$vl_ws_link${plain}\n"
@@ -2341,7 +2347,7 @@ resvless() {
       echo -e "${yellow}$vl_hu_link_v6${plain}\n"
       print_qr "$vl_hu_link_v6"
     else
-      local vl_hu_link="vless://$uuid_vl_hu@$s_ip_hu:$p_vl_hu?encryption=none&security=tls&sni=$tls_sni&type=httpupgrade&path=%2F${uuid_vl_hu}&${vl_tls_params}#vl-hu-tls-$hostname-$ip_tag"
+      local vl_hu_link="vless://$uuid_vl_hu@$(format_uri_host "$s_ip_hu"):$p_vl_hu?encryption=none&security=tls&sni=$tls_sni&type=httpupgrade&path=%2F${uuid_vl_hu}&${vl_tls_params}#vl-hu-tls-$hostname-$ip_tag"
       echo "$vl_hu_link" > "$SBFOLDER/vl_hu_tls.txt"
       red "🚀【 vless-hu-tls-$ip_tag 】节点信息如下：" && sleep 2
       echo -e "${yellow}$vl_hu_link${plain}\n"
@@ -2529,7 +2535,7 @@ reshy2() {
     echo -e "${yellow}$hy2_link_v6${plain}\n"
     print_qr "$hy2_link_v6"
   else
-    hy2_link="hysteria2://$uuid_hy2@$sb_hy2_ip:$port_hy2?$hy2_params$hyps#hy2-$hostname-$ip_tag"
+    hy2_link="hysteria2://$uuid_hy2@$(format_uri_host "$sb_hy2_ip"):$port_hy2?$hy2_params$hyps#hy2-$hostname-$ip_tag"
     echo "$hy2_link" > "$SBFOLDER/hy2.txt"
     red "🚀【 Hysteria-2-$ip_tag 】节点信息如下：" && sleep 2
     echo -e "${yellow}$hy2_link${plain}\n"
@@ -2547,7 +2553,7 @@ restu5() {
   else
     tu5_params="sni=$tu5_name&insecure=0&allowInsecure=0&allow_insecure=0&alpn=h3"
   fi
-  server_ip=$(cat "$SBFOLDER/server_ip.log" 2>/dev/null)
+  server_ip=$(cat "$SBFOLDER/server_ip.log" 2>/dev/null | tr -d '[]')
   local ip_tag="IPV4"
   if [[ "$server_ip" =~ : ]]; then ip_tag="IPV6"; fi
 
@@ -2564,7 +2570,7 @@ restu5() {
     echo -e "${yellow}$tu_link_v6${plain}\n"
     print_qr "$tu_link_v6"
   else
-    tu_link="tuic://$uuid_tu:$uuid_tu@$sb_tu5_ip:$port_tu?$tu5_params#tuic5-$hostname-$ip_tag"
+    tu_link="tuic://$uuid_tu:$uuid_tu@$(format_uri_host "$sb_tu5_ip"):$port_tu?$tu5_params#tuic5-$hostname-$ip_tag"
     echo "$tu_link" > "$SBFOLDER/tuic5.txt"
     red "🚀【 Tuic-v5-$ip_tag 】节点信息如下：" && sleep 2
     echo -e "${yellow}$tu_link${plain}\n"
@@ -2580,7 +2586,7 @@ resan() {
   if [[ "$is_self_signed" = "true" ]]; then
     an_params="sni=$(get_self_domain)&allowInsecure=0&insecure=0&pinnedPeerCertSha256=$SHA256"
   fi
-  server_ip=$(cat "$SBFOLDER/server_ip.log" 2>/dev/null)
+  server_ip=$(cat "$SBFOLDER/server_ip.log" 2>/dev/null | tr -d '[]')
   local ip_tag="IPV4"
   if [[ "$server_ip" =~ : ]]; then ip_tag="IPV6"; fi
 
@@ -2597,7 +2603,7 @@ resan() {
     echo -e "${yellow}$an_link_v6${plain}\n"
     print_qr "$an_link_v6"
   else
-    an_link="anytls://$uuid_an@$sb_an_ip:$port_an?$an_params#anytls-$hostname-$ip_tag"
+    an_link="anytls://$uuid_an@$(format_uri_host "$sb_an_ip"):$port_an?$an_params#anytls-$hostname-$ip_tag"
     echo "$an_link" > "$SBFOLDER/an.txt"
     red "🚀【 Anytls-$ip_tag 】节点信息如下：" && sleep 2
     echo -e "${yellow}$an_link${plain}\n"
@@ -2652,7 +2658,7 @@ restrojan() {
       echo -e "${yellow}$tr_link_v6${plain}\n"
       print_qr "$tr_link_v6"
     else
-      local tr_link="trojan://$uuid_tr_tls@$server_ip:$port_tr_tls?security=tls&sni=$tls_sni&${tr_tls_params}#tr-tls-$hostname-$ip_tag"
+      local tr_link="trojan://$uuid_tr_tls@$(format_uri_host "$server_ip"):$port_tr_tls?security=tls&sni=$tls_sni&${tr_tls_params}#tr-tls-$hostname-$ip_tag"
       echo "$tr_link" > "$SBFOLDER/tr_tls.txt"
       red "🚀【 Trojan-TLS-$ip_tag 】节点信息如下：" && sleep 2
       echo -e "${yellow}$tr_link${plain}\n"
@@ -2676,7 +2682,7 @@ restrojan() {
       echo -e "${yellow}$tr_ws_link_v6${plain}\n"
       print_qr "$tr_ws_link_v6"
     else
-      local tr_ws_link="trojan://$uuid_tr_ws_tls@$s_ip_ws:$p_tr_ws_tls?security=tls&sni=$tls_sni&type=ws&path=%2F${uuid_tr_ws_tls}&${tr_tls_params}#tr-ws-tls-$hostname-$ip_tag"
+      local tr_ws_link="trojan://$uuid_tr_ws_tls@$(format_uri_host "$s_ip_ws"):$p_tr_ws_tls?security=tls&sni=$tls_sni&type=ws&path=%2F${uuid_tr_ws_tls}&${tr_tls_params}#tr-ws-tls-$hostname-$ip_tag"
       echo "$tr_ws_link" > "$SBFOLDER/tr_ws_tls.txt"
       red "🚀【 Trojan-WS-TLS-$ip_tag 】节点信息如下：" && sleep 2
       echo -e "${yellow}$tr_ws_link${plain}\n"
@@ -2700,7 +2706,7 @@ restrojan() {
       echo -e "${yellow}$tr_hu_link_v6${plain}\n"
       print_qr "$tr_hu_link_v6"
     else
-      local tr_hu_link="trojan://$uuid_tr_hu_tls@$s_ip_hu:$p_tr_hu_tls?security=tls&sni=$tls_sni&type=httpupgrade&path=%2F${uuid_tr_hu_tls}&${tr_tls_params}#tr-hu-tls-$hostname-$ip_tag"
+      local tr_hu_link="trojan://$uuid_tr_hu_tls@$(format_uri_host "$s_ip_hu"):$p_tr_hu_tls?security=tls&sni=$tls_sni&type=httpupgrade&path=%2F${uuid_tr_hu_tls}&${tr_tls_params}#tr-hu-tls-$hostname-$ip_tag"
       echo "$tr_hu_link" > "$SBFOLDER/tr_hu_tls.txt"
       red "🚀【 Trojan-HTTPUpgrade-TLS-$ip_tag 】节点信息如下：" && sleep 2
       echo -e "${yellow}$tr_hu_link${plain}\n"
@@ -2713,7 +2719,7 @@ resshadowsocks() {
   [[ -z "$port_ss" ]] && return 0
   echo
   white "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-  server_ip=$(cat "$SBFOLDER/server_ip.log" 2>/dev/null)
+  server_ip=$(cat "$SBFOLDER/server_ip.log" 2>/dev/null | tr -d '[]')
   local b64_cred=$(echo -n "${ss_method:-2022-blake3-aes-128-gcm}:$ss_password" | base64 -w 0)
   local ip_tag="IPV4"
   if [[ "$server_ip" =~ : ]]; then ip_tag="IPV6"; fi
@@ -2731,7 +2737,7 @@ resshadowsocks() {
     echo -e "${yellow}$ss_link_v6${plain}\n"
     print_qr "$ss_link_v6"
   else
-    local ss_link="ss://$b64_cred@$server_ip:$port_ss#ss-$hostname-$ip_tag"
+    local ss_link="ss://$b64_cred@$(format_uri_host "$server_ip"):$port_ss#ss-$hostname-$ip_tag"
     echo "$ss_link" > "$SBFOLDER/ss.txt"
     red "🚀【 Shadowsocks-$ip_tag 】节点信息如下：" && sleep 2
     echo -e "${yellow}$ss_link${plain}\n"
@@ -2925,7 +2931,7 @@ resvless_h2_tls() {
   else
     local ip_tag="IPV4"
     if [[ "$server_ip" =~ : ]]; then ip_tag="IPV6"; fi
-    local vl_h2_link="vless://$uuid_vl_h2@$s_ip_h2:$p_vl_h2?encryption=none&security=tls&sni=$h2_sni&type=h2&host=$h2_sni&path=%2F${uuid_vl_h2}&${vl_tls_params}#vl-h2-tls-$hostname-$ip_tag"
+    local vl_h2_link="vless://$uuid_vl_h2@$(format_uri_host "$s_ip_h2"):$p_vl_h2?encryption=none&security=tls&sni=$h2_sni&type=h2&host=$h2_sni&path=%2F${uuid_vl_h2}&${vl_tls_params}#vl-h2-tls-$hostname-$ip_tag"
     echo "$vl_h2_link" > "$SBFOLDER/vl_h2_tls.txt"
     red "🚀【 VLESS-H2-TLS-$ip_tag 】节点信息如下：" && sleep 2
     echo -e "${yellow}$vl_h2_link${plain}\n"
@@ -2937,7 +2943,7 @@ restrojan_h2_tls() {
   [[ -z "$port_tr_h2_tls" ]] && return 0
   echo
   white "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-  server_ip=$(cat "$SBFOLDER/server_ip.log" 2>/dev/null)
+  server_ip=$(cat "$SBFOLDER/server_ip.log" 2>/dev/null | tr -d '[]')
 
   local caddy_active=false
   if systemctl is-active --quiet caddy 2>/dev/null || rc-service caddy status 2>/dev/null | grep -q "started"; then
@@ -2978,7 +2984,7 @@ restrojan_h2_tls() {
   else
     local ip_tag="IPV4"
     if [[ "$server_ip" =~ : ]]; then ip_tag="IPV6"; fi
-    local tr_h2_link="trojan://$uuid_tr_h2_tls@$s_ip_h2:$p_tr_h2?security=tls&sni=$h2_sni&type=h2&host=$h2_sni&path=%2F${uuid_tr_h2_tls}#tr-h2-tls-$hostname-$ip_tag"
+    local tr_h2_link="trojan://$uuid_tr_h2_tls@$(format_uri_host "$s_ip_h2"):$p_tr_h2?security=tls&sni=$h2_sni&type=h2&host=$h2_sni&path=%2F${uuid_tr_h2_tls}#tr-h2-tls-$hostname-$ip_tag"
     echo "$tr_h2_link" > "$SBFOLDER/tr_h2_tls.txt"
     red "🚀【 Trojan-H2-TLS-$ip_tag 】节点信息如下：" && sleep 2
     echo -e "${yellow}$tr_h2_link${plain}\n"
@@ -2991,7 +2997,7 @@ resvless_h2_re() {
   local re_fp=$(get_reality_fp "vl_h2_re")
   echo
   white "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-  server_ip=$(cat "$SBFOLDER/server_ip.log" 2>/dev/null)
+  server_ip=$(cat "$SBFOLDER/server_ip.log" 2>/dev/null | tr -d '[]')
   if [[ "$server_ip" = "dual" ]]; then
     local v4_addr=$(cat "$SBFOLDER/v4.log" 2>/dev/null)
     local v6_addr=$(cat "$SBFOLDER/v6.log" 2>/dev/null)
@@ -3007,7 +3013,7 @@ resvless_h2_re() {
   else
     local ip_tag="IPV4"
     if [[ "$server_ip" =~ : ]]; then ip_tag="IPV6"; fi
-    local vl_h2_re_link="vless://$uuid_vl_h2_re@$server_ip:$port_vl_h2_re?encryption=none&security=reality&sni=$vl_name&fp=$re_fp&pbk=$public_key&sid=$short_id&type=h2&path=%2F${uuid_vl_h2_re}#vl-h2-reality-$hostname-$ip_tag"
+    local vl_h2_re_link="vless://$uuid_vl_h2_re@$(format_uri_host "$server_ip"):$port_vl_h2_re?encryption=none&security=reality&sni=$vl_name&fp=$re_fp&pbk=$public_key&sid=$short_id&type=h2&path=%2F${uuid_vl_h2_re}#vl-h2-reality-$hostname-$ip_tag"
     echo "$vl_h2_re_link" > "$SBFOLDER/vl_h2_reality.txt"
     red "🚀【 VLESS-HTTP2-REALITY-$ip_tag 】节点信息如下：" && sleep 2
     echo -e "${yellow}$vl_h2_re_link${plain}\n"
@@ -3019,7 +3025,7 @@ ressocks() {
   [[ -z "$port_socks" ]] && return 0
   echo
   white "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-  server_ip=$(cat "$SBFOLDER/server_ip.log" 2>/dev/null)
+  server_ip=$(cat "$SBFOLDER/server_ip.log" 2>/dev/null | tr -d '[]')
   if [[ "$server_ip" = "dual" ]]; then
     local v4_addr=$(cat "$SBFOLDER/v4.log" 2>/dev/null)
     local v6_addr=$(cat "$SBFOLDER/v6.log" 2>/dev/null)
@@ -3034,7 +3040,7 @@ ressocks() {
   else
     local ip_tag="IPV4"
     if [[ "$server_ip" =~ : ]]; then ip_tag="IPV6"; fi
-    local socks_link="socks://$socks_username:$socks_password@$server_ip:$port_socks#socks-$hostname-$ip_tag"
+    local socks_link="socks://$socks_username:$socks_password@$(format_uri_host "$server_ip"):$port_socks#socks-$hostname-$ip_tag"
     echo "$socks_link" > "$SBFOLDER/socks.txt"
     red "🚀【 Socks5-$ip_tag 】代理信息如下：" && sleep 2
     echo -e "${yellow}$socks_link${plain}\n"
@@ -3173,7 +3179,7 @@ sb_client() {
   add_sb_outbound() {
     local tag="$1"
     local type="$2"
-    local server="$3"
+    local server="$(echo "$3" | tr -d '[]')"
     local port="$4"
     local extra_json="$5"
     outs=$(echo "$outs" | jq --arg tag "$tag" --arg type "$type" --arg server "$server" --arg port "$port" --argjson extra "$extra_json" \
@@ -3191,7 +3197,7 @@ sb_client() {
   add_clash_proxy() {
     local name="$1"
     local type="$2"
-    local server="$3"
+    local server="$(echo "$3" | tr -d '[]')"
     local port="$4"
     local extra_yaml="$5"
     
@@ -3211,7 +3217,7 @@ $extra_yaml\n\n"
       return 0
     fi
     if [[ -f "$SBFOLDER/cfvmadd_local.txt" ]]; then
-      local local_cdn=$(cat "$SBFOLDER/cfvmadd_local.txt" 2>/dev/null)
+      local local_cdn=$(cat "$SBFOLDER/cfvmadd_local.txt" 2>/dev/null | tr -d '[]')
       echo "single|$local_cdn"
     else
       local is_domain=false
@@ -3225,8 +3231,9 @@ $extra_yaml\n\n"
       elif [[ "$server_ipcl" = "dual" ]]; then
         echo "v4|$v4_addr v6|$v6_addr"
       else
-        local server_ip=$(get_server_ip)
-        echo "single|${server_ip:-$default_server}"
+        local server_ip=$(get_server_ip | tr -d '[]')
+        local clean_def=$(echo "$default_server" | tr -d '[]')
+        echo "single|${server_ip:-$clean_def}"
       fi
     fi
   }
